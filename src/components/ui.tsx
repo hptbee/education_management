@@ -37,14 +37,14 @@ export function Button({
   size,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>) {
-  return <button className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+  return <button className={cn(buttonVariants({ variant, size }), "select-none", className)} {...props} />;
 }
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "rounded-[2rem] border-4 border-white/80 bg-white/85 p-5 shadow-[0_16px_0_rgba(124,92,255,0.12),0_22px_40px_rgba(41,48,77,0.12)] backdrop-blur",
+        "rounded-[2rem] border border-white/80 bg-white/88 p-5 shadow-[0_14px_28px_rgba(67,60,133,0.10),0_2px_0_rgba(255,255,255,0.75)_inset] backdrop-blur",
         className,
       )}
       {...props}
@@ -55,7 +55,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 export function Badge({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn("inline-flex items-center rounded-full bg-[#fff0ad] px-3 py-1 text-sm font-bold text-[#614800]", className)}
+      className={cn("inline-flex items-center rounded-full bg-[#fff0ad] px-3 py-1 text-sm font-bold text-[#614800] shadow-sm", className)}
       {...props}
     />
   );
@@ -65,7 +65,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "min-h-12 w-full rounded-2xl border-2 border-[#d9d2ff] bg-white px-4 text-[#29304d] outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#b89cff]/30",
+        "min-h-12 w-full rounded-2xl border border-[#d9d2ff] bg-white px-4 text-[#29304d] outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#b89cff]/25",
         className,
       )}
       {...props}
@@ -77,7 +77,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return (
     <textarea
       className={cn(
-        "min-h-28 w-full rounded-2xl border-2 border-[#d9d2ff] bg-white px-4 py-3 text-[#29304d] outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#b89cff]/30",
+        "min-h-28 w-full rounded-2xl border border-[#d9d2ff] bg-white px-4 py-3 text-[#29304d] outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#b89cff]/25",
         className,
       )}
       {...props}
@@ -89,7 +89,7 @@ export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectE
   return (
     <select
       className={cn(
-        "min-h-12 w-full rounded-2xl border-2 border-[#d9d2ff] bg-white px-4 text-[#29304d] outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#b89cff]/30",
+        "min-h-12 w-full rounded-2xl border border-[#d9d2ff] bg-white px-4 text-[#29304d] outline-none transition focus:border-[#7c5cff] focus:ring-4 focus:ring-[#b89cff]/25",
         className,
       )}
       {...props}

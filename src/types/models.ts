@@ -1,8 +1,12 @@
-export interface Classroom {
+export interface ClassroomSettings {
   id: string;
-  name: string;
-  avatar?: string;
-  schoolYear?: string;
+  className: string;
+  classAvatar?: string;
+  teacherName: string;
+  teacherAvatar?: string;
+  schoolYear: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Student {
@@ -17,7 +21,9 @@ export interface Student {
   potentialNote?: string;
   teamId?: string;
   points: number;
-  totalRewards?: number;
+  totalRewards: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Team {
@@ -25,6 +31,8 @@ export interface Team {
   name: string;
   avatar?: string;
   score: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PointAction {
@@ -33,7 +41,10 @@ export interface PointAction {
   points: number;
   type: "reward" | "penalty";
   icon?: string;
+  isActive: boolean;
 }
+
+export type PointHistorySource = "action" | "game" | "reward-redemption" | "manual";
 
 export interface PointHistory {
   id: string;
@@ -41,6 +52,7 @@ export interface PointHistory {
   actionId?: string;
   actionName: string;
   points: number;
+  source: PointHistorySource;
   createdAt: string;
   note?: string;
 }
@@ -51,14 +63,25 @@ export interface Reward {
   image?: string;
   description?: string;
   requiredPoints: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RewardHistory {
   id: string;
   studentId: string;
-  rewardId: string;
+  rewardId?: string;
   rewardName: string;
   pointsSpent: number;
+  createdAt: string;
+}
+
+export interface TeamScoreHistory {
+  id: string;
+  teamId: string;
+  points: number;
+  actionName: string;
   createdAt: string;
 }
 
@@ -71,16 +94,30 @@ export interface Recognition {
   createdAt: string;
 }
 
+export interface LuckyWheelSelection {
+  id: string;
+  studentId: string;
+  createdAt: string;
+}
+
+export interface AppSettings {
+  soundEnabled: boolean;
+  animationsEnabled: boolean;
+}
+
 export type LuckyWheelMode = "student" | "team" | "reward" | "activity";
 
 export interface AppData {
-  classroom: Classroom;
+  classroomSettings: ClassroomSettings;
   students: Student[];
   teams: Team[];
+  teamScoreHistory: TeamScoreHistory[];
   pointActions: PointAction[];
   pointHistory: PointHistory[];
   rewards: Reward[];
   rewardHistory: RewardHistory[];
   recognitions: Recognition[];
+  luckyWheelHistory: LuckyWheelSelection[];
   wheelStudentBag: string[];
+  appSettings: AppSettings;
 }

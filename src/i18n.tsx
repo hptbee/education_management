@@ -1,0 +1,293 @@
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+
+type Language = "en" | "vi";
+type TranslationKey = keyof typeof translations.en;
+
+const LANGUAGE_KEY = "chibi-classroom-language";
+
+const translations = {
+  en: {
+    appName: "Chibi Classroom",
+    language: "Language",
+    english: "English",
+    vietnamese: "Vietnamese",
+    classroomHome: "Classroom Home",
+    navDashboard: "Dashboard",
+    navStudents: "Students",
+    navTeams: "Teams",
+    navPoints: "Points",
+    navRewards: "Rewards",
+    navRecognition: "Recognition",
+    navLuckyWheel: "Lucky Wheel",
+    navGames: "Games",
+    navSettings: "Settings",
+    dashboardGreeting: "Good morning, {name}!",
+    dashboardTitle: "Ready for a bright class adventure?",
+    dashboardSummary: "{students} students, {teams} teams, lots of stars to win.",
+    topStudents: "Top Students",
+    teamRanking: "Team Ranking",
+    recentRecognition: "Recent Recognition",
+    noCelebrations: "No celebrations yet.",
+    studentsTitle: "Student Cards",
+    studentsDescription: "Manage students, avatars, teams, roles, and teacher-only potential notes.",
+    studentDetails: "Student Details",
+    addStudent: "Add Student",
+    name: "Name",
+    avatar: "Avatar",
+    dateOfBirth: "Date of birth",
+    gender: "Gender",
+    notSet: "Not set",
+    male: "Male",
+    female: "Female",
+    team: "Team",
+    noTeam: "No team",
+    previousClass: "Previous class",
+    classroomRole: "Classroom role",
+    previousAchievements: "Previous achievements",
+    potentialNote: "Potential note",
+    saveStudent: "Save Student",
+    clear: "Clear",
+    stars: "stars",
+    noTeacherNote: "No teacher note yet.",
+    viewProfile: "View Profile",
+    edit: "Edit",
+    delete: "Delete",
+    studentNotFound: "Student not found.",
+    profileDescription: "A collectible-style student profile with progress, rewards, recognition, and teacher notes.",
+    currentPoints: "Current points",
+    role: "Role",
+    birthday: "Birthday",
+    achievements: "Achievements",
+    noAchievements: "No previous achievements recorded.",
+    teacherNotes: "Teacher Notes",
+    noPotentialNote: "No potential note recorded.",
+    activityHistory: "Activity History",
+    noActivity: "No activity yet.",
+    redeemed: "Redeemed {reward} for {points} points",
+    recognitionHistory: "Recognition: {title}",
+    teamsTitle: "Team Competition",
+    teamsDescription: "Create friendly teams, assign students, and run projector-ready score battles.",
+    teamName: "Team name",
+    saveTeam: "Save Team",
+    rank: "Rank {rank}",
+    members: "Members: {members}",
+    noMembers: "No members yet",
+    reset: "Reset",
+    leaderboardTitle: "Team Leaderboard",
+    pointsTitle: "Points & Behavior",
+    pointsDescription: "Quickly reward participation or record soft penalties with history.",
+    chooseStudent: "Choose student",
+    configurableActions: "Configurable Actions",
+    actionName: "Action name",
+    reward: "Reward",
+    penalty: "Penalty",
+    save: "Save",
+    pointHistory: "Point History",
+    noPointChanges: "No point changes yet.",
+    rewardsTitle: "Rewards & Gifts",
+    rewardsDescription: "Create collectible rewards students can redeem with their points.",
+    rewardName: "Reward name",
+    description: "Description",
+    redeemForStudent: "Redeem for student",
+    points: "points",
+    redeem: "Redeem",
+    recognitionTitle: "Recognition Ceremony",
+    recognitionDescription: "Celebrate students with a fullscreen-friendly praise screen.",
+    student: "Student",
+    recognitionType: "Recognition type",
+    message: "Message",
+    messagePlaceholder: "Great participation today!",
+    celebrate: "Celebrate",
+    congratulations: "Congratulations",
+    greatProgress: "Great progress today!",
+    luckyWheelTitle: "Lucky Wheel",
+    luckyWheelDescription: "Spin a colorful no-repeat student selector for classroom activities.",
+    spinWheel: "Spin Wheel",
+    spin: "Spin!",
+    todaysLuckyStudent: "Today's Lucky Student",
+    readyToPick: "Ready to pick a student?",
+    gamesTitle: "Random Student Games",
+    gamesDescription: "Simple projector-friendly games powered by random student selection.",
+    pickStudent: "Pick Student",
+    randomStudent: "Random Student",
+    quickAnswer: "Quick Answer",
+    whoIsNext: "Who Is Next?",
+    quickAnswerDescription: "Pick a student, then mark correct or skip.",
+    randomGameDescription: "Cycle through names and reveal a lucky classmate.",
+    correct: "Correct",
+    skip: "Skip",
+    startGame: "Start a game to choose a student.",
+    settingsTitle: "Classroom Settings",
+    settingsDescription: "Customize the local classroom identity shown across the app.",
+    classroomName: "Classroom name",
+    schoolYear: "School year",
+    saveClassroom: "Save Classroom",
+    uploadImage: "Upload image",
+    unknownStudent: "Unknown student",
+  },
+  vi: {
+    appName: "Lớp học Chibi",
+    language: "Ngôn ngữ",
+    english: "Tiếng Anh",
+    vietnamese: "Tiếng Việt",
+    classroomHome: "Trang lớp học",
+    navDashboard: "Tổng quan",
+    navStudents: "Học sinh",
+    navTeams: "Đội nhóm",
+    navPoints: "Điểm",
+    navRewards: "Phần thưởng",
+    navRecognition: "Tuyên dương",
+    navLuckyWheel: "Vòng quay",
+    navGames: "Trò chơi",
+    navSettings: "Cài đặt",
+    dashboardGreeting: "Chào buổi sáng, {name}!",
+    dashboardTitle: "Sẵn sàng cho một buổi học thật rực rỡ chưa?",
+    dashboardSummary: "{students} học sinh, {teams} đội, rất nhiều ngôi sao để chinh phục.",
+    topStudents: "Học sinh nổi bật",
+    teamRanking: "Xếp hạng đội",
+    recentRecognition: "Tuyên dương gần đây",
+    noCelebrations: "Chưa có lời tuyên dương nào.",
+    studentsTitle: "Thẻ học sinh",
+    studentsDescription: "Quản lý học sinh, avatar, đội, vai trò và ghi chú riêng cho giáo viên.",
+    studentDetails: "Thông tin học sinh",
+    addStudent: "Thêm học sinh",
+    name: "Tên",
+    avatar: "Avatar",
+    dateOfBirth: "Ngày sinh",
+    gender: "Giới tính",
+    notSet: "Chưa đặt",
+    male: "Nam",
+    female: "Nữ",
+    team: "Đội",
+    noTeam: "Chưa có đội",
+    previousClass: "Lớp trước",
+    classroomRole: "Vai trò trong lớp",
+    previousAchievements: "Thành tích trước đây",
+    potentialNote: "Ghi chú tiềm năng",
+    saveStudent: "Lưu học sinh",
+    clear: "Xóa form",
+    stars: "sao",
+    noTeacherNote: "Chưa có ghi chú giáo viên.",
+    viewProfile: "Xem hồ sơ",
+    edit: "Sửa",
+    delete: "Xóa",
+    studentNotFound: "Không tìm thấy học sinh.",
+    profileDescription: "Hồ sơ dạng thẻ nhân vật với tiến bộ, phần thưởng, tuyên dương và ghi chú giáo viên.",
+    currentPoints: "Điểm hiện tại",
+    role: "Vai trò",
+    birthday: "Sinh nhật",
+    achievements: "Thành tích",
+    noAchievements: "Chưa ghi nhận thành tích trước đây.",
+    teacherNotes: "Ghi chú giáo viên",
+    noPotentialNote: "Chưa có ghi chú tiềm năng.",
+    activityHistory: "Lịch sử hoạt động",
+    noActivity: "Chưa có hoạt động.",
+    redeemed: "Đã đổi {reward} với {points} điểm",
+    recognitionHistory: "Tuyên dương: {title}",
+    teamsTitle: "Thi đua đội nhóm",
+    teamsDescription: "Tạo đội thân thiện, phân học sinh và chạy bảng điểm phù hợp máy chiếu.",
+    teamName: "Tên đội",
+    saveTeam: "Lưu đội",
+    rank: "Hạng {rank}",
+    members: "Thành viên: {members}",
+    noMembers: "Chưa có thành viên",
+    reset: "Đặt lại",
+    leaderboardTitle: "Bảng xếp hạng đội",
+    pointsTitle: "Điểm & hành vi",
+    pointsDescription: "Thưởng điểm nhanh hoặc ghi nhận nhắc nhở nhẹ kèm lịch sử.",
+    chooseStudent: "Chọn học sinh",
+    configurableActions: "Hành động có thể cấu hình",
+    actionName: "Tên hành động",
+    reward: "Thưởng",
+    penalty: "Phạt",
+    save: "Lưu",
+    pointHistory: "Lịch sử điểm",
+    noPointChanges: "Chưa có thay đổi điểm.",
+    rewardsTitle: "Phần thưởng & quà",
+    rewardsDescription: "Tạo phần thưởng sưu tầm để học sinh đổi bằng điểm.",
+    rewardName: "Tên phần thưởng",
+    description: "Mô tả",
+    redeemForStudent: "Đổi cho học sinh",
+    points: "điểm",
+    redeem: "Đổi quà",
+    recognitionTitle: "Lễ tuyên dương",
+    recognitionDescription: "Tuyên dương học sinh bằng màn hình khen thưởng thân thiện với máy chiếu.",
+    student: "Học sinh",
+    recognitionType: "Kiểu tuyên dương",
+    message: "Lời nhắn",
+    messagePlaceholder: "Hôm nay em tham gia rất tốt!",
+    celebrate: "Tuyên dương",
+    congratulations: "Chúc mừng",
+    greatProgress: "Hôm nay em tiến bộ rất tốt!",
+    luckyWheelTitle: "Vòng quay may mắn",
+    luckyWheelDescription: "Quay chọn học sinh ngẫu nhiên, nhiều màu sắc và tránh lặp cho đến khi đủ lượt.",
+    spinWheel: "Quay vòng",
+    spin: "Quay!",
+    todaysLuckyStudent: "Học sinh may mắn hôm nay",
+    readyToPick: "Sẵn sàng chọn học sinh chưa?",
+    gamesTitle: "Trò chơi chọn học sinh",
+    gamesDescription: "Các trò chơi đơn giản, hợp chiếu lên lớp, dùng chọn học sinh ngẫu nhiên.",
+    pickStudent: "Chọn học sinh",
+    randomStudent: "Học sinh ngẫu nhiên",
+    quickAnswer: "Trả lời nhanh",
+    whoIsNext: "Ai tiếp theo?",
+    quickAnswerDescription: "Chọn học sinh, sau đó đánh dấu đúng hoặc bỏ qua.",
+    randomGameDescription: "Chạy qua các tên rồi hé lộ bạn may mắn.",
+    correct: "Đúng",
+    skip: "Bỏ qua",
+    startGame: "Bắt đầu trò chơi để chọn học sinh.",
+    settingsTitle: "Cài đặt lớp học",
+    settingsDescription: "Tùy chỉnh danh tính lớp học được hiển thị trong ứng dụng.",
+    classroomName: "Tên lớp",
+    schoolYear: "Năm học",
+    saveClassroom: "Lưu lớp học",
+    uploadImage: "Tải ảnh lên",
+    unknownStudent: "Không rõ học sinh",
+  },
+} as const;
+
+interface I18nContextValue {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
+}
+
+const I18nContext = createContext<I18nContextValue | undefined>(undefined);
+
+function readInitialLanguage(): Language {
+  const saved = localStorage.getItem(LANGUAGE_KEY);
+  return saved === "vi" || saved === "en" ? saved : "en";
+}
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(readInitialLanguage);
+
+  const value = useMemo<I18nContextValue>(() => {
+    const setLanguage = (nextLanguage: Language) => {
+      localStorage.setItem(LANGUAGE_KEY, nextLanguage);
+      setLanguageState(nextLanguage);
+    };
+
+    const t = (key: TranslationKey, values?: Record<string, string | number>) => {
+      let text: string = translations[language][key] ?? translations.en[key];
+      if (values) {
+        Object.entries(values).forEach(([name, value]) => {
+          text = text.replaceAll(`{${name}}`, String(value));
+        });
+      }
+      return text;
+    };
+
+    return { language, setLanguage, t };
+  }, [language]);
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n() {
+  const context = useContext(I18nContext);
+  if (!context) {
+    throw new Error("useI18n must be used inside I18nProvider");
+  }
+  return context;
+}

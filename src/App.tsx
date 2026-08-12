@@ -1,92 +1,77 @@
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Bell,
+  BookOpen,
+  ChevronRight,
+  Crown,
   Gift,
   GraduationCap,
+  Heart,
   Home,
-  Medal,
+  Minus,
+  MonitorPlay,
+  PartyPopper,
+  PencilLine,
   Plus,
-  Settings,
+  Rocket,
   Sparkles,
   Star,
   Trophy,
   Users,
+  Volleyball,
   WandSparkles,
+  Gamepad2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
-import { Link, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, NavLink, Route, Routes, useParams } from "react-router-dom";
 import { Avatar } from "./components/Avatar";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "./components/ui";
 import { useAppData } from "./store/AppDataContext";
-import type { PointAction, Recognition, Reward, Student, Team } from "./types/models";
+import type { Recognition, Student, Team } from "./types/models";
 import { createId } from "./utils/id";
-import { readImageFile } from "./utils/images";
 import { pickWithoutRepeat } from "./utils/randomSelection";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/students", label: "Students", icon: GraduationCap },
-  { to: "/teams", label: "Teams", icon: Users },
-  { to: "/points", label: "Points", icon: Star },
-  { to: "/rewards", label: "Rewards", icon: Gift },
-  { to: "/recognition", label: "Recognition", icon: Medal },
-  { to: "/lucky-wheel", label: "Lucky Wheel", icon: WandSparkles },
-  { to: "/games", label: "Games", icon: Sparkles },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
+  { to: "/", label: "Trang chủ", icon: Home },
+  { to: "/students", label: "Học sinh", icon: GraduationCap },
+  { to: "/teams", label: "Tổ / Nhóm", icon: Users },
+  { to: "/points", label: "Tích điểm", icon: Star },
+  { to: "/rewards", label: "Quà tặng", icon: Gift },
+  { to: "/lucky-wheel", label: "Vòng quay", icon: WandSparkles },
+  { to: "/games", label: "Trò chơi", icon: Gamepad2 },
+  { to: "/recognition", label: "Tuyên dương", icon: Trophy },
+  { to: "/settings", label: "Điểm trừ", icon: Minus },
+] as const;
 
-const recognitionTypes = ["Student of the Day", "Excellent Progress", "Good Behavior", "Smart Answer", "Helpful Friend", "Great Improvement"];
+const quickActions = [
+  { label: "Tích điểm", icon: Star, tone: "from-emerald-300 to-emerald-500" },
+  { label: "Điểm trừ", icon: Minus, tone: "from-rose-300 to-rose-500" },
+  { label: "Quà tặng", icon: Gift, tone: "from-amber-300 to-orange-500" },
+  { label: "Vòng quay", icon: Volleyball, tone: "from-fuchsia-300 to-violet-500" },
+  { label: "Trò chơi", icon: Gamepad2, tone: "from-sky-300 to-blue-500" },
+  { label: "Tuyên dương", icon: Trophy, tone: "from-pink-300 to-rose-500" },
+] as const;
 
 function Page({ children }: { children: React.ReactNode }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="grid gap-6">
-      {children}
-    </motion.div>
-  );
+  return <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="grid gap-5">{children}</motion.div>;
 }
 
 function Layout() {
-  const { data } = useAppData();
+  const { data, isFirstRun } = useAppData();
+  if (isFirstRun) return <OnboardingPage />;
+
   return (
-    <div className="min-h-screen p-4 lg:p-6">
-      <div className="mx-auto grid max-w-[1500px] gap-5 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-[2.25rem] border-4 border-white/80 bg-white/80 p-4 shadow-[0_18px_0_rgba(124,92,255,0.10)] backdrop-blur">
-          <div className="mb-5 flex items-center gap-3 rounded-[1.75rem] bg-[#fff0ad] p-3">
-            <Avatar src={data.classroom.avatar} name={data.classroom.name} />
-            <div>
-              <p className="text-lg font-black text-[#29304d]">Chibi Classroom</p>
-              <p className="font-bold text-[#74633a]">{data.classroom.name}</p>
-            </div>
-          </div>
-          <nav className="grid gap-2">
-            {nav.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === "/"}
-                  className={({ isActive }) =>
-                    `flex min-h-12 items-center gap-3 rounded-2xl px-4 font-extrabold transition hover:bg-[#eefaff] ${
-                      isActive ? "bg-[#7c5cff] text-white shadow-[0_8px_0_#5d43c9]" : "text-[#4c557c]"
-                    }`
-                  }
-                >
-                  <Icon size={21} />
-                  {item.label}
-                </NavLink>
-              );
-            })}
-          </nav>
-        </aside>
-        <main className="min-w-0 rounded-[2.25rem] border-4 border-white/70 bg-white/45 p-4 shadow-[0_18px_50px_rgba(41,48,77,0.10)] backdrop-blur lg:p-7">
+    <div className="min-h-screen p-3 lg:p-4">
+      <div className="mx-auto grid max-w-[1680px] gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <Sidebar />
+        <main className="min-w-0 rounded-[2rem] border border-white/80 bg-white/45 p-4 shadow-[0_18px_45px_rgba(70,52,160,0.10)] backdrop-blur-xl lg:p-5">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/students" element={<StudentsPage />} />
             <Route path="/students/:id" element={<StudentProfilePage />} />
             <Route path="/teams" element={<TeamsPage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/points" element={<PointsPage />} />
             <Route path="/rewards" element={<RewardsPage />} />
             <Route path="/recognition" element={<RecognitionPage />} />
@@ -96,75 +81,176 @@ function Layout() {
           </Routes>
         </main>
       </div>
+      <div className="sr-only">{formatClassroomTitle(data.classroomSettings)}</div>
     </div>
   );
 }
 
-function Header({ icon: Icon, title, description, action }: { icon: LucideIcon; title: string; description: string; action?: React.ReactNode }) {
+function Sidebar() {
+  const { data } = useAppData();
+  const settings = data.classroomSettings;
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
-        <div className="grid h-16 w-16 place-items-center rounded-[1.5rem] bg-[#ffd86f] shadow-[0_8px_0_#e3b83f]">
-          <Icon size={32} />
-        </div>
-        <div>
-          <p className="font-black uppercase tracking-wide text-[#7c5cff]">Classroom Home</p>
-          <h1 className="text-3xl font-black text-[#29304d] md:text-5xl">{title}</h1>
-          <p className="mt-1 max-w-2xl text-lg font-semibold text-[#5e668b]">{description}</p>
+    <aside className="sticky top-3 flex h-[calc(100vh-1.5rem)] flex-col rounded-[2.25rem] bg-gradient-to-b from-[#7c5cff] via-[#6a66ee] to-[#5a90ef] p-4 text-white shadow-[0_20px_50px_rgba(81,64,194,0.35)]">
+      <div className="rounded-[1.7rem] bg-white/14 p-4 text-center shadow-inner backdrop-blur-sm">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-[34%] bg-white/90 text-4xl shadow-[0_10px_0_rgba(255,255,255,0.18)]">📚</div>
+        <h1 className="mt-3 text-3xl font-black tracking-wide">LÊ THƯ</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/80">Cô giáo nhỏ 4.0</p>
+      </div>
+      <nav className="mt-4 grid gap-2">
+        {nav.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === "/"}
+            className={({ isActive }) =>
+              `group flex min-h-14 items-center gap-3 rounded-[1.2rem] px-4 font-extrabold transition-all duration-200 ${
+                isActive ? "bg-[#fff0ad] text-[#3f2f8f]" : "text-white/92 hover:bg-white/14"
+              }`
+            }
+          >
+            <item.icon size={22} className="shrink-0" />
+            <span>{item.label}</span>
+            <ChevronRight className="ml-auto opacity-40 transition group-hover:translate-x-0.5" size={18} />
+          </NavLink>
+        ))}
+      </nav>
+      <div className="mt-auto rounded-[1.4rem] bg-white/12 p-3">
+        <div className="flex items-center gap-3">
+          <Avatar name={settings.className} size="sm" />
+          <div className="min-w-0">
+            <p className="truncate font-black">{formatClassroomTitle(settings)}</p>
+            <p className="text-xs text-white/80">Năm học: {settings.schoolYear}</p>
+          </div>
         </div>
       </div>
-      {action}
-    </header>
+    </aside>
   );
 }
 
 function Dashboard() {
   const { data } = useAppData();
-  const topStudents = [...data.students].sort((a, b) => b.points - a.points).slice(0, 3);
-  const rankedTeams = [...data.teams].sort((a, b) => b.score - a.score);
+  const topStudents = useMemo(() => [...data.students].sort((a, b) => b.points - a.points).slice(0, 4), [data.students]);
+  const rankedTeams = useMemo(() => [...data.teams].sort((a, b) => b.score - a.score), [data.teams]);
+  const featured = topStudents[0] ?? data.students[0];
+
   return (
     <Page>
-      <section className="overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#8fd8ff] via-[#b89cff] to-[#ff9fd0] p-6 text-white shadow-[0_18px_0_rgba(124,92,255,0.22)]">
-        <div className="flex flex-wrap items-center justify-between gap-5">
-          <div>
-            <p className="text-xl font-black">Good morning, {data.classroom.name}!</p>
-            <h1 className="mt-2 text-4xl font-black md:text-6xl">Ready for a bright class adventure?</h1>
-            <p className="mt-3 text-lg font-bold text-white/90">{data.students.length} students, {data.teams.length} teams, lots of stars to win.</p>
+      <section className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)_400px]">
+        <Card className="overflow-hidden bg-white/85 p-0">
+          <div className="flex gap-4 p-5">
+            <div className="rounded-[1.6rem] bg-gradient-to-br from-[#b7ebff] to-[#ffe6f1] p-2">
+              <Avatar name={data.classroomSettings.className} size="lg" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-2">
+                <h2 className="truncate text-2xl font-black text-[#273055]">{formatClassroomTitle(data.classroomSettings)}</h2>
+                <PencilLine className="mt-1 text-[#7c5cff]" size={18} />
+              </div>
+              <p className="mt-2 text-sm font-semibold text-[#6a6f91]">Giáo viên: {data.classroomSettings.teacherName}</p>
+              <p className="mt-1 text-sm font-semibold text-[#6a6f91]">Năm học: {data.classroomSettings.schoolYear}</p>
+              <Button className="mt-4 w-full justify-center" variant="ghost"><MonitorPlay size={18} />Đổi ảnh lớp</Button>
+            </div>
           </div>
-          <Avatar src={data.classroom.avatar} name={data.classroom.name} size="xl" />
-        </div>
+        </Card>
+
+        <Card className="relative overflow-hidden bg-gradient-to-br from-[#fff8ff] via-[#eef7ff] to-[#fff6d9]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,107,0.35),transparent_18%),radial-gradient(circle_at_80%_20%,rgba(124,92,255,0.18),transparent_16%),radial-gradient(circle_at_50%_80%,rgba(255,159,208,0.2),transparent_18%)]" />
+          <div className="relative grid h-full gap-4 xl:grid-cols-[170px_1fr_170px] xl:items-center">
+            <Mascot side="left" />
+            <div className="py-4 text-center">
+              <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-1 text-sm font-black text-[#7c5cff] shadow-sm">✨ Cùng nhau học tập thật tốt</div>
+              <div className="mb-2 text-base font-black text-[#ff7f96]">Chào {data.classroomSettings.teacherName}! 👋</div>
+              <h1 className="text-4xl font-black leading-tight text-[#2c2f77] md:text-5xl">
+                Ai sẽ là người
+                <span className="block text-[#ffb400] drop-shadow-[0_3px_0_rgba(76,57,0,0.18)]">tỏa sáng</span>
+                hôm nay nhỉ?
+              </h1>
+              <p className="mx-auto mt-4 max-w-2xl text-base font-semibold text-[#56608b] md:text-lg">
+                Cùng nhau học tập thật tốt - Tích điểm thật nhiều - Nhận huy hiệu - Đổi quà hấp dẫn!
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                <Badge className="bg-white/90 text-[#4c557c]">⭐ {featured?.points ?? 0} điểm cao nhất</Badge>
+                <Badge className="bg-white/90 text-[#4c557c]">🏆 {rankedTeams[0]?.name ?? "Tổ dẫn đầu"}</Badge>
+              </div>
+            </div>
+            <Mascot side="right" />
+          </div>
+        </Card>
+
+        <Card className="bg-white/88">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-black uppercase tracking-wide text-[#7c5cff]">Thao tác nhanh</h3>
+            <Badge className="bg-[#fff0ad] text-[#4d3b00]">Trình chiếu</Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {quickActions.map((action) => (
+              <button key={action.label} className={`flex min-h-20 flex-col items-start justify-between rounded-[1.3rem] bg-gradient-to-br ${action.tone} p-4 text-left text-white shadow-[0_10px_0_rgba(41,48,77,0.08)] transition hover:-translate-y-1 active:translate-y-0`} onClick={() => confetti({ particleCount: 100, spread: 75 })}>
+                <action.icon size={22} />
+                <span className="text-sm font-black">{action.label}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
       </section>
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        {nav.slice(3, 9).map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link key={item.to} to={item.to}>
-              <Card className="grid min-h-36 place-items-center text-center transition hover:-translate-y-1">
-                <Icon className="text-[#7c5cff]" size={34} />
-                <strong className="text-lg">{item.label}</strong>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-      <div className="grid gap-5 xl:grid-cols-3">
-        <Card>
-          <h2 className="mb-4 text-2xl font-black">Top Students</h2>
-          <div className="grid gap-3">
-            {topStudents.map((student) => <StudentRow key={student.id} student={student} />)}
+
+      <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr_1fr]">
+        <Card className="bg-white/90">
+          <SectionTitle icon={Users} title="DANH SÁCH HỌC SINH" />
+          <div className="mt-4 flex flex-wrap gap-3">
+            <div className="relative min-w-[240px] flex-1">
+              <input className="w-full rounded-full border border-[#dde2ff] bg-[#fbfbff] py-3 pl-11 pr-4 outline-none" placeholder="Tìm kiếm học sinh..." />
+              <Star className="absolute left-4 top-3.5 text-[#b4b9da]" size={18} />
+            </div>
+            <Button><Plus size={18} />Thêm học sinh</Button>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {topStudents.map((student) => <StudentPreviewCard key={student.id} student={student} />)}
+          </div>
+          <Link className="mt-4 inline-flex items-center gap-2 font-black text-[#6f55ee]" to="/students">Xem tất cả học sinh <ChevronRight size={18} /></Link>
+        </Card>
+
+        <Card className="bg-white/90">
+          <SectionTitle icon={Crown} title="BẢNG XẾP HẠNG ĐIỂM" />
+          <div className="mt-4 grid gap-2">
+            {topStudents.map((student, index) => <LeaderboardRow key={student.id} student={student} rank={index + 1} />)}
+          </div>
+          <Link className="mt-4 inline-flex items-center gap-2 font-black text-[#6f55ee]" to="/points">Xem bảng xếp hạng <ChevronRight size={18} /></Link>
+        </Card>
+
+        <Card className="bg-white/90">
+          <SectionTitle icon={Users} title="THI ĐUA TỔ / NHÓM" />
+          <div className="mt-4 grid gap-3">
+            {rankedTeams.map((team, index) => <TeamCompetitionRow key={team.id} team={team} rank={index + 1} />)}
+          </div>
+          <Link className="mt-4 inline-flex items-center gap-2 font-black text-[#6f55ee]" to="/teams">Xem chi tiết <ChevronRight size={18} /></Link>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        <Card className="bg-white/90">
+          <SectionTitle icon={Trophy} title="TUYÊN DƯƠNG GẦN ĐÂY" />
+          <RecognitionPreview recognition={data.recognitions[0]} student={featured} teacherName={data.classroomSettings.teacherName} />
+        </Card>
+        <Card className="bg-white/90">
+          <SectionTitle icon={Bell} title="HOẠT ĐỘNG GẦN ĐÂY" />
+          <ActivityFeed
+            items={[
+              { text: `${data.classroomSettings.teacherName} đã cộng 5 điểm cho Minh Đức`, delta: "+5", positive: true, time: "2 phút trước" },
+              { text: `${data.classroomSettings.teacherName} đã trừ 3 điểm của Gia Bảo`, delta: "-3", positive: false, time: "15 phút trước" },
+            ]}
+          />
+        </Card>
+        <Card className="bg-white/90">
+          <SectionTitle icon={Bell} title="THÔNG BÁO" action="Xem tất cả" />
+          <div className="relative mt-4 overflow-hidden rounded-[1.4rem] border border-[#fff0c7] bg-gradient-to-br from-[#fff7dc] to-[#fff1fb] p-4">
+            <div className="max-w-[70%]">
+              <p className="text-lg font-black text-[#ff8a00]">Nhắc nhở</p>
+              <p className="mt-2 font-semibold text-[#556089]">Các con nhớ ôn bài và chuẩn bị bài đầy đủ nhé!</p>
+            </div>
+            <div className="absolute bottom-2 right-2 text-5xl">👧</div>
           </div>
         </Card>
-        <Card>
-          <h2 className="mb-4 text-2xl font-black">Team Ranking</h2>
-          <div className="grid gap-3">
-            {rankedTeams.map((team, index) => <TeamRank key={team.id} team={team} rank={index + 1} />)}
-          </div>
-        </Card>
-        <Card>
-          <h2 className="mb-4 text-2xl font-black">Recent Recognition</h2>
-          <HistoryList items={data.recognitions.slice(0, 5).map((item) => `${item.title} - ${studentName(data.students, item.studentId)}`)} empty="No celebrations yet." />
-        </Card>
-      </div>
+      </section>
     </Page>
   );
 }
@@ -172,53 +258,29 @@ function Dashboard() {
 function StudentsPage() {
   const { data, saveStudent, deleteStudent } = useAppData();
   const [draft, setDraft] = useState<Student>(newStudent());
-  const edit = (student: Student) => setDraft(student);
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    saveStudent(draft);
-    setDraft(newStudent());
-  };
   return (
     <Page>
-      <Header icon={GraduationCap} title="Student Cards" description="Manage students, avatars, teams, roles, and teacher-only potential notes." />
-      <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-        <Card>
-          <h2 className="mb-4 text-2xl font-black">{draft.name ? "Student Details" : "Add Student"}</h2>
-          <form className="grid gap-3" onSubmit={submit}>
-            <Field label="Name"><Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required /></Field>
-            <Field label="Avatar"><ImagePicker onImage={(avatar) => setDraft({ ...draft, avatar })} /></Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Date of birth"><Input type="date" value={draft.dateOfBirth ?? ""} onChange={(e) => setDraft({ ...draft, dateOfBirth: e.target.value })} /></Field>
-              <Field label="Gender"><Select value={draft.gender ?? ""} onChange={(e) => setDraft({ ...draft, gender: e.target.value as Student["gender"] || undefined })}><option value="">Not set</option><option value="male">Male</option><option value="female">Female</option></Select></Field>
+      <PageHeading title="HỌC SINH" description="Danh sách học sinh và thông tin cơ bản." />
+      <Card className="bg-white/90">
+        <form className="grid gap-3 md:grid-cols-[1fr_160px_auto]" onSubmit={(e) => { e.preventDefault(); saveStudent(draft); setDraft(newStudent()); }}>
+          <Input placeholder="Tên học sinh" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          <Field label="Tổ"><Select value={draft.teamId ?? ""} onChange={(e) => setDraft({ ...draft, teamId: e.target.value || undefined })}><option value="">Chọn tổ</option>{data.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</Select></Field>
+          <Button type="submit"><Plus size={18} />Thêm học sinh</Button>
+        </form>
+      </Card>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {data.students.map((student) => (
+          <Card key={student.id} className="bg-white/90">
+            <div className="grid justify-items-center gap-3 text-center">
+              <Avatar name={student.name} size="lg" />
+              <h3 className="text-xl font-black text-[#273055]">{student.name}</h3>
+              <Badge className="bg-[#f5f7ff] text-[#63709d]">{student.gender === "female" ? "Nữ" : "Nam"} • {student.dateOfBirth ?? "15/03/2016"}</Badge>
+              <Badge className="bg-[#fff0f7] text-[#de4f89]">{teamName(data.teams, student.teamId, "Tổ 1")}</Badge>
+              <p className="font-black text-[#ff9a00]">⭐ {student.points} điểm</p>
+              <Button size="sm" variant="danger" onClick={() => deleteStudent(student.id)}>Xóa</Button>
             </div>
-            <Field label="Team"><Select value={draft.teamId ?? ""} onChange={(e) => setDraft({ ...draft, teamId: e.target.value || undefined })}><option value="">No team</option>{data.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</Select></Field>
-            <Field label="Previous class"><Input value={draft.previousClass ?? ""} onChange={(e) => setDraft({ ...draft, previousClass: e.target.value })} /></Field>
-            <Field label="Classroom role"><Input value={draft.classroomRole ?? ""} onChange={(e) => setDraft({ ...draft, classroomRole: e.target.value })} /></Field>
-            <Field label="Previous achievements"><Textarea value={draft.previousAchievements ?? ""} onChange={(e) => setDraft({ ...draft, previousAchievements: e.target.value })} /></Field>
-            <Field label="Potential note"><Textarea value={draft.potentialNote ?? ""} onChange={(e) => setDraft({ ...draft, potentialNote: e.target.value })} /></Field>
-            <div className="flex gap-3"><Button type="submit"><Plus size={20} />Save Student</Button><Button type="button" variant="ghost" onClick={() => setDraft(newStudent())}>Clear</Button></div>
-          </form>
-        </Card>
-        <div className="grid gap-4 md:grid-cols-2">
-          {data.students.map((student) => (
-            <Card key={student.id} className="grid gap-4">
-              <div className="flex items-center gap-4">
-                <Avatar src={student.avatar} name={student.name} size="lg" />
-                <div>
-                  <h3 className="text-2xl font-black">{student.name}</h3>
-                  <Badge>{student.points} stars</Badge>
-                  <p className="mt-2 font-bold text-[#687092]">{teamName(data.teams, student.teamId)}</p>
-                </div>
-              </div>
-              <p className="rounded-2xl bg-[#fff7db] p-3 font-semibold text-[#5e668b]">{student.potentialNote || "No teacher note yet."}</p>
-              <div className="flex flex-wrap gap-2">
-                <Link to={`/students/${student.id}`}><Button size="sm" variant="mint">View Profile</Button></Link>
-                <Button size="sm" variant="ghost" onClick={() => edit(student)}>Edit</Button>
-                <Button size="sm" variant="danger" onClick={() => deleteStudent(student.id)}>Delete</Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+          </Card>
+        ))}
       </div>
     </Page>
   );
@@ -228,57 +290,41 @@ function StudentProfilePage() {
   const { id } = useParams();
   const { data } = useAppData();
   const student = data.students.find((item) => item.id === id);
-  if (!student) return <Page><Card>Student not found.</Card></Page>;
+  if (!student) return <Card>Không tìm thấy học sinh.</Card>;
   return (
     <Page>
-      <Header icon={GraduationCap} title={student.name} description="A collectible-style student profile with progress, rewards, recognition, and teacher notes." />
-      <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
-        <Card className="text-center">
-          <div className="flex justify-center"><Avatar src={student.avatar} name={student.name} size="xl" /></div>
-          <h2 className="mt-4 text-4xl font-black">{student.name}</h2>
-          <p className="mt-2 text-5xl font-black text-[#7c5cff]">{student.points}</p>
-          <Badge>Current points</Badge>
-          <div className="mt-5 grid gap-2 text-left font-bold text-[#5e668b]">
-            <p>Team: {teamName(data.teams, student.teamId)}</p>
-            <p>Role: {student.classroomRole || "Not set"}</p>
-            <p>Gender: {student.gender || "Not set"}</p>
-            <p>Birthday: {student.dateOfBirth || "Not set"}</p>
-            <p>Previous class: {student.previousClass || "Not set"}</p>
-          </div>
-        </Card>
-        <div className="grid gap-5">
-          <Card><h3 className="text-2xl font-black">Achievements</h3><p className="mt-2 font-semibold">{student.previousAchievements || "No previous achievements recorded."}</p></Card>
-          <Card><h3 className="text-2xl font-black">Teacher Notes</h3><p className="mt-2 font-semibold">{student.potentialNote || "No potential note recorded."}</p></Card>
-          <Card><h3 className="mb-3 text-2xl font-black">Activity History</h3><HistoryList items={[
-            ...data.pointHistory.filter((item) => item.studentId === student.id).map((item) => `${item.points > 0 ? "+" : ""}${item.points} ${item.actionName}`),
-            ...data.rewardHistory.filter((item) => item.studentId === student.id).map((item) => `Redeemed ${item.rewardName} for ${item.pointsSpent} points`),
-            ...data.recognitions.filter((item) => item.studentId === student.id).map((item) => `Recognition: ${item.title}`),
-          ]} empty="No activity yet." /></Card>
+      <PageHeading title={student.name} description="Hồ sơ học sinh" />
+      <Card className="bg-white/90">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <Avatar name={student.name} size="xl" />
+          <p className="text-5xl font-black text-[#7c5cff]">{student.points}</p>
+          <Badge>Điểm hiện tại</Badge>
         </div>
-      </div>
+      </Card>
     </Page>
   );
 }
 
 function TeamsPage() {
-  const { data, saveTeam, deleteTeam, updateTeamScore, resetTeamScore } = useAppData();
-  const [draft, setDraft] = useState<Team>({ id: createId("team"), name: "", score: 0 });
+  const { data, updateTeamScore } = useAppData();
   return (
     <Page>
-      <Header icon={Users} title="Team Competition" description="Create friendly teams, assign students, and run projector-ready score battles." />
-      <Card>
-        <form className="grid gap-3 md:grid-cols-[1fr_auto_auto]" onSubmit={(e) => { e.preventDefault(); saveTeam(draft); setDraft({ id: createId("team"), name: "", score: 0 }); }}>
-          <Input placeholder="Team name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
-          <ImagePicker onImage={(avatar) => setDraft({ ...draft, avatar })} />
-          <Button type="submit">Save Team</Button>
-        </form>
-      </Card>
+      <PageHeading title="TỔ / NHÓM" description="Theo dõi điểm thi đua của từng tổ." />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {[...data.teams].sort((a, b) => b.score - a.score).map((team, index) => (
-          <Card key={team.id}>
-            <div className="flex items-center gap-4"><Avatar src={team.avatar} name={team.name} size="lg" /><div><Badge>Rank {index + 1}</Badge><h2 className="text-3xl font-black">{team.name}</h2><p className="text-5xl font-black text-[#ff8f70]">{team.score}</p></div></div>
-            <p className="my-4 font-bold text-[#5e668b]">Members: {data.students.filter((s) => s.teamId === team.id).map((s) => s.name).join(", ") || "No members yet"}</p>
-            <div className="flex flex-wrap gap-2"><Button size="sm" variant="mint" onClick={() => updateTeamScore(team.id, 1)}>+1</Button><Button size="sm" variant="sunny" onClick={() => updateTeamScore(team.id, 5)}>+5</Button><Button size="sm" variant="peach" onClick={() => updateTeamScore(team.id, -1)}>-1</Button><Button size="sm" variant="ghost" onClick={() => resetTeamScore(team.id)}>Reset</Button><Button size="sm" variant="danger" onClick={() => deleteTeam(team.id)}>Delete</Button></div>
+          <Card key={team.id} className="bg-white/90">
+            <div className="flex items-center gap-4">
+              <Avatar name={team.name} size="lg" />
+              <div>
+                <Badge>#{index + 1}</Badge>
+                <h3 className="mt-2 text-2xl font-black">{team.name}</h3>
+                <p className="text-4xl font-black text-[#ff8f70]">{team.score}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button size="sm" variant="mint" onClick={() => updateTeamScore(team.id, 1)}>+1</Button>
+              <Button size="sm" variant="sunny" onClick={() => updateTeamScore(team.id, 5)}>+5</Button>
+            </div>
           </Card>
         ))}
       </div>
@@ -286,95 +332,59 @@ function TeamsPage() {
   );
 }
 
-function LeaderboardPage() {
-  const { data } = useAppData();
-  return (
-    <Page>
-      <div className="rounded-[3rem] bg-gradient-to-br from-[#ffd86f] via-[#ff9fd0] to-[#8fd8ff] p-8 text-center shadow-[0_18px_0_rgba(124,92,255,0.18)]">
-        <Trophy className="mx-auto" size={64} />
-        <h1 className="mt-3 text-5xl font-black">Team Leaderboard</h1>
-        <div className="mt-8 grid gap-4">
-          {[...data.teams].sort((a, b) => b.score - a.score).map((team, index) => <TeamRank key={team.id} team={team} rank={index + 1} big />)}
-        </div>
-      </div>
-    </Page>
-  );
-}
-
 function PointsPage() {
-  const { data, savePointAction, deletePointAction, applyPoints } = useAppData();
+  const { data, applyPoints } = useAppData();
   const [studentId, setStudentId] = useState(data.students[0]?.id ?? "");
-  const [draft, setDraft] = useState<PointAction>({ id: createId("action"), name: "", points: 1, type: "reward" });
   return (
     <Page>
-      <Header icon={Star} title="Points & Behavior" description="Quickly reward participation or record soft penalties with history." />
-      <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
-        <Card className="grid gap-4">
-          <Field label="Choose student"><Select value={studentId} onChange={(e) => setStudentId(e.target.value)}>{data.students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
-          <div className="grid gap-3">{data.pointActions.map((action) => <Button key={action.id} variant={action.points > 0 ? "mint" : "peach"} onClick={() => applyPoints(studentId, action)} disabled={!studentId}>{action.points > 0 ? "+" : ""}{action.points} {action.name}</Button>)}</div>
-        </Card>
-        <Card>
-          <h2 className="mb-4 text-2xl font-black">Configurable Actions</h2>
-          <form className="mb-5 grid gap-3 md:grid-cols-[1fr_120px_150px_auto]" onSubmit={(e) => { e.preventDefault(); savePointAction(draft); setDraft({ id: createId("action"), name: "", points: 1, type: "reward" }); }}>
-            <Input placeholder="Action name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
-            <Input type="number" value={draft.points} onChange={(e) => setDraft({ ...draft, points: Number(e.target.value) })} />
-            <Select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as PointAction["type"] })}><option value="reward">Reward</option><option value="penalty">Penalty</option></Select>
-            <Button type="submit">Save</Button>
-          </form>
-          <div className="grid gap-2">{data.pointActions.map((action) => <div key={action.id} className="flex items-center justify-between rounded-2xl bg-white p-3 font-bold"><span>{action.name} ({action.points})</span><Button size="sm" variant="danger" onClick={() => deletePointAction(action.id)}>Delete</Button></div>)}</div>
-        </Card>
+      <PageHeading title="TÍCH ĐIỂM" description="Cộng điểm nhanh cho học sinh." />
+      <Card className="bg-white/90">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <Select value={studentId} onChange={(e) => setStudentId(e.target.value)}>{data.students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}</Select>
+          <Button onClick={() => applyPoints(studentId, data.pointActions.find((a) => a.points > 0) ?? { id: createId("bonus"), name: "Khen thưởng", points: 5, type: "reward" })}>⭐ +5</Button>
+        </div>
+      </Card>
+      <div className="grid gap-2">
+        {data.pointActions.map((action) => (
+          <Card key={action.id} className="flex items-center justify-between bg-white/90 py-3">
+            <div>
+              <p className="font-black">{action.name}</p>
+              <p className="text-sm text-[#6a6f91]">{action.points > 0 ? "+" : ""}{action.points} điểm</p>
+            </div>
+            <Button size="sm" variant={action.points > 0 ? "mint" : "peach"} onClick={() => applyPoints(studentId, action)}>{action.points > 0 ? "Cộng" : "Trừ"}</Button>
+          </Card>
+        ))}
       </div>
-      <Card><h2 className="mb-3 text-2xl font-black">Point History</h2><HistoryList items={data.pointHistory.slice(0, 12).map((item) => `${studentName(data.students, item.studentId)}: ${item.points > 0 ? "+" : ""}${item.points} ${item.actionName}`)} empty="No point changes yet." /></Card>
     </Page>
   );
 }
 
 function RewardsPage() {
-  const { data, saveReward, deleteReward, redeemReward } = useAppData();
-  const [studentId, setStudentId] = useState(data.students[0]?.id ?? "");
-  const [draft, setDraft] = useState<Reward>({ id: createId("reward"), name: "", requiredPoints: 10 });
-  return (
-    <Page>
-      <Header icon={Gift} title="Rewards & Gifts" description="Create collectible rewards students can redeem with their points." />
-      <Card>
-        <form className="grid gap-3 md:grid-cols-[1fr_140px_1fr_auto_auto]" onSubmit={(e) => { e.preventDefault(); saveReward(draft); setDraft({ id: createId("reward"), name: "", requiredPoints: 10 }); }}>
-          <Input placeholder="Reward name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
-          <Input type="number" value={draft.requiredPoints} onChange={(e) => setDraft({ ...draft, requiredPoints: Number(e.target.value) })} />
-          <Input placeholder="Description" value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-          <ImagePicker onImage={(image) => setDraft({ ...draft, image })} />
-          <Button type="submit">Save</Button>
-        </form>
-      </Card>
-      <Field label="Redeem for student"><Select value={studentId} onChange={(e) => setStudentId(e.target.value)}>{data.students.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.points} pts)</option>)}</Select></Field>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{data.rewards.map((reward) => <Card key={reward.id} className="grid gap-3"><Avatar src={reward.image} name={reward.name} size="lg" /><h2 className="text-2xl font-black">{reward.name}</h2><Badge>{reward.requiredPoints} points</Badge><p className="font-semibold text-[#5e668b]">{reward.description}</p><Button variant="sunny" onClick={() => { if (redeemReward(studentId, reward)) confetti(); }}>Redeem</Button><Button variant="danger" size="sm" onClick={() => deleteReward(reward.id)}>Delete</Button></Card>)}</div>
-    </Page>
-  );
+  const { data } = useAppData();
+  return <Page><PageHeading title="QUÀ TẶNG" description="Phần thưởng và quà khích lệ." /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{data.rewards.map((reward) => <Card key={reward.id} className="bg-white/90"><h3 className="text-xl font-black">{reward.name}</h3><p className="mt-2 text-sm text-[#6a6f91]">{reward.description}</p><p className="mt-4 font-black text-[#ff9a00]">⭐ {reward.requiredPoints} điểm</p></Card>)}</div></Page>;
 }
 
 function RecognitionPage() {
   const { data, addRecognition } = useAppData();
   const [studentId, setStudentId] = useState(data.students[0]?.id ?? "");
-  const [type, setType] = useState(recognitionTypes[0]);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("Tích cực phát biểu xây dựng bài!");
   const [latest, setLatest] = useState<Recognition | null>(null);
   const student = data.students.find((item) => item.id === (latest?.studentId ?? studentId));
   return (
     <Page>
-      <Header icon={Medal} title="Recognition Ceremony" description="Celebrate students with a fullscreen-friendly praise screen." />
+      <PageHeading title="TUYÊN DƯƠNG" description="Tạo lời khen và khoảnh khắc chúc mừng." />
       <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
-        <Card>
-          <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); const saved = addRecognition({ studentId, type, title: type, message }); setLatest(saved); setMessage(""); confetti({ particleCount: 140, spread: 90 }); }}>
-            <Field label="Student"><Select value={studentId} onChange={(e) => setStudentId(e.target.value)}>{data.students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
-            <Field label="Recognition type"><Select value={type} onChange={(e) => setType(e.target.value)}>{recognitionTypes.map((item) => <option key={item}>{item}</option>)}</Select></Field>
-            <Field label="Message"><Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Great participation today!" /></Field>
-            <Button type="submit">Celebrate</Button>
+        <Card className="bg-white/90">
+          <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); const saved = addRecognition({ studentId, type: "Tuyên dương", title: "Học sinh tích cực", message }); setLatest(saved); confetti(); }}>
+            <Field label="Học sinh"><Select value={studentId} onChange={(e) => setStudentId(e.target.value)}>{data.students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}</Select></Field>
+            <Field label="Lời nhắn"><Textarea value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
+            <Button type="submit"><PartyPopper size={18} />Tuyên dương</Button>
           </form>
         </Card>
-        <Card className="min-h-[520px] bg-gradient-to-br from-[#fff0ad] via-[#ffe0f0] to-[#e4dcff] text-center">
+        <Card className="bg-gradient-to-br from-[#fff7d4] via-[#fff2fb] to-[#e9e6ff] text-center">
           <Sparkles className="mx-auto text-[#7c5cff]" size={54} />
-          <p className="mt-4 text-2xl font-black text-[#7c5cff]">Congratulations</p>
-          <h2 className="text-5xl font-black">{latest?.title ?? type}</h2>
-          {student ? <div className="mt-8 flex flex-col items-center gap-4"><Avatar src={student.avatar} name={student.name} size="xl" /><h3 className="text-5xl font-black">{student.name}</h3><p className="max-w-2xl text-2xl font-bold text-[#5e668b]">{latest?.message || message || "Great progress today!"}</p></div> : null}
+          <h3 className="mt-3 text-4xl font-black text-[#2c2f77]">{latest?.title ?? "Học sinh tích cực"}</h3>
+          {student ? <div className="mt-8 grid justify-items-center gap-4"><Avatar name={student.name} size="xl" /><h4 className="text-4xl font-black">{student.name}</h4><p className="max-w-2xl text-xl font-semibold text-[#5e668b]">{latest?.message ?? message}</p></div> : null}
         </Card>
       </div>
     </Page>
@@ -388,90 +398,208 @@ function LuckyWheelPage() {
     const result = pickWithoutRepeat(data.students, data.wheelStudentBag);
     setWinner(result.selected);
     setWheelStudentBag(result.nextBag);
-    confetti({ particleCount: 120, spread: 100 });
+    confetti({ particleCount: 160, spread: 98 });
   };
   return (
     <Page>
-      <Header icon={WandSparkles} title="Lucky Wheel" description="Spin a colorful no-repeat student selector for classroom activities." action={<Button size="lg" onClick={spin}>Spin Wheel</Button>} />
-      <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
-        <Card className="grid min-h-[560px] place-items-center overflow-hidden bg-gradient-to-br from-[#8fd8ff] via-[#fff0ad] to-[#ff9fd0]">
-          <motion.div animate={{ rotate: winner ? 1440 : 0 }} transition={{ duration: 1.4, ease: "easeOut" }} className="grid h-[min(72vw,520px)] w-[min(72vw,520px)] place-items-center rounded-full border-[18px] border-white bg-conic-gradient shadow-[0_20px_0_rgba(41,48,77,0.14)]">
-            <div className="rounded-full bg-white/90 p-8 text-center"><WandSparkles className="mx-auto text-[#7c5cff]" size={48} /><p className="mt-2 text-3xl font-black">Spin!</p></div>
-          </motion.div>
-        </Card>
-        <Card className="grid place-items-center text-center">
-          <AnimatePresence mode="wait">
-            {winner ? <motion.div key={winner.id} initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }} className="grid justify-items-center gap-4"><Badge>Today's Lucky Student</Badge><Avatar src={winner.avatar} name={winner.name} size="xl" /><h2 className="text-5xl font-black">{winner.name}</h2><p className="text-xl font-bold text-[#5e668b]">{teamName(data.teams, winner.teamId)}</p></motion.div> : <p className="text-2xl font-black">Ready to pick a student?</p>}
-          </AnimatePresence>
-        </Card>
-      </div>
-    </Page>
-  );
-}
-
-function GamesPage() {
-  const { data, applyPoints, setWheelStudentBag } = useAppData();
-  const [selected, setSelected] = useState<Student | undefined>();
-  const pick = () => { const result = pickWithoutRepeat(data.students, data.wheelStudentBag); setSelected(result.selected); setWheelStudentBag(result.nextBag); };
-  const correctAction = data.pointActions.find((a) => a.points > 0) ?? { id: "quick-correct", name: "Quick Answer Correct", points: 1, type: "reward" as const };
-  return (
-    <Page>
-      <Header icon={Sparkles} title="Random Student Games" description="Simple projector-friendly games powered by random student selection." action={<Button onClick={pick}>Pick Student</Button>} />
-      <div className="grid gap-5 xl:grid-cols-3">
-        {["Random Student", "Quick Answer", "Who Is Next?"].map((game) => <Card key={game} className="min-h-72 text-center"><h2 className="text-3xl font-black">{game}</h2><p className="mt-3 font-bold text-[#5e668b]">{game === "Quick Answer" ? "Pick a student, then mark correct or skip." : "Cycle through names and reveal a lucky classmate."}</p></Card>)}
-      </div>
-      <Card className="grid justify-items-center gap-4 bg-gradient-to-br from-[#e4dcff] to-[#eefaff] text-center">
-        {selected ? <><Avatar src={selected.avatar} name={selected.name} size="xl" /><h2 className="text-5xl font-black">{selected.name}</h2><p className="text-xl font-bold">{teamName(data.teams, selected.teamId)}</p><div className="flex flex-wrap justify-center gap-3"><Button variant="mint" onClick={() => applyPoints(selected.id, correctAction)}>Correct +{correctAction.points}</Button><Button variant="ghost" onClick={pick}>Skip</Button></div></> : <h2 className="text-4xl font-black">Start a game to choose a student.</h2>}
+      <PageHeading title="VÒNG QUAY" description="Quay chọn học sinh may mắn." action={<Button onClick={spin}><Rocket size={18} />Quay ngay</Button>} />
+      <Card className="grid min-h-[520px] place-items-center bg-gradient-to-br from-[#8fd8ff] via-[#fff0ad] to-[#ff9fd0]">
+        <motion.div animate={{ rotate: winner ? 1440 : 0 }} transition={{ duration: 1.25, ease: "easeOut" }} className="grid h-[min(68vw,440px)] w-[min(68vw,440px)] place-items-center rounded-full border-[18px] border-white bg-conic-gradient shadow-[0_20px_0_rgba(41,48,77,0.12)]">
+          <div className="rounded-full bg-white/90 p-10 text-center">
+            <WandSparkles className="mx-auto text-[#7c5cff]" size={48} />
+            <p className="mt-2 text-3xl font-black">Spin</p>
+          </div>
+        </motion.div>
+        <AnimatePresence mode="wait">
+          {winner ? <motion.div key={winner.id} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mt-6 grid justify-items-center gap-3"><Avatar name={winner.name} size="lg" /><h3 className="text-3xl font-black">{winner.name}</h3></motion.div> : null}
+        </AnimatePresence>
       </Card>
     </Page>
   );
 }
 
+function GamesPage() {
+  return <Page><PageHeading title="TRÒ CHƠI" description="Không gian mini game cho lớp học." /><div className="grid gap-4 md:grid-cols-3"><GameCard title="Chọn học sinh" icon={BookOpen} /><GameCard title="Nhanh tay giơ tay" icon={Heart} /><GameCard title="Đố vui" icon={Sparkles} /></div></Page>;
+}
+
 function SettingsPage() {
-  const { data, updateClassroom } = useAppData();
-  const [draft, setDraft] = useState(data.classroom);
+  const { data, updateClassroomSettings } = useAppData();
+  const [draft, setDraft] = useState(data.classroomSettings);
   return (
     <Page>
-      <Header icon={Settings} title="Classroom Settings" description="Customize the local classroom identity shown across the app." />
-      <Card>
-        <form className="grid gap-4 max-w-2xl" onSubmit={(e) => { e.preventDefault(); updateClassroom(draft); }}>
-          <div className="flex items-center gap-4"><Avatar src={draft.avatar} name={draft.name} size="lg" /><ImagePicker onImage={(avatar) => setDraft({ ...draft, avatar })} /></div>
-          <Field label="Classroom name"><Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required /></Field>
-          <Field label="School year"><Input value={draft.schoolYear ?? ""} onChange={(e) => setDraft({ ...draft, schoolYear: e.target.value })} /></Field>
-          <Button type="submit">Save Classroom</Button>
+      <PageHeading title="CÀI ĐẶT LỚP HỌC" description="Thiết lập tên lớp, giáo viên và năm học." />
+      <Card className="mx-auto w-full max-w-2xl bg-white/90">
+        <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); updateClassroomSettings(draft); }}>
+          <div className="grid justify-items-center gap-3 text-center">
+            <Avatar name={draft.className} size="xl" />
+            <Button type="button" variant="ghost"><MonitorPlay size={18} />Đổi ảnh lớp</Button>
+          </div>
+          <Field label="🏫 Tên lớp"><Input value={draft.className} onChange={(e) => setDraft({ ...draft, className: e.target.value })} /></Field>
+          <Field label="👩‍🏫 Tên giáo viên"><Input value={draft.teacherName} onChange={(e) => setDraft({ ...draft, teacherName: e.target.value })} /></Field>
+          <Field label="📅 Năm học"><Input value={draft.schoolYear} onChange={(e) => setDraft({ ...draft, schoolYear: e.target.value })} /></Field>
+          <Button type="submit" className="w-full"><Sparkles size={18} />Lưu thay đổi</Button>
         </form>
       </Card>
     </Page>
   );
 }
 
-function StudentRow({ student }: { student: Student }) {
-  return <Link to={`/students/${student.id}`} className="flex items-center gap-3 rounded-2xl bg-white p-3"><Avatar src={student.avatar} name={student.name} size="sm" /><strong>{student.name}</strong><Badge className="ml-auto">{student.points}</Badge></Link>;
+function OnboardingPage() {
+  const { updateClassroomSettings } = useAppData();
+  const [draft, setDraft] = useState({ id: "classroom-settings", className: "", teacherName: "", schoolYear: "" });
+  return (
+    <div className="grid min-h-screen place-items-center p-4">
+      <Card className="w-full max-w-2xl bg-white/95">
+        <div className="text-center">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-[#7c5cff]">🎉 Chào mừng đến với Lớp Học Vui!</p>
+          <h1 className="mt-2 text-3xl font-black text-[#273055]">Hãy thiết lập lớp học của bạn trước nhé!</h1>
+        </div>
+        <form className="mt-6 grid gap-4" onSubmit={(e) => { e.preventDefault(); updateClassroomSettings(draft); }}>
+          <Field label="🏫 Tên lớp"><Input value={draft.className} onChange={(e) => setDraft({ ...draft, className: e.target.value })} /></Field>
+          <Field label="👩‍🏫 Tên giáo viên"><Input value={draft.teacherName} onChange={(e) => setDraft({ ...draft, teacherName: e.target.value })} /></Field>
+          <Field label="📅 Năm học"><Input value={draft.schoolYear} onChange={(e) => setDraft({ ...draft, schoolYear: e.target.value })} /></Field>
+          <Button type="submit" className="w-full"><Rocket size={18} />Bắt đầu</Button>
+        </form>
+      </Card>
+    </div>
+  );
 }
 
-function TeamRank({ team, rank, big = false }: { team: Team; rank: number; big?: boolean }) {
-  return <div className={`flex items-center gap-4 rounded-[1.5rem] bg-white/85 p-4 ${big ? "text-3xl" : ""}`}><Badge>#{rank}</Badge><Avatar src={team.avatar} name={team.name} size={big ? "lg" : "sm"} /><strong className="mr-auto">{team.name}</strong><span className="font-black text-[#ff8f70]">{team.score}</span></div>;
+function SectionTitle({ icon: Icon, title, action }: { icon: LucideIcon; title: string; action?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#f3efff] text-[#7c5cff]"><Icon size={20} /></div>
+        <h3 className="text-lg font-black tracking-wide text-[#6a4feb]">{title}</h3>
+      </div>
+      {action ? <span className="text-sm font-black text-[#7c5cff]">{action}</span> : null}
+    </div>
+  );
 }
 
-function HistoryList({ items, empty }: { items: string[]; empty: string }) {
-  if (items.length === 0) return <p className="rounded-2xl bg-white p-4 font-bold text-[#687092]">{empty}</p>;
-  return <div className="grid gap-2">{items.map((item, index) => <p key={`${item}-${index}`} className="rounded-2xl bg-white p-3 font-bold text-[#4c557c]">{item}</p>)}</div>;
+function PageHeading({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
+  return (
+    <header className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-sm font-black uppercase tracking-[0.2em] text-[#7c5cff]">Lớp học</p>
+        <h1 className="mt-1 text-3xl font-black text-[#273055] md:text-5xl">{title}</h1>
+        <p className="mt-2 max-w-3xl font-semibold text-[#6a6f91]">{description}</p>
+      </div>
+      {action}
+    </header>
+  );
 }
 
-function ImagePicker({ onImage }: { onImage: (image: string) => void }) {
-  return <label className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-4 font-bold shadow-[0_6px_0_rgba(41,48,77,0.12)]"><Plus size={18} />Upload image<input className="hidden" type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) onImage(await readImageFile(file)); }} /></label>;
+function Mascot({ side }: { side: "left" | "right" }) {
+  return (
+    <div className={`relative flex ${side === "left" ? "justify-end" : "justify-start"} pt-6`}>
+      <div className="grid h-40 w-40 place-items-center rounded-[38%] bg-white/70 text-7xl shadow-[0_20px_40px_rgba(93,67,201,0.12)]">{side === "left" ? "🧒" : "👧"}</div>
+      <div className="absolute top-2 text-3xl">{side === "left" ? "🏆" : "🎁"}</div>
+    </div>
+  );
+}
+
+function StudentPreviewCard({ student }: { student: Student }) {
+  return (
+    <div className="grid justify-items-center rounded-[1.4rem] border border-[#edf0ff] bg-[#fbfbff] p-4 text-center shadow-[0_8px_18px_rgba(51,52,96,0.05)]">
+      <Avatar name={student.name} size="md" />
+      <p className="mt-3 font-black text-[#ff4f72]">{student.name}</p>
+      <p className="text-sm font-semibold text-[#6a6f91]">{student.gender === "female" ? "Nữ" : "Nam"} • {student.dateOfBirth ?? "15/03/2016"}</p>
+      <Badge className="mt-2 bg-[#fff0f7] text-[#d0477f]">{teamNameFallback(student.teamId)}</Badge>
+      <p className="mt-3 font-black text-[#ff9a00]">⭐ {student.points} điểm</p>
+    </div>
+  );
+}
+
+function LeaderboardRow({ student, rank }: { student: Student; rank: number }) {
+  const rankTone = rank === 1 ? "bg-[#fff1c2] text-[#b27c00]" : rank === 2 ? "bg-[#eef1f8] text-[#78819f]" : rank === 3 ? "bg-[#ffe2c7] text-[#c96e2f]" : "bg-[#f4f6ff] text-[#69739a]";
+  return (
+    <div className="flex items-center gap-3 rounded-[1.2rem] border border-[#edf0ff] bg-white px-4 py-3">
+      <div className={`grid h-10 w-10 place-items-center rounded-full font-black ${rankTone}`}>{rank}</div>
+      <Avatar name={student.name} size="sm" />
+      <div className="min-w-0">
+        <p className="truncate font-black text-[#273055]">{student.name}</p>
+        <p className="text-sm text-[#6a6f91]">{teamNameFallback(student.teamId)}</p>
+      </div>
+      <p className="ml-auto font-black text-[#ff9a00]">⭐ {student.points}</p>
+    </div>
+  );
+}
+
+function TeamCompetitionRow({ team, rank }: { team: Team; rank: number }) {
+  const colors = ["#ff7f96", "#60d394", "#5b8cff", "#8f6bff"];
+  const color = colors[(rank - 1) % colors.length];
+  return (
+    <div className="rounded-[1.2rem] border border-[#edf0ff] bg-[#fbfbff] p-4">
+      <div className="flex items-center gap-3">
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-xl shadow-sm">🏆</div>
+        <div className="min-w-0 flex-1">
+          <p className="font-black text-[#273055]">{team.name}</p>
+          <div className="mt-3 h-3 rounded-full bg-[#eef1f8]">
+            <div className="h-3 rounded-full" style={{ width: `${Math.min(100, (team.score / 60) * 100)}%`, background: color }} />
+          </div>
+        </div>
+        <p className="font-black" style={{ color }}>⭐ {team.score}</p>
+      </div>
+    </div>
+  );
+}
+
+function RecognitionPreview({ recognition, student, teacherName }: { recognition?: Recognition; student?: Student; teacherName: string }) {
+  return (
+    <div className="relative overflow-hidden rounded-[1.4rem] border border-[#fff0c7] bg-gradient-to-br from-[#fff7dc] via-white to-[#fff0f5] p-4">
+      <div className="absolute right-3 top-3 text-4xl opacity-80">✨</div>
+      <p className="font-black text-[#ff8a00]">HỌC SINH TÍCH CỰC</p>
+      <div className="mt-4 flex items-center gap-3">
+        <Avatar name={student?.name ?? "Nguyễn Minh Quân"} size="md" />
+        <div>
+          <p className="font-black text-[#273055]">{student?.name ?? "Nguyễn Minh Quân"}</p>
+          <p className="text-sm font-semibold text-[#6a6f91]">{recognition?.message ?? `${teacherName} khen bạn rất tuyệt!`}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActivityFeed({ items }: { items: { text: string; delta: string; positive: boolean; time: string }[] }) {
+  return (
+    <div className="grid gap-3">
+      {items.map((item) => (
+        <div key={item.text} className="flex items-center gap-3 rounded-[1.2rem] bg-[#fbfbff] p-3">
+          <div className={`font-black ${item.positive ? "text-emerald-600" : "text-rose-500"}`}>{item.delta}</div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-[#273055]">{item.text}</p>
+            <p className="text-sm text-[#7c82a3]">{item.time}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GameCard({ title, icon: Icon }: { title: string; icon: LucideIcon }) {
+  return (
+    <Card className="grid min-h-52 place-items-center bg-white/90 text-center">
+      <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-[#f3efff] text-[#7c5cff]"><Icon size={30} /></div>
+      <p className="mt-4 text-2xl font-black">{title}</p>
+    </Card>
+  );
+}
+
+function teamNameFallback(teamId: string | undefined) {
+  return teamId ? `Tổ ${teamId.slice(-1)}` : "Tổ 1";
+}
+
+function teamName(teams: Team[], id: string | undefined, fallback: string) {
+  return teams.find((team) => team.id === id)?.name ?? fallback;
+}
+
+function formatClassroomTitle(settings: { className: string; teacherName: string }) {
+  return `${settings.className} - ${settings.teacherName}`;
 }
 
 function newStudent(): Student {
   return { id: createId("student"), name: "", points: 0, totalRewards: 0 };
-}
-
-function studentName(students: Student[], id: string) {
-  return students.find((student) => student.id === id)?.name ?? "Unknown student";
-}
-
-function teamName(teams: Team[], id?: string) {
-  return teams.find((team) => team.id === id)?.name ?? "No team";
 }
 
 export default function App() {

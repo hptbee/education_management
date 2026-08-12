@@ -1,8 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { defaultData } from "./defaultData";
 import type {
   AppData,
-  Classroom,
+  ClassroomSettings,
   PointAction,
   PointHistory,
   Recognition,
@@ -10,14 +9,16 @@ import type {
   RewardHistory,
   Student,
   Team,
+  TeamScoreHistory,
 } from "../types/models";
 import { createId } from "../utils/id";
-
-const STORAGE_KEY = "chibi-classroom-data";
+import { isValidClassroomSettings, loadStoredData, normalizeClassroomSettings, saveStoredData } from "./storage";
 
 interface AppDataContextValue {
   data: AppData;
-  updateClassroom: (classroom: Classroom) => void;
+  isFirstRun: boolean;
+  storageWarning?: string;
+  updateClassroomSettings: (settings: ClassroomSettings) => void;
   saveStudent: (student: Student) => void;
   deleteStudent: (studentId: string) => void;
   saveTeam: (team: Team) => void;
@@ -36,25 +37,15 @@ interface AppDataContextValue {
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
-function loadData(): AppData {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return defaultData;
-    }
-    return { ...defaultData, ...JSON.parse(raw) } as AppData;
-  } catch {
-    return defaultData;
-  }
-}
-
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [data, setDataState] = useState<AppData>(loadData);
+  const [initialData] = useState(loadStoredData);
+  const [data, setDataState] = useState<AppData>(initialData.data);
+  const [storageWarning, setStorageWarning] = useState<string | undefined>(initialData.warning);
 
   const setData = (updater: (current: AppData) => AppData) => {
     setDataState((current) => {
       const next = updater(current);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setStorageWarning(saveStoredData(next));
       return next;
     });
   };
@@ -62,14 +53,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppDataContextValue>(
     () => ({
       data,
-      updateClassroom: (classroom) => setData((current) => ({ ...current, classroom })),
-      saveStudent: (student) =>
+      isFirstRun: !isValidClassroomSettings(data.classroomSettings),
+      storageWarning,
+      updateClassroomSettings: (settings) =>
         setData((current) => ({
           ...current,
-          students: current.students.some((item) => item.id === student.id)
-            ? current.students.map((item) => (item.id === student.id ? student : item))
-            : [...current.students, student],
+          classroomSettings: normalizeClassroomSettings({
+            ...settings,
+            updatedAt: new Date().toISOString(),
+          }),
         })),
+      saveStudent: (student) =>
+        setData((current) => {
+          const existing = current.students.find((item) => item.id === student.id);
+          const now = new Date().toISOString();
+          const saved: Student = {
+            ...student,
+            name: student.name.trim(),
+            points: existing?.points ?? student.points,
+            totalRewards: existing?.totalRewards ?? student.totalRewards,
+            createdAt: existing?.createdAt ?? student.createdAt ?? now,
+            updatedAt: now,
+          };
+          return {
+            ...current,
+            students: existing
+              ? current.students.map((item) => (item.id === student.id ? saved : item))
+              : [...current.students, saved],
+          };
+        }),
       deleteStudent: (studentId) =>
         setData((current) => ({
           ...current,
@@ -80,12 +92,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           wheelStudentBag: current.wheelStudentBag.filter((id) => id !== studentId),
         })),
       saveTeam: (team) =>
-        setData((current) => ({
-          ...current,
-          teams: current.teams.some((item) => item.id === team.id)
-            ? current.teams.map((item) => (item.id === team.id ? team : item))
-            : [...current.teams, team],
-        })),
+        setData((current) => {
+          const existing = current.teams.find((item) => item.id === team.id);
+          const now = new Date().toISOString();
+          const saved: Team = {
+            ...team,
+            name: team.name.trim(),
+            createdAt: existing?.createdAt ?? team.createdAt ?? now,
+            updatedAt: now,
+          };
+          return {
+            ...current,
+            teams: existing ? current.teams.map((item) => (item.id === team.id ? saved : item)) : [...current.teams, saved],
+          };
+        }),
       deleteTeam: (teamId) =>
         setData((current) => ({
           ...current,
@@ -95,23 +115,45 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ),
         })),
       updateTeamScore: (teamId, delta) =>
-        setData((current) => ({
-          ...current,
-          teams: current.teams.map((team) =>
-            team.id === teamId ? { ...team, score: team.score + delta } : team,
-          ),
-        })),
+        setData((current) => {
+          const history: TeamScoreHistory = {
+            id: createId("team-score"),
+            teamId,
+            points: delta,
+            actionName: delta > 0 ? "Cộng điểm tổ" : "Trừ điểm tổ",
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            ...current,
+            teams: current.teams.map((team) =>
+              team.id === teamId ? { ...team, score: team.score + delta, updatedAt: history.createdAt } : team,
+            ),
+            teamScoreHistory: [history, ...current.teamScoreHistory],
+          };
+        }),
       resetTeamScore: (teamId) =>
-        setData((current) => ({
-          ...current,
-          teams: current.teams.map((team) => (team.id === teamId ? { ...team, score: 0 } : team)),
-        })),
+        setData((current) => {
+          const team = current.teams.find((item) => item.id === teamId);
+          const now = new Date().toISOString();
+          const history: TeamScoreHistory = {
+            id: createId("team-score"),
+            teamId,
+            points: -(team?.score ?? 0),
+            actionName: "Đặt lại điểm tổ",
+            createdAt: now,
+          };
+          return {
+            ...current,
+            teams: current.teams.map((item) => (item.id === teamId ? { ...item, score: 0, updatedAt: now } : item)),
+            teamScoreHistory: [history, ...current.teamScoreHistory],
+          };
+        }),
       savePointAction: (action) =>
         setData((current) => ({
           ...current,
           pointActions: current.pointActions.some((item) => item.id === action.id)
-            ? current.pointActions.map((item) => (item.id === action.id ? action : item))
-            : [...current.pointActions, action],
+            ? current.pointActions.map((item) => (item.id === action.id ? { ...action, name: action.name.trim() } : item))
+            : [...current.pointActions, { ...action, name: action.name.trim(), isActive: action.isActive ?? true }],
         })),
       deletePointAction: (actionId) =>
         setData((current) => ({
@@ -126,6 +168,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             actionId: action.id,
             actionName: action.name,
             points: action.points,
+            source: "action",
             createdAt: new Date().toISOString(),
             note,
           };
@@ -138,12 +181,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           };
         }),
       saveReward: (reward) =>
-        setData((current) => ({
-          ...current,
-          rewards: current.rewards.some((item) => item.id === reward.id)
-            ? current.rewards.map((item) => (item.id === reward.id ? reward : item))
-            : [...current.rewards, reward],
-        })),
+        setData((current) => {
+          const existing = current.rewards.find((item) => item.id === reward.id);
+          const now = new Date().toISOString();
+          const saved: Reward = {
+            ...reward,
+            name: reward.name.trim(),
+            requiredPoints: Math.max(1, Math.trunc(reward.requiredPoints)),
+            isActive: reward.isActive ?? true,
+            createdAt: existing?.createdAt ?? reward.createdAt ?? now,
+            updatedAt: now,
+          };
+          return {
+            ...current,
+            rewards: existing
+              ? current.rewards.map((item) => (item.id === reward.id ? saved : item))
+              : [...current.rewards, saved],
+          };
+        }),
       deleteReward: (rewardId) =>
         setData((current) => ({ ...current, rewards: current.rewards.filter((reward) => reward.id !== rewardId) })),
       redeemReward: (studentId, reward) => {
@@ -152,13 +207,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return false;
         }
         setData((current) => {
+          const createdAt = new Date().toISOString();
           const history: RewardHistory = {
             id: createId("reward-history"),
             studentId,
             rewardId: reward.id,
             rewardName: reward.name,
             pointsSpent: reward.requiredPoints,
-            createdAt: new Date().toISOString(),
+            createdAt,
+          };
+          const pointHistory: PointHistory = {
+            id: createId("points"),
+            studentId,
+            actionId: reward.id,
+            actionName: `Đổi quà: ${reward.name}`,
+            points: -reward.requiredPoints,
+            source: "reward-redemption",
+            createdAt,
           };
           return {
             ...current,
@@ -167,11 +232,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 ? {
                     ...item,
                     points: item.points - reward.requiredPoints,
-                    totalRewards: (item.totalRewards ?? 0) + 1,
+                    totalRewards: item.totalRewards + 1,
+                    updatedAt: createdAt,
                   }
                 : item,
             ),
             rewardHistory: [history, ...current.rewardHistory],
+            pointHistory: [pointHistory, ...current.pointHistory],
           };
         });
         return true;
@@ -183,7 +250,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       setWheelStudentBag: (bag) => setData((current) => ({ ...current, wheelStudentBag: bag })),
     }),
-    [data],
+    [data, storageWarning],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
