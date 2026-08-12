@@ -1,0 +1,68 @@
+import type { AppData } from "../types/models";
+
+export const defaultData: AppData = {
+  classroom: {
+    id: "classroom-1",
+    name: "Class 2/7",
+    schoolYear: "2026-2027",
+  },
+  students: [
+    {
+      id: "student-minh",
+      name: "Nguyen Minh",
+      gender: "male",
+      previousClass: "1/7",
+      classroomRole: "Team Leader",
+      potentialNote: "Strong in mathematics and good leadership potential.",
+      teamId: "team-stars",
+      points: 18,
+      totalRewards: 0,
+    },
+    {
+      id: "student-lan",
+      name: "Tran Lan",
+      gender: "female",
+      previousClass: "1/7",
+      classroomRole: "Helper",
+      potentialNote: "Very creative and kind to classmates.",
+      teamId: "team-moon",
+      points: 24,
+      totalRewards: 1,
+    },
+    {
+      id: "student-anh",
+      name: "Le Anh",
+      gender: "female",
+      previousClass: "1/8",
+      classroomRole: "Board Captain",
+      potentialNote: "Needs more confidence but answers carefully.",
+      teamId: "team-sun",
+      points: 12,
+      totalRewards: 0,
+    },
+  ],
+  teams: [
+    { id: "team-stars", name: "Super Stars", score: 35 },
+    { id: "team-moon", name: "Moon Rockets", score: 28 },
+    { id: "team-sun", name: "Sunny Champs", score: 31 },
+  ],
+  pointActions: [
+    { id: "action-answer", name: "Answer correctly", points: 1, type: "reward", icon: "star" },
+    { id: "action-participation", name: "Good participation", points: 1, type: "reward", icon: "hand" },
+    { id: "action-help", name: "Help a classmate", points: 2, type: "reward", icon: "heart" },
+    { id: "action-excellent", name: "Excellent performance", points: 5, type: "reward", icon: "trophy" },
+    { id: "action-attention", name: "Not paying attention", points: -3, type: "penalty", icon: "eye-off" },
+    { id: "action-swearing", name: "Swearing", points: -5, type: "penalty", icon: "alert" },
+    { id: "action-fighting", name: "Fighting", points: -10, type: "penalty", icon: "shield" },
+  ],
+  pointHistory: [],
+  rewards: [
+    { id: "reward-sticker", name: "Sticker Pack", description: "A cheerful sticker reward.", requiredPoints: 10 },
+    { id: "reward-gift", name: "Small Gift", description: "A small classroom prize.", requiredPoints: 20 },
+    { id: "reward-privilege", name: "Special Privilege", description: "Choose a classroom helper role.", requiredPoints: 30 },
+    { id: "reward-mystery", name: "Mystery Gift", description: "A surprise reward box.", requiredPoints: 50 },
+  ],
+  rewardHistory: [],
+  recognitions: [],
+  wheelStudentBag: [],
+};

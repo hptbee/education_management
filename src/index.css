@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  color: #29304d;
+  background: #fff7db;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --classroom-sky: #8fd8ff;
+  --classroom-purple: #b89cff;
+  --classroom-sun: #ffd86f;
+  --classroom-peach: #ffad8f;
+  --classroom-pink: #ff9fd0;
+  --classroom-mint: #9ce8c5;
+  --classroom-ink: #29304d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(143, 216, 255, 0.45), transparent 28rem),
+    radial-gradient(circle at top right, rgba(255, 159, 208, 0.35), transparent 24rem),
+    linear-gradient(135deg, #fff8df 0%, #eefaff 52%, #fff1f8 100%);
+}
+
+.bg-conic-gradient {
+  background: conic-gradient(
+    from 0deg,
+    #ff8f70,
+    #ffd86f,
+    #9ce8c5,
+    #8fd8ff,
+    #b89cff,
+    #ff9fd0,
+    #ff8f70
+  );
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
