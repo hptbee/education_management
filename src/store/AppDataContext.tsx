@@ -1,6 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+"use client";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
-  AppData,
   ClassroomSettings,
   PointAction,
   PointHistory,
@@ -8,17 +8,26 @@ import type {
   Reward,
   RewardHistory,
   Student,
+  TeacherProfile,
   Team,
   TeamScoreHistory,
 } from "../types/models";
 import { createId } from "../utils/id";
-import { isValidClassroomSettings, loadStoredData, normalizeClassroomSettings, saveStoredData } from "./storage";
+import type { ClassroomDatabase } from "../database/types";
+import { databaseService } from "../database/database.service";
 
 interface AppDataContextValue {
-  data: AppData;
-  isFirstRun: boolean;
-  storageWarning?: string;
+  data: ClassroomDatabase | null;
+  isLoading: boolean;
+  switchDatabase: (id: string) => Promise<void>;
+  closeDatabase: () => void;
+  createDatabase: (settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  importDatabase: (file: File) => Promise<void>;
+  renameDatabase: (newClassName: string, newSchoolYear: string) => Promise<void>;
+  duplicateDatabase: (newClassName: string, newSchoolYear: string, mode: "settings-only" | "full-copy") => Promise<void>;
+  deleteDatabase: (id: string) => Promise<void>;
   updateClassroomSettings: (settings: ClassroomSettings) => void;
+  updateTeacherProfile: (teacher: Partial<Omit<TeacherProfile, "id" | "createdAt" | "updatedAt">>) => void;
   saveStudent: (student: Student) => void;
   deleteStudent: (studentId: string) => void;
   saveTeam: (team: Team) => void;
@@ -38,14 +47,28 @@ interface AppDataContextValue {
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [initialData] = useState(loadStoredData);
-  const [data, setDataState] = useState<AppData>(initialData.data);
-  const [storageWarning, setStorageWarning] = useState<string | undefined>(initialData.warning);
+  const [data, setDataState] = useState<ClassroomDatabase | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const setData = (updater: (current: AppData) => AppData) => {
+  useEffect(() => {
+    async function init() {
+      await databaseService.initializeAndMigrate();
+      const databases = await databaseService.listDatabases();
+      if (databases.length > 0) {
+        const latest = databases[0]; // the first one is the most recently updated
+        const db = await databaseService.openDatabase(latest.id);
+        setDataState(db);
+      }
+      setIsLoading(false);
+    }
+    init();
+  }, []);
+
+  const setData = (updater: (current: ClassroomDatabase) => ClassroomDatabase) => {
     setDataState((current) => {
+      if (!current) return current;
       const next = updater(current);
-      setStorageWarning(saveStoredData(next));
+      databaseService.saveDatabase(next).catch(console.error);
       return next;
     });
   };
@@ -53,15 +76,67 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppDataContextValue>(
     () => ({
       data,
-      isFirstRun: !isValidClassroomSettings(data.classroomSettings),
-      storageWarning,
+      isLoading,
+      switchDatabase: async (id: string) => {
+        setIsLoading(true);
+        const db = await databaseService.openDatabase(id);
+        setDataState(db);
+        setIsLoading(false);
+      },
+      closeDatabase: () => {
+        setDataState(null);
+      },
+      createDatabase: async (settings) => {
+        setIsLoading(true);
+        const db = await databaseService.createDatabase(settings);
+        setDataState(db);
+        setIsLoading(false);
+      },
+      importDatabase: async (file) => {
+        setIsLoading(true);
+        const db = await databaseService.importDatabase(file);
+        setDataState(db);
+        setIsLoading(false);
+      },
+      renameDatabase: async (newClassName, newSchoolYear) => {
+        if (!data) return;
+        setIsLoading(true);
+        const db = await databaseService.renameClassroomDatabase(data.metadata.id, newClassName, newSchoolYear);
+        setDataState(db);
+        setIsLoading(false);
+      },
+      duplicateDatabase: async (newClassName, newSchoolYear, mode) => {
+        if (!data) return;
+        setIsLoading(true);
+        const db = await databaseService.duplicateDatabase(data.metadata.id, newClassName, newSchoolYear, mode);
+        setDataState(db);
+        setIsLoading(false);
+      },
+      deleteDatabase: async (id) => {
+        setIsLoading(true);
+        await databaseService.deleteDatabase(id);
+        if (data?.metadata.id === id) {
+          setDataState(null);
+        }
+        setIsLoading(false);
+      },
       updateClassroomSettings: (settings) =>
         setData((current) => ({
           ...current,
-          classroomSettings: normalizeClassroomSettings({
-            ...settings,
+          classroomSettings: { ...settings, updatedAt: new Date().toISOString() },
+        })),
+      updateTeacherProfile: (teacherUpdates) =>
+        setData((current) => ({
+          ...current,
+          classroomSettings: {
+            ...current.classroomSettings,
+            teacher: {
+              ...current.classroomSettings.teacher,
+              ...teacherUpdates,
+              updatedAt: new Date().toISOString(),
+            },
             updatedAt: new Date().toISOString(),
-          }),
+          },
         })),
       saveStudent: (student) =>
         setData((current) => {
@@ -202,11 +277,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteReward: (rewardId) =>
         setData((current) => ({ ...current, rewards: current.rewards.filter((reward) => reward.id !== rewardId) })),
       redeemReward: (studentId, reward) => {
-        const student = data.students.find((item) => item.id === studentId);
-        if (!student || student.points < reward.requiredPoints) {
-          return false;
-        }
+        let success = false;
         setData((current) => {
+          const student = current.students.find((item) => item.id === studentId);
+          if (!student || student.points < reward.requiredPoints) {
+            return current;
+          }
+          success = true;
           const createdAt = new Date().toISOString();
           const history: RewardHistory = {
             id: createId("reward-history"),
@@ -241,7 +318,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             pointHistory: [pointHistory, ...current.pointHistory],
           };
         });
-        return true;
+        return success;
       },
       addRecognition: (recognition) => {
         const saved: Recognition = { ...recognition, id: createId("recognition"), createdAt: new Date().toISOString() };
@@ -250,7 +327,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       setWheelStudentBag: (bag) => setData((current) => ({ ...current, wheelStudentBag: bag })),
     }),
-    [data, storageWarning],
+    [data, isLoading]
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

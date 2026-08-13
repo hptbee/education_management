@@ -6,8 +6,13 @@ export const defaultData: AppData = {
   classroomSettings: {
     id: "classroom-settings",
     className: "Lớp 2C",
-    teacherName: "Cô Thu",
-    schoolYear: "2025 - 2026",
+    teacher: {
+      id: "teacher-default",
+      name: "Cô Thu",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    schoolYear: "2024-2025",
     createdAt: seedTimestamp,
     updatedAt: seedTimestamp,
   },

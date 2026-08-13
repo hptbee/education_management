@@ -1,10 +1,13 @@
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   Bell,
   BookOpen,
   ChevronRight,
+  Copy,
   Crown,
+  Download,
   Gift,
   GraduationCap,
   Heart,
@@ -15,16 +18,20 @@ import {
   PencilLine,
   Plus,
   Rocket,
+  Settings,
   Sparkles,
   Star,
+  Trash2,
   Trophy,
+  Upload,
+  UserCircle,
   Users,
   Volleyball,
   WandSparkles,
   Gamepad2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Route, Routes, useParams } from "react-router-dom";
 import { Avatar } from "./components/Avatar";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "./components/ui";
@@ -42,7 +49,7 @@ const nav = [
   { to: "/lucky-wheel", label: "Vòng quay", icon: WandSparkles },
   { to: "/games", label: "Trò chơi", icon: Gamepad2 },
   { to: "/recognition", label: "Tuyên dương", icon: Trophy },
-  { to: "/settings", label: "Điểm trừ", icon: Minus },
+  { to: "/settings", label: "Cài đặt", icon: Settings },
 ] as const;
 
 const quickActions = [
@@ -59,8 +66,9 @@ function Page({ children }: { children: React.ReactNode }) {
 }
 
 function Layout() {
-  const { data, isFirstRun } = useAppData();
-  if (isFirstRun) return <OnboardingPage />;
+  const { data, isLoading } = useAppData();
+  if (isLoading) return <div className="grid min-h-screen place-items-center"><p className="text-xl font-bold text-gray-500">Đang tải dữ liệu...</p></div>;
+  if (!data) return <ClassroomSelectorScreen />;
 
   return (
     <div className="min-h-screen p-3 lg:p-4">
@@ -146,7 +154,7 @@ function Dashboard() {
                 <h2 className="truncate text-2xl font-black text-[#273055]">{formatClassroomTitle(data.classroomSettings)}</h2>
                 <PencilLine className="mt-1 text-[#7c5cff]" size={18} />
               </div>
-              <p className="mt-2 text-sm font-semibold text-[#6a6f91]">Giáo viên: {data.classroomSettings.teacherName}</p>
+              <p className="mt-2 text-sm font-semibold text-[#6a6f91]">Giáo viên: {data.classroomSettings.teacher?.name}</p>
               <p className="mt-1 text-sm font-semibold text-[#6a6f91]">Năm học: {data.classroomSettings.schoolYear}</p>
               <Button className="mt-4 w-full justify-center" variant="ghost"><MonitorPlay size={18} />Đổi ảnh lớp</Button>
             </div>
@@ -159,7 +167,7 @@ function Dashboard() {
             <Mascot side="left" />
             <div className="py-4 text-center">
               <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-1 text-sm font-black text-[#7c5cff] shadow-sm">✨ Cùng nhau học tập thật tốt</div>
-              <div className="mb-2 text-base font-black text-[#ff7f96]">Chào {data.classroomSettings.teacherName}! 👋</div>
+              <div className="mb-2 text-base font-black text-[#ff7f96]">Chào {data.classroomSettings.teacher?.name}! 👋</div>
               <h1 className="text-4xl font-black leading-tight text-[#2c2f77] md:text-5xl">
                 Ai sẽ là người
                 <span className="block text-[#ffb400] drop-shadow-[0_3px_0_rgba(76,57,0,0.18)]">tỏa sáng</span>
@@ -229,14 +237,14 @@ function Dashboard() {
       <section className="grid gap-4 xl:grid-cols-3">
         <Card className="bg-white/90">
           <SectionTitle icon={Trophy} title="TUYÊN DƯƠNG GẦN ĐÂY" />
-          <RecognitionPreview recognition={data.recognitions[0]} student={featured} teacherName={data.classroomSettings.teacherName} />
+          <RecognitionPreview recognition={data.recognitions[0]} student={featured} teacherName={data.classroomSettings.teacher?.name || "Teacher"} />
         </Card>
         <Card className="bg-white/90">
           <SectionTitle icon={Bell} title="HOẠT ĐỘNG GẦN ĐÂY" />
           <ActivityFeed
             items={[
-              { text: `${data.classroomSettings.teacherName} đã cộng 5 điểm cho Minh Đức`, delta: "+5", positive: true, time: "2 phút trước" },
-              { text: `${data.classroomSettings.teacherName} đã trừ 3 điểm của Gia Bảo`, delta: "-3", positive: false, time: "15 phút trước" },
+              { text: `${data.classroomSettings.teacher?.name} đã cộng 5 điểm cho Minh Đức`, delta: "+5", positive: true, time: "2 phút trước" },
+              { text: `${data.classroomSettings.teacher?.name} đã trừ 3 điểm của Gia Bảo`, delta: "-3", positive: false, time: "15 phút trước" },
             ]}
           />
         </Card>
@@ -422,44 +430,463 @@ function GamesPage() {
   return <Page><PageHeading title="TRÒ CHƠI" description="Không gian mini game cho lớp học." /><div className="grid gap-4 md:grid-cols-3"><GameCard title="Chọn học sinh" icon={BookOpen} /><GameCard title="Nhanh tay giơ tay" icon={Heart} /><GameCard title="Đố vui" icon={Sparkles} /></div></Page>;
 }
 
-function SettingsPage() {
-  const { data, updateClassroomSettings } = useAppData();
-  const [draft, setDraft] = useState(data.classroomSettings);
+type SettingsTab = "teacher" | "classroom" | "database" | "danger";
+
+export function SettingsPage() {
+  const { data, updateClassroomSettings, updateTeacherProfile, renameDatabase, duplicateDatabase, deleteDatabase, closeDatabase } = useAppData();
+  const [activeTab, setActiveTab] = useState<SettingsTab>("teacher");
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Teacher form state
+  const [teacherDraft, setTeacherDraft] = useState({ name: data!.classroomSettings.teacher.name });
+
+  // Classroom form state
+  const [classroomDraft, setClassroomDraft] = useState({ className: data!.classroomSettings.className });
+
+  // Rename form state
+  const [renameDraft, setRenameDraft] = useState({
+    className: data!.classroomSettings.className,
+    schoolYear: data!.classroomSettings.schoolYear,
+  });
+  const [renaming, setRenaming] = useState(false);
+
+  // Duplicate form state
+  const [dupDraft, setDupDraft] = useState({ className: "", schoolYear: data!.classroomSettings.schoolYear, mode: "settings-only" as "settings-only" | "full-copy" });
+  const [duplicating, setDuplicating] = useState(false);
+
+  // Delete confirmation
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const showSaved = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+
+  const handleSaveTeacher = () => {
+    if (!teacherDraft.name.trim()) return;
+    updateTeacherProfile({ name: teacherDraft.name.trim() });
+    showSaved();
+  };
+
+  const handleSaveClassroom = () => {
+    if (!classroomDraft.className.trim()) return;
+    updateClassroomSettings({ ...data!.classroomSettings, className: classroomDraft.className.trim() });
+    showSaved();
+  };
+
+  const handleRename = async () => {
+    setError(null);
+    setRenaming(true);
+    try {
+      await renameDatabase(renameDraft.className.trim(), renameDraft.schoolYear.trim());
+      showSaved();
+    } catch (e: any) { setError(e.message); }
+    finally { setRenaming(false); }
+  };
+
+  const handleDuplicate = async () => {
+    setError(null);
+    setDuplicating(true);
+    try {
+      await duplicateDatabase(dupDraft.className.trim(), dupDraft.schoolYear.trim(), dupDraft.mode);
+      setDupDraft({ className: "", schoolYear: data!.classroomSettings.schoolYear, mode: "settings-only" });
+      showSaved();
+    } catch (e: any) { setError(e.message); }
+    finally { setDuplicating(false); }
+  };
+
+  const handleDelete = async () => {
+    if (deleteInput !== data!.classroomSettings.className) return;
+    setDeleting(true);
+    await deleteDatabase(data!.metadata.id);
+    closeDatabase();
+  };
+
+  const handleExport = async () => {
+    const { databaseService } = await import("./database/database.service");
+    databaseService.exportDatabase(data!).catch(console.error);
+  };
+
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+    { id: "teacher", label: "Giáo viên", icon: <UserCircle size={18} /> },
+    { id: "classroom", label: "Lớp học", icon: <MonitorPlay size={18} /> },
+    { id: "database", label: "Năm học", icon: <Settings size={18} /> },
+    { id: "danger", label: "Nguy hiểm", icon: <AlertTriangle size={18} /> },
+  ];
+
   return (
     <Page>
-      <PageHeading title="CÀI ĐẶT LỚP HỌC" description="Thiết lập tên lớp, giáo viên và năm học." />
-      <Card className="mx-auto w-full max-w-2xl bg-white/90">
-        <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); updateClassroomSettings(draft); }}>
-          <div className="grid justify-items-center gap-3 text-center">
-            <Avatar name={draft.className} size="xl" />
-            <Button type="button" variant="ghost"><MonitorPlay size={18} />Đổi ảnh lớp</Button>
+      <PageHeading title="CÀI ĐẶT" description="Quản lý hồ sơ giáo viên, lớp học và dữ liệu năm học." />
+
+      {/* Tab bar */}
+      <div className="flex gap-2 flex-wrap">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => { setActiveTab(tab.id); setError(null); }}
+            className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 font-extrabold text-sm transition-all duration-200 ${
+              activeTab === tab.id
+                ? tab.id === "danger"
+                  ? "bg-rose-500 text-white shadow-lg shadow-rose-200"
+                  : "bg-[#7c5cff] text-white shadow-lg shadow-purple-200"
+                : tab.id === "danger"
+                  ? "bg-rose-50 text-rose-500 hover:bg-rose-100"
+                  : "bg-white/80 text-[#6a6f91] hover:bg-white"
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Feedback banner */}
+      {saved && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-3 text-emerald-700 font-bold flex items-center gap-2">
+          <Sparkles size={18} /> Đã lưu thay đổi thành công!
+        </motion.div>
+      )}
+      {error && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-rose-50 border border-rose-200 px-5 py-3 text-rose-700 font-bold flex items-center gap-2">
+          <AlertTriangle size={18} /> {error}
+        </motion.div>
+      )}
+
+      {/* ── TEACHER TAB ── */}
+      {activeTab === "teacher" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="bg-white/90">
+            <div className="mb-6 flex items-center gap-4">
+              <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-[#7c5cff] to-[#5a90ef] text-white shadow-lg text-3xl">
+                👩‍🏫
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-[#273055]">Hồ sơ giáo viên</h2>
+                <p className="text-sm text-[#6a6f91]">Tên hiển thị trong lớp học</p>
+              </div>
+            </div>
+            <div className="grid gap-4">
+              <Field label="👩‍🏫 Tên giáo viên">
+                <Input
+                  value={teacherDraft.name}
+                  onChange={(e) => setTeacherDraft({ name: e.target.value })}
+                  placeholder="Ví dụ: Cô Thu"
+                />
+              </Field>
+              <div className="rounded-2xl bg-[#f7f5ff] border border-[#e8e3ff] p-4 text-sm text-[#6a6f91]">
+                <p className="font-bold text-[#7c5cff] mb-1">💡 Hiển thị tên ở đâu?</p>
+                <ul className="grid gap-1 list-disc list-inside">
+                  <li>Trang tổng quan (Dashboard)</li>
+                  <li>Thẻ tuyên dương học sinh</li>
+                  <li>Nhật ký hoạt động lớp</li>
+                </ul>
+              </div>
+              <Button className="w-full justify-center" onClick={handleSaveTeacher}>
+                <Sparkles size={18} /> Lưu hồ sơ
+              </Button>
+            </div>
+          </Card>
+
+          {/* Preview card */}
+          <Card className="bg-gradient-to-br from-[#fff7dc] via-white to-[#fff0f5] border border-[#fff0c7]">
+            <p className="text-xs font-black uppercase tracking-widest text-[#ff8a00] mb-4">Xem trước</p>
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="grid h-20 w-20 place-items-center rounded-[38%] bg-white/70 text-5xl shadow-lg">👩‍🏫</div>
+              <div>
+                <p className="text-xl font-black text-[#273055]">{teacherDraft.name || "Tên giáo viên"}</p>
+                <p className="text-sm text-[#6a6f91] mt-1">Giáo viên chủ nhiệm</p>
+              </div>
+              <div className="rounded-2xl bg-[#f3efff] px-4 py-2 text-sm font-bold text-[#7c5cff]">
+                ✨ {teacherDraft.name || "Cô giáo"} khen bạn rất tuyệt!
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── CLASSROOM TAB ── */}
+      {activeTab === "classroom" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="bg-white/90">
+            <div className="mb-6 flex items-center gap-4">
+              <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-[#ff7f96] to-[#ffb400] text-white shadow-lg text-3xl">
+                🏫
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-[#273055]">Thông tin lớp học</h2>
+                <p className="text-sm text-[#6a6f91]">Tên hiển thị của lớp học</p>
+              </div>
+            </div>
+            <div className="grid gap-4">
+              <Field label="🏫 Tên lớp">
+                <Input
+                  value={classroomDraft.className}
+                  onChange={(e) => setClassroomDraft({ className: e.target.value })}
+                  placeholder="Ví dụ: Lớp 2C, 3A1..."
+                />
+              </Field>
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+                <p className="font-bold mb-1">⚠️ Lưu ý</p>
+                <p>Đổi tên lớp sẽ <strong>không</strong> tạo database mới. Để chuyển sang năm học mới, dùng tab <strong>Năm học</strong>.</p>
+              </div>
+              <Button className="w-full justify-center" onClick={handleSaveClassroom}>
+                <Sparkles size={18} /> Lưu tên lớp
+              </Button>
+            </div>
+          </Card>
+
+          {/* Stats */}
+          <div className="grid gap-4">
+            <Card className="bg-white/90">
+              <p className="text-xs font-black uppercase tracking-widest text-[#7c5cff] mb-3">Thống kê lớp</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Học sinh", value: data!.students.length, emoji: "🧑‍🎓" },
+                  { label: "Tổ nhóm", value: data!.teams.length, emoji: "👥" },
+                  { label: "Hành động điểm", value: data!.pointActions.length, emoji: "⭐" },
+                  { label: "Phần thưởng", value: data!.rewards.length, emoji: "🎁" },
+                ].map(({ label, value, emoji }) => (
+                  <div key={label} className="rounded-2xl bg-[#f7f5ff] p-3 text-center">
+                    <p className="text-2xl">{emoji}</p>
+                    <p className="text-2xl font-black text-[#7c5cff]">{value}</p>
+                    <p className="text-xs font-bold text-[#6a6f91]">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="bg-white/90">
+              <p className="text-xs font-black uppercase tracking-widest text-[#7c5cff] mb-3">Xuất / Nhập dữ liệu</p>
+              <Button variant="ghost" className="w-full justify-center" onClick={handleExport}>
+                <Download size={18} /> Xuất JSON
+              </Button>
+            </Card>
           </div>
-          <Field label="🏫 Tên lớp"><Input value={draft.className} onChange={(e) => setDraft({ ...draft, className: e.target.value })} /></Field>
-          <Field label="👩‍🏫 Tên giáo viên"><Input value={draft.teacherName} onChange={(e) => setDraft({ ...draft, teacherName: e.target.value })} /></Field>
-          <Field label="📅 Năm học"><Input value={draft.schoolYear} onChange={(e) => setDraft({ ...draft, schoolYear: e.target.value })} /></Field>
-          <Button type="submit" className="w-full"><Sparkles size={18} />Lưu thay đổi</Button>
-        </form>
-      </Card>
+        </div>
+      )}
+
+      {/* ── DATABASE/SCHOOL-YEAR TAB ── */}
+      {activeTab === "database" && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Rename */}
+          <Card className="bg-white/90">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#f3efff] text-[#7c5cff]"><Settings size={22} /></div>
+              <div>
+                <h2 className="text-lg font-black text-[#273055]">Đổi tên / Năm học</h2>
+                <p className="text-xs text-[#6a6f91]">Tạo database ID mới — an toàn tuyệt đối</p>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              <Field label="🏫 Tên lớp mới">
+                <Input value={renameDraft.className} onChange={(e) => setRenameDraft({ ...renameDraft, className: e.target.value })} />
+              </Field>
+              <Field label="📅 Năm học mới">
+                <Input value={renameDraft.schoolYear} onChange={(e) => setRenameDraft({ ...renameDraft, schoolYear: e.target.value })} placeholder="VD: 2025-2026" />
+              </Field>
+              <div className="rounded-2xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800">
+                <strong>💾 Quy trình:</strong> Tạo database mới → copy toàn bộ dữ liệu → xóa database cũ. Không mất dữ liệu.
+              </div>
+              <Button className="w-full justify-center" onClick={handleRename} disabled={renaming || !renameDraft.className.trim() || !renameDraft.schoolYear.trim()}>
+                {renaming ? "Đang xử lý..." : <><PencilLine size={18} /> Đổi tên database</>}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Duplicate */}
+          <Card className="bg-white/90">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#f0fff4] text-emerald-600"><Copy size={22} /></div>
+              <div>
+                <h2 className="text-lg font-black text-[#273055]">Nhân bản database</h2>
+                <p className="text-xs text-[#6a6f91]">Tạo lớp mới từ lớp hiện tại</p>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              <Field label="🏫 Tên lớp mới">
+                <Input value={dupDraft.className} onChange={(e) => setDupDraft({ ...dupDraft, className: e.target.value })} placeholder="VD: Lớp 3A" />
+              </Field>
+              <Field label="📅 Năm học">
+                <Input value={dupDraft.schoolYear} onChange={(e) => setDupDraft({ ...dupDraft, schoolYear: e.target.value })} placeholder="VD: 2025-2026" />
+              </Field>
+              <div className="grid grid-cols-2 gap-2">
+                {(["settings-only", "full-copy"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setDupDraft({ ...dupDraft, mode })}
+                    className={`rounded-2xl border-2 p-3 text-left transition-all ${dupDraft.mode === mode ? "border-emerald-500 bg-emerald-50" : "border-[#e8e3ff] bg-white hover:border-emerald-300"}`}
+                  >
+                    <p className="font-black text-sm text-[#273055]">{mode === "settings-only" ? "📋 Chỉ cài đặt" : "📦 Bản sao đầy đủ"}</p>
+                    <p className="text-xs text-[#6a6f91] mt-1">{mode === "settings-only" ? "Giữ điểm, phần thưởng — không copy học sinh" : "Copy toàn bộ học sinh & lịch sử"}</p>
+                  </button>
+                ))}
+              </div>
+              <Button className="w-full justify-center bg-emerald-500 hover:bg-emerald-600" onClick={handleDuplicate} disabled={duplicating || !dupDraft.className.trim()}>
+                {duplicating ? "Đang nhân bản..." : <><Copy size={18} /> Nhân bản</>}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── DANGER ZONE ── */}
+      {activeTab === "danger" && (
+        <Card className="bg-white/90 border-2 border-rose-200">
+          <div className="mb-6 flex items-center gap-4">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-rose-100 text-rose-500">
+              <AlertTriangle size={26} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-rose-600">Vùng nguy hiểm</h2>
+              <p className="text-sm text-[#6a6f91]">Các thao tác không thể hoàn tác</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            {/* Export backup */}
+            <div className="rounded-2xl border border-[#e8e3ff] bg-[#fbfbff] p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-black text-[#273055]">📥 Sao lưu trước khi xóa</p>
+                <p className="text-sm text-[#6a6f91]">Xuất toàn bộ dữ liệu ra file JSON</p>
+              </div>
+              <Button variant="ghost" onClick={handleExport}><Download size={16} />Xuất</Button>
+            </div>
+
+            {/* Delete confirmation */}
+            <div className="rounded-2xl border-2 border-rose-200 bg-rose-50 p-5 grid gap-4">
+              <div>
+                <p className="font-black text-rose-700 text-lg">🗑️ Xóa lớp học này</p>
+                <p className="text-sm text-rose-600 mt-1">
+                  Xóa vĩnh viễn database <strong>{data!.classroomSettings.className}</strong> ({data!.classroomSettings.schoolYear}). Bao gồm {data!.students.length} học sinh và toàn bộ lịch sử.
+                </p>
+              </div>
+
+              {!deleteConfirm ? (
+                <Button
+                  className="justify-center bg-rose-500 hover:bg-rose-600 text-white w-full"
+                  onClick={() => setDeleteConfirm(true)}
+                >
+                  <Trash2 size={18} /> Tôi muốn xóa lớp này
+                </Button>
+              ) : (
+                <div className="grid gap-3">
+                  <p className="text-sm font-bold text-rose-700">
+                    Nhập tên lớp <strong className="font-black">"{data!.classroomSettings.className}"</strong> để xác nhận:
+                  </p>
+                  <Input
+                    value={deleteInput}
+                    onChange={(e) => setDeleteInput(e.target.value)}
+                    placeholder={data!.classroomSettings.className}
+                    className="border-rose-300 focus:ring-rose-400"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="ghost" onClick={() => { setDeleteConfirm(false); setDeleteInput(""); }}>
+                      Hủy bỏ
+                    </Button>
+                    <Button
+                      className="justify-center bg-rose-600 hover:bg-rose-700 text-white"
+                      onClick={handleDelete}
+                      disabled={deleteInput !== data!.classroomSettings.className || deleting}
+                    >
+                      {deleting ? "Đang xóa..." : <><Trash2 size={16} /> Xóa vĩnh viễn</>}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
     </Page>
   );
 }
 
-function OnboardingPage() {
-  const { updateClassroomSettings } = useAppData();
-  const [draft, setDraft] = useState({ id: "classroom-settings", className: "", teacherName: "", schoolYear: "" });
+export function ClassroomSelectorScreen() {
+  const { switchDatabase, createDatabase, importDatabase } = useAppData();
+  const [draft, setDraft] = useState({ className: "", teacherName: "", schoolYear: "" });
+  const [databases, setDatabases] = useState<any[]>([]);
+
+  // Fetch list of databases on mount
+  useEffect(() => {
+    import("./database/database.service").then((module) => {
+      module.databaseService.listDatabases().then(setDatabases);
+    });
+  }, []);
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importDatabase(file).catch((err) => alert(err.message));
+    }
+  };
+
   return (
     <div className="grid min-h-screen place-items-center p-4">
-      <Card className="w-full max-w-2xl bg-white/95">
-        <div className="text-center">
+      <Card className="w-full max-w-4xl bg-white/95">
+        <div className="text-center mb-8">
           <p className="text-sm font-black uppercase tracking-[0.2em] text-[#7c5cff]">🎉 Chào mừng đến với Lớp Học Vui!</p>
-          <h1 className="mt-2 text-3xl font-black text-[#273055]">Hãy thiết lập lớp học của bạn trước nhé!</h1>
+          <h1 className="mt-2 text-3xl font-black text-[#273055]">Chọn hoặc tạo lớp học mới</h1>
         </div>
-        <form className="mt-6 grid gap-4" onSubmit={(e) => { e.preventDefault(); updateClassroomSettings(draft); }}>
-          <Field label="🏫 Tên lớp"><Input value={draft.className} onChange={(e) => setDraft({ ...draft, className: e.target.value })} /></Field>
-          <Field label="👩‍🏫 Tên giáo viên"><Input value={draft.teacherName} onChange={(e) => setDraft({ ...draft, teacherName: e.target.value })} /></Field>
-          <Field label="📅 Năm học"><Input value={draft.schoolYear} onChange={(e) => setDraft({ ...draft, schoolYear: e.target.value })} /></Field>
-          <Button type="submit" className="w-full"><Rocket size={18} />Bắt đầu</Button>
-        </form>
+        
+        <div className="grid md:grid-cols-2 gap-8">
+          <div>
+            <h2 className="text-xl font-bold mb-4">Tạo lớp học mới</h2>
+            <form className="grid gap-4" onSubmit={(e) => { 
+              e.preventDefault(); 
+              const now = new Date().toISOString();
+              createDatabase({
+                className: draft.className,
+                schoolYear: draft.schoolYear,
+                teacher: {
+                  id: "teacher-" + Date.now(),
+                  name: draft.teacherName,
+                  createdAt: now,
+                  updatedAt: now
+                }
+              }); 
+            }}>
+              <Field label="🏫 Tên lớp"><Input required value={draft.className} onChange={(e) => setDraft({ ...draft, className: e.target.value })} /></Field>
+              <Field label="👩‍🏫 Tên giáo viên"><Input required value={draft.teacherName} onChange={(e) => setDraft({ ...draft, teacherName: e.target.value })} /></Field>
+              <Field label="📅 Năm học"><Input required value={draft.schoolYear} onChange={(e) => setDraft({ ...draft, schoolYear: e.target.value })} /></Field>
+              <Button type="submit" className="w-full"><Rocket size={18} />Bắt đầu</Button>
+            </form>
+            
+            <div className="mt-6 border-t pt-6">
+              <h2 className="text-xl font-bold mb-4">Nhập dữ liệu</h2>
+              <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dde2ff] bg-[#fbfbff] py-6 hover:bg-[#f0f4ff]">
+                <div className="flex flex-col items-center justify-center pb-2 pt-1 text-[#6a4feb]">
+                  <MonitorPlay size={32} className="mb-2" />
+                  <p className="text-sm font-bold">Bấm để tải tệp JSON lên</p>
+                </div>
+                <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+              </label>
+            </div>
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-bold mb-4">Lớp học gần đây</h2>
+            <div className="grid gap-3 h-full max-h-[400px] overflow-y-auto pr-2">
+              {databases.length === 0 ? (
+                <div className="text-center p-8 text-gray-500 bg-gray-50 rounded-xl border">Chưa có dữ liệu lớp học nào</div>
+              ) : (
+                databases.map(db => (
+                  <Card key={db.id} className="cursor-pointer hover:border-[#7c5cff] transition-colors" onClick={() => switchDatabase(db.id)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={db.className} size="md" />
+                        <div>
+                          <p className="font-bold text-[#273055]">{db.className}</p>
+                          <p className="text-sm text-gray-500">{db.schoolYear} • {db.teacherName}</p>
+                        </div>
+                      </div>
+                      <Badge>{db.studentCount} HS</Badge>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </Card>
     </div>
   );
@@ -594,8 +1021,8 @@ function teamName(teams: Team[], id: string | undefined, fallback: string) {
   return teams.find((team) => team.id === id)?.name ?? fallback;
 }
 
-function formatClassroomTitle(settings: { className: string; teacherName: string }) {
-  return `${settings.className} - ${settings.teacherName}`;
+function formatClassroomTitle(settings: { className: string; teacher: { name: string } }) {
+  return `${settings.className} - ${settings.teacher.name}`;
 }
 
 function newStudent(): Student {

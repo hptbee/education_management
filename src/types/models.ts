@@ -1,12 +1,24 @@
+export interface TeacherProfile {
+  id: string;
+  name: string;
+  avatar?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ClassroomSettings {
   id: string;
   className: string;
   classAvatar?: string;
-  teacherName: string;
-  teacherAvatar?: string;
+  teacher: TeacherProfile;
   schoolYear: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ParentInfo {
+  fullName?: string;
+  phoneNumber?: string;
 }
 
 export interface Student {
@@ -14,12 +26,16 @@ export interface Student {
   name: string;
   avatar?: string;
   dateOfBirth?: string;
-  gender?: "male" | "female";
+  gender?: "male" | "female" | "other" | "unknown";
+  hometown?: string;
   previousClass?: string;
   previousAchievements?: string;
   classroomRole?: string;
   potentialNote?: string;
   teamId?: string;
+  father?: ParentInfo;
+  mother?: ParentInfo;
+  phoneNumber?: string;
   points: number;
   totalRewards: number;
   createdAt: string;
