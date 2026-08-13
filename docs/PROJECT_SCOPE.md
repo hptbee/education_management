@@ -2303,3 +2303,29 @@ The final experience should feel like:
 It should not feel like:
 
 > **A traditional enterprise school management system or generic admin dashboard.**
+
+
+# ARCHITECTURAL INVARIANTS
+
+The following components are protected infrastructure:
+
+- AppLayout
+- Sidebar
+- Navigation
+- Routing
+- Active Classroom Context
+- Database Provider
+
+Feature agents may extend these components when necessary.
+
+Feature agents must NOT remove, bypass, or replace them unless explicitly requested.
+
+Every feature page must follow:
+
+Route
+  ↓
+AppLayout
+  ↓
+Sidebar + Shared UI
+  ↓
+Feature Page
