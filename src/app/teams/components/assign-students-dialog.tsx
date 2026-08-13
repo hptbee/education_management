@@ -16,13 +16,13 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  if (!isOpen || !team) return null
+  // Must be before any early return to follow Rules of Hooks
+  const eligible = useMemo(() => {
+    if (!team) return []
+    return allStudents.filter(s => s.teamId !== team.id && s.name.toLowerCase().includes(search.toLowerCase()))
+  }, [allStudents, team, search])
 
-  // Students not in this team (can be unassigned or in another team)
-  const eligible = useMemo(() =>
-    allStudents.filter(s => s.teamId !== team.id && s.name.toLowerCase().includes(search.toLowerCase())),
-    [allStudents, team.id, search]
-  )
+  if (!isOpen || !team) return null
 
   const toggle = (id: string) => {
     setSelected(prev => {
