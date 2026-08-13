@@ -27,6 +27,7 @@ export const viewport: Viewport = {
 }
 
 import { AppDataProvider } from '@/src/store/AppDataContext'
+import { Sidebar } from '@/components/sidebar'
 
 export default function RootLayout({
   children,
@@ -37,7 +38,12 @@ export default function RootLayout({
     <html lang="vi" className={`${nunito.variable} ${baloo.variable} bg-page`}>
       <body className="antialiased font-sans">
         <AppDataProvider>
-          {children}
+          <div className="flex h-screen overflow-hidden bg-page">
+            <Sidebar />
+            <main className="flex flex-1 flex-col overflow-hidden">
+              {children}
+            </main>
+          </div>
         </AppDataProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
