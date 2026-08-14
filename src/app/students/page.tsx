@@ -126,9 +126,9 @@ export default function StudentsPage() {
           !q ||
           s.name.toLowerCase().includes(q) ||
           s.hometown?.toLowerCase().includes(q) ||
+          s.address?.toLowerCase().includes(q) ||
           s.parent?.fullName?.toLowerCase().includes(q) ||
-          s.parent?.phoneNumber?.toLowerCase().includes(q) ||
-          s.parent?.zalo?.toLowerCase().includes(q)
+          s.parent?.phoneNumber?.toLowerCase().includes(q)
 
         const matchesGender = filterGender === 'all' || s.gender === filterGender
         const matchesTeam =
@@ -154,26 +154,25 @@ export default function StudentsPage() {
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Năm sinh phụ huynh', 'SĐT phụ huynh', 'Zalo phụ huynh'],
-      ['Nguyễn Văn A', '10/03/2018', 'Nam', 'Hà Nội', 'Nguyễn Văn B', '1990', '0901234567', '0901234567']
+      ['Stt', 'Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Số điện thoại di động', 'Địa chỉ'],
+      ['1', 'Nguyễn Minh Anh', '10/03/2018', 'Nữ', 'TP. Hồ Chí Minh', 'Nguyễn Thị Lan', '0901234567', 'Phú Nhuận, TP. Hồ Chí Minh']
     ])
+    
+    ws['!cols'] = [
+      { wch: 5 },  // Stt
+      { wch: 25 }, // Họ và tên
+      { wch: 15 }, // Ngày sinh
+      { wch: 10 }, // Giới tính
+      { wch: 20 }, // Quê quán
+      { wch: 25 }, // Họ tên phụ huynh
+      { wch: 20 }, // Số điện thoại di động
+      { wch: 40 }, // Địa chỉ
+    ]
+    
+    ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' }
+
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học sinh')
-    
-    const wsGuide = XLSX.utils.aoa_to_sheet([
-      ['Hướng dẫn nhập liệu'],
-      [''],
-      ['Cột', 'Yêu cầu', 'Ví dụ'],
-      ['Họ và tên', 'Bắt buộc. Tên đầy đủ của học sinh.', 'Nguyễn Văn A'],
-      ['Ngày sinh', 'Tuỳ chọn. Định dạng ngày/tháng/năm.', '10/03/2018'],
-      ['Giới tính', 'Tuỳ chọn. Nam hoặc Nữ.', 'Nam'],
-      ['Quê quán', 'Tuỳ chọn.', 'Hà Nội'],
-      ['Họ tên phụ huynh', 'Tuỳ chọn.', 'Nguyễn Văn B'],
-      ['Năm sinh phụ huynh', 'Tuỳ chọn.', '1990'],
-      ['SĐT phụ huynh', 'Tuỳ chọn. Bắt đầu bằng số 0.', '0901234567'],
-      ['Zalo phụ huynh', 'Tuỳ chọn.', '0901234567'],
-    ])
-    XLSX.utils.book_append_sheet(wb, wsGuide, 'Hướng dẫn')
 
     XLSX.writeFile(wb, 'DanhSachHocSinh_Template.xlsx')
   }

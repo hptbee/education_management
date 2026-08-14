@@ -18,9 +18,7 @@ export interface ClassroomSettings {
 
 export interface ParentInfo {
   fullName?: string;
-  yearOfBirth?: string;
   phoneNumber?: string;
-  zalo?: string;
 }
 
 export interface Student {
@@ -30,6 +28,7 @@ export interface Student {
   dateOfBirth?: string;
   gender?: "male" | "female" | "other" | "unknown";
   hometown?: string;
+  address?: string;
   previousClass?: string;
   previousAchievements?: string;
   classroomRole?: string;

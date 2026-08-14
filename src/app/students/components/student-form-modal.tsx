@@ -20,7 +20,7 @@ const defaultStudent = (): Student => ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   gender: 'unknown',
-  parent: { fullName: '', phoneNumber: '', yearOfBirth: '', zalo: '' },
+  parent: { fullName: '', phoneNumber: '' },
 })
 
 export function StudentFormModal({ isOpen, onClose, onSave, initialData }: StudentFormModalProps) {
@@ -31,7 +31,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
       if (initialData) {
         setFormData({
           ...initialData,
-          parent: initialData.parent || { fullName: '', phoneNumber: '', yearOfBirth: '', zalo: '' }
+          parent: initialData.parent || { fullName: '', phoneNumber: '' }
         })
       } else {
         setFormData(defaultStudent())
@@ -92,6 +92,10 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Quê quán</label>
                   <input value={formData.hometown || ''} onChange={e => setFormData({...formData, hometown: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" placeholder="Ví dụ: Hà Nội" />
                 </div>
+                <div className="col-span-2">
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Địa chỉ</label>
+                  <input value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" placeholder="Ví dụ: Quận 1, TP. HCM" />
+                </div>
               </div>
             </section>
 
@@ -116,23 +120,15 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
 
             {/* Section 3: Parents */}
             <section>
-              <h3 className="mb-3 text-sm font-bold text-brand-purple">Thông tin Phụ huynh</h3>
+              <h3 className="mb-3 text-sm font-bold text-brand-purple">Thông tin Phụ huynh (Bảo mật)</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Họ tên phụ huynh</label>
                   <input value={formData.parent?.fullName || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, fullName: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
                 </div>
                 <div className="col-span-2 md:col-span-1">
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Năm sinh</label>
-                  <input value={formData.parent?.yearOfBirth || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, yearOfBirth: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">SĐT phụ huynh</label>
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Số điện thoại di động</label>
                   <input value={formData.parent?.phoneNumber || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, phoneNumber: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Zalo phụ huynh</label>
-                  <input value={formData.parent?.zalo || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, zalo: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
                 </div>
               </div>
             </section>

@@ -17,6 +17,7 @@ type ImportStatus = 'valid' | 'invalid' | 'duplicate'
 
 interface PreviewRow {
   index: number
+  stt: string
   data: Partial<Student>
   status: ImportStatus
   message: string
@@ -31,26 +32,27 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Năm sinh phụ huynh', 'SĐT phụ huynh', 'Zalo phụ huynh'],
-      ['Nguyễn Văn A', '10/03/2018', 'Nam', 'Hà Nội', 'Nguyễn Văn B', '1990', '0901234567', '0901234567']
+      ['Stt', 'Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Số điện thoại di động', 'Địa chỉ'],
+      ['1', 'Nguyễn Minh Anh', '10/03/2018', 'Nữ', 'TP. Hồ Chí Minh', 'Nguyễn Thị Lan', '0901234567', 'Phú Nhuận, TP. Hồ Chí Minh']
     ])
+    
+    // Set column widths to make the template look better
+    ws['!cols'] = [
+      { wch: 5 },  // Stt
+      { wch: 25 }, // Họ và tên
+      { wch: 15 }, // Ngày sinh
+      { wch: 10 }, // Giới tính
+      { wch: 20 }, // Quê quán
+      { wch: 25 }, // Họ tên phụ huynh
+      { wch: 20 }, // Số điện thoại di động
+      { wch: 40 }, // Địa chỉ
+    ]
+    
+    // Attempting to freeze the top row
+    ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' }
+
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học sinh')
-    
-    const wsGuide = XLSX.utils.aoa_to_sheet([
-      ['Hướng dẫn nhập liệu'],
-      [''],
-      ['Cột', 'Yêu cầu', 'Ví dụ'],
-      ['Họ và tên', 'Bắt buộc. Tên đầy đủ của học sinh.', 'Nguyễn Văn A'],
-      ['Ngày sinh', 'Tuỳ chọn. Định dạng ngày/tháng/năm.', '10/03/2018'],
-      ['Giới tính', 'Tuỳ chọn. Nam hoặc Nữ.', 'Nam'],
-      ['Quê quán', 'Tuỳ chọn.', 'Hà Nội'],
-      ['Họ tên phụ huynh', 'Tuỳ chọn.', 'Nguyễn Văn B'],
-      ['Năm sinh phụ huynh', 'Tuỳ chọn.', '1990'],
-      ['SĐT phụ huynh', 'Tuỳ chọn. Bắt đầu bằng số 0.', '0901234567'],
-      ['Zalo phụ huynh', 'Tuỳ chọn.', '0901234567'],
-    ])
-    XLSX.utils.book_append_sheet(wb, wsGuide, 'Hướng dẫn')
 
     XLSX.writeFile(wb, 'DanhSachHocSinh_Template.xlsx')
   }
@@ -67,8 +69,23 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
       const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000))
       return date.toISOString().split('T')[0]
     }
-    // Try to parse string
-    return String(excelDate).trim()
+    
+    const str = String(excelDate).trim()
+    
+    // Try some common formats like DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+    if (dmyMatch) {
+      const [_, d, m, y] = dmyMatch
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+    }
+    
+    const ymdMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
+    if (ymdMatch) {
+      const [_, y, m, d] = ymdMatch
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+    }
+    
+    return str
   }
 
   const parseGender = (raw: string | undefined): 'male' | 'female' | 'other' | 'unknown' => {
@@ -109,16 +126,15 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
 
         const headers = (rawData[0] || []).map(normalizeString)
         
-        // Find indices
+        // Find indices based on requested columns + aliases
+        const sttIdx = headers.findIndex(h => h === 'stt' || h === 'số thứ tự' || h === 'no' || h === '#')
         const nameIdx = headers.findIndex(h => h.includes('họ và tên') || h.includes('họ tên') || h.includes('full name') || h.includes('student name') || h === 'name')
         const dobIdx = headers.findIndex(h => h.includes('ngày sinh') || h.includes('dob') || h.includes('date of birth'))
         const genderIdx = headers.findIndex(h => h.includes('giới tính') || h.includes('gender') || h.includes('sex'))
         const hometownIdx = headers.findIndex(h => h.includes('quê quán') || h.includes('hometown'))
-        
         const parentNameIdx = headers.findIndex(h => h.includes('họ tên phụ huynh') || h.includes('phụ huynh') || h.includes('parent name') || h === 'parent')
-        const parentYearIdx = headers.findIndex(h => h.includes('năm sinh phụ huynh') || h.includes('parent birth year') || h.includes('parent year of birth'))
-        const parentPhoneIdx = headers.findIndex(h => h.includes('sđt phụ huynh') || h.includes('số điện thoại phụ huynh') || h.includes('parent phone') || h.includes('phone'))
-        const parentZaloIdx = headers.findIndex(h => h.includes('zalo phụ huynh') || h.includes('zalo') || h.includes('parent zalo'))
+        const parentPhoneIdx = headers.findIndex(h => h.includes('số điện thoại di động') || h.includes('số điện thoại') || h.includes('sđt') || h.includes('sđt phụ huynh') || h.includes('phone') || h.includes('mobile') || h.includes('parent phone'))
+        const addressIdx = headers.findIndex(h => h.includes('địa chỉ') || h.includes('địa chỉ hiện tại') || h.includes('address'))
 
         const preview: PreviewRow[] = []
 
@@ -126,11 +142,13 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
           const row = rawData[i]
           if (!row || row.length === 0 || !row.some(c => !!c)) continue // skip empty rows
 
+          const rawStt = sttIdx >= 0 && row[sttIdx] ? String(row[sttIdx]) : ''
           const rawName = nameIdx >= 0 ? row[nameIdx] : undefined
           
           if (!rawName || String(rawName).trim() === '') {
             preview.push({
               index: i + 1,
+              stt: rawStt,
               data: {},
               status: 'invalid',
               message: 'Thiếu Họ và tên'
@@ -143,15 +161,14 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
             dateOfBirth: dobIdx >= 0 ? parseExcelDate(row[dobIdx]) : undefined,
             gender: genderIdx >= 0 ? parseGender(row[genderIdx]) : 'unknown',
             hometown: hometownIdx >= 0 && row[hometownIdx] ? String(row[hometownIdx]).trim() : undefined,
+            address: addressIdx >= 0 && row[addressIdx] ? String(row[addressIdx]).trim() : undefined,
             parent: {
               fullName: parentNameIdx >= 0 && row[parentNameIdx] ? String(row[parentNameIdx]).trim().replace(/\s+/g, ' ') : undefined,
-              yearOfBirth: parentYearIdx >= 0 && row[parentYearIdx] ? String(row[parentYearIdx]).trim() : undefined,
               phoneNumber: parentPhoneIdx >= 0 ? formatPhoneNumber(row[parentPhoneIdx]) : undefined,
-              zalo: parentZaloIdx >= 0 ? formatPhoneNumber(row[parentZaloIdx]) : undefined,
             },
           }
 
-          // Duplicate detection (normalized fullName + dateOfBirth, fallback to fullName)
+          // Duplicate detection (Primary: normalized fullName + dateOfBirth, Fallback: normalized fullName)
           const normNewName = normalizeString(parsedStudent.name)
           const isDup = existingStudents.some(es => {
               const normEsName = normalizeString(es.name)
@@ -163,6 +180,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
 
           preview.push({
             index: i + 1,
+            stt: rawStt,
             data: parsedStudent,
             status: isDup ? 'duplicate' : 'valid',
             message: isDup ? 'Học sinh đã tồn tại' : 'Hợp lệ'
@@ -189,6 +207,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
       dateOfBirth: r.data.dateOfBirth,
       gender: r.data.gender || 'unknown',
       hometown: r.data.hometown,
+      address: r.data.address,
       parent: r.data.parent || {},
       points: 0,
       totalRewards: 0,
@@ -206,7 +225,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 className="font-display text-xl font-extrabold text-slate-800">
             Nhập danh sách từ Excel
@@ -253,15 +272,17 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
               </div>
 
               <div className="flex flex-col gap-2 rounded-xl border border-slate-100 overflow-hidden">
-                <div className="grid grid-cols-[80px_1fr_120px] bg-slate-50 px-4 py-3 text-xs font-bold uppercase text-slate-500">
+                <div className="grid grid-cols-[60px_60px_1fr_120px] bg-slate-50 px-4 py-3 text-xs font-bold uppercase text-slate-500">
                   <span>Dòng</span>
+                  <span>Stt</span>
                   <span>Họ và tên</span>
                   <span>Trạng thái</span>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
                   {previewData.map((row, idx) => (
-                    <div key={idx} className="grid grid-cols-[80px_1fr_120px] border-t border-slate-50 px-4 py-3 text-sm">
+                    <div key={idx} className="grid grid-cols-[60px_60px_1fr_120px] border-t border-slate-50 px-4 py-3 text-sm">
                       <span className="font-semibold text-slate-500">{row.index}</span>
+                      <span className="font-semibold text-slate-400">{row.stt || '-'}</span>
                       <span className="font-bold text-slate-700">{row.data.name || '(Trống)'}</span>
                       <span className={`font-semibold ${row.status === 'valid' ? 'text-green-600' : row.status === 'duplicate' ? 'text-amber-500' : 'text-red-500'}`}>
                         {row.message}

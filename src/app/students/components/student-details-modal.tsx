@@ -82,13 +82,10 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
                     <p className="font-bold text-slate-700">Họ tên: <span className="font-normal text-slate-500">{student.parent?.fullName || 'Trống'}</span></p>
                   </div>
                   <div className="mb-2">
-                    <p className="font-bold text-slate-700">Năm sinh: <span className="font-normal text-slate-500">{student.parent?.yearOfBirth || 'Trống'}</span></p>
-                  </div>
-                  <div className="mb-2">
                     <p className="font-bold text-slate-700">SĐT: <span className="font-normal text-slate-500">{student.parent?.phoneNumber || 'Trống'}</span></p>
                   </div>
                   <div>
-                    <p className="font-bold text-slate-700">Zalo: <span className="font-normal text-slate-500">{student.parent?.zalo || 'Trống'}</span></p>
+                    <p className="font-bold text-slate-700">Địa chỉ: <span className="font-normal text-slate-500">{student.address || 'Trống'}</span></p>
                   </div>
                 </div>
               </section>
