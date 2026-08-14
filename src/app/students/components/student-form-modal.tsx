@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Upload, Trash2 } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
+import { getStudentAvatar } from '@/src/utils/student'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -25,6 +26,7 @@ const defaultStudent = (): Student => ({
 
 export function StudentFormModal({ isOpen, onClose, onSave, initialData }: StudentFormModalProps) {
   const [formData, setFormData] = useState<Student>(defaultStudent())
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -52,6 +54,25 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
     onClose()
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string
+      setFormData(prev => ({ ...prev, avatar: base64String }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveAvatar = () => {
+    setFormData(prev => ({ ...prev, avatar: undefined }))
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl">
@@ -67,6 +88,44 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
         <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
           <form id="student-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
             
+            {/* Avatar Section */}
+            <section className="flex flex-col items-center justify-center">
+              <div className="relative group">
+                <img
+                  src={getStudentAvatar(formData)}
+                  alt="Avatar preview"
+                  className="size-24 rounded-full object-cover ring-4 ring-slate-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  <Upload className="size-6 text-white" />
+                </button>
+                {formData.avatar && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    className="absolute bottom-0 right-0 rounded-full bg-red-100 p-1.5 text-red-600 shadow-sm transition hover:bg-red-200"
+                    title="Xóa ảnh"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <p className="mt-3 text-xs font-semibold text-slate-500">
+                Click vào ảnh để đổi ảnh đại diện
+              </p>
+            </section>
+
             {/* Section 1: Basic */}
             <section>
               <h3 className="mb-3 text-sm font-bold text-brand-purple">Thông tin cơ bản</h3>
