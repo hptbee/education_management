@@ -10,6 +10,7 @@ import { TeamFormDialog } from './components/team-form-dialog'
 import { DeleteTeamDialog } from './components/delete-team-dialog'
 import { TeamPointsDialog } from './components/team-points-dialog'
 import { TeamDetails } from './components/team-details'
+import { RandomizeDialog } from './components/randomize-dialog'
 
 import { TeamCard } from './components/team-card'
 import { TeamRankingList } from './components/team-ranking-list'
@@ -24,6 +25,7 @@ export default function TeamsPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isPointsOpen, setIsPointsOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [isRandomizeOpen, setIsRandomizeOpen] = useState(false)
 
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
 
@@ -106,7 +108,41 @@ export default function TeamsPage() {
   }
 
   const handleRandomize = () => {
-    alert("Tính năng chia ngẫu nhiên đang được phát triển!")
+    const unassigned = students.filter(s => !s.teamId)
+    if (teams.length === 0) {
+      alert("Vui lòng tạo ít nhất 1 nhóm trước khi chia.")
+      return
+    }
+    if (unassigned.length === 0) {
+      alert("Tất cả học sinh đã có nhóm.")
+      return
+    }
+    setIsRandomizeOpen(true)
+  }
+
+  const handleRandomizeConfirm = () => {
+    const unassigned = students.filter(s => !s.teamId)
+    if (unassigned.length === 0 || teams.length === 0) return
+
+    // Create a shuffled copy of unassigned students
+    const shuffled = [...unassigned].sort(() => Math.random() - 0.5)
+
+    // Track current team sizes
+    const teamSizes = teams.map(t => ({ id: t.id, count: getMembers(t.id).length }))
+
+    const now = new Date().toISOString()
+
+    shuffled.forEach(student => {
+      // Find the team with the minimum members
+      teamSizes.sort((a, b) => a.count - b.count)
+      const targetTeamId = teamSizes[0].id
+
+      // Update student
+      saveStudent({ ...student, teamId: targetTeamId, updatedAt: now })
+      
+      // Increment size for the next iteration
+      teamSizes[0].count++
+    })
   }
 
   if (!isLoaded || !classroom) return null
@@ -229,6 +265,14 @@ export default function TeamsPage() {
         isOpen={isPointsOpen}
         onClose={() => setIsPointsOpen(false)}
         team={selectedTeam}
+      />
+
+      <RandomizeDialog
+        isOpen={isRandomizeOpen}
+        onClose={() => setIsRandomizeOpen(false)}
+        onConfirm={handleRandomizeConfirm}
+        unassignedCount={students.filter(s => !s.teamId).length}
+        teamCount={teams.length}
       />
 
       <TeamDetails
