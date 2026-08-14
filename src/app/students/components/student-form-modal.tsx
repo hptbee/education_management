@@ -20,8 +20,7 @@ const defaultStudent = (): Student => ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   gender: 'unknown',
-  father: { fullName: '', phoneNumber: '' },
-  mother: { fullName: '', phoneNumber: '' },
+  parent: { fullName: '', phoneNumber: '', yearOfBirth: '', zalo: '' },
 })
 
 export function StudentFormModal({ isOpen, onClose, onSave, initialData }: StudentFormModalProps) {
@@ -32,8 +31,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
       if (initialData) {
         setFormData({
           ...initialData,
-          father: initialData.father || { fullName: '', phoneNumber: '' },
-          mother: initialData.mother || { fullName: '', phoneNumber: '' }
+          parent: initialData.parent || { fullName: '', phoneNumber: '', yearOfBirth: '', zalo: '' }
         })
       } else {
         setFormData(defaultStudent())
@@ -120,25 +118,21 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
             <section>
               <h3 className="mb-3 text-sm font-bold text-brand-purple">Thông tin Phụ huynh</h3>
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Họ tên Cha</label>
-                  <input value={formData.father?.fullName || ''} onChange={e => setFormData({...formData, father: { ...formData.father, fullName: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                <div className="col-span-2 md:col-span-1">
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Họ tên phụ huynh</label>
+                  <input value={formData.parent?.fullName || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, fullName: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">SĐT Cha</label>
-                  <input value={formData.father?.phoneNumber || ''} onChange={e => setFormData({...formData, father: { ...formData.father, phoneNumber: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                <div className="col-span-2 md:col-span-1">
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Năm sinh</label>
+                  <input value={formData.parent?.yearOfBirth || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, yearOfBirth: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Họ tên Mẹ</label>
-                  <input value={formData.mother?.fullName || ''} onChange={e => setFormData({...formData, mother: { ...formData.mother, fullName: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                <div className="col-span-2 md:col-span-1">
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">SĐT phụ huynh</label>
+                  <input value={formData.parent?.phoneNumber || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, phoneNumber: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">SĐT Mẹ</label>
-                  <input value={formData.mother?.phoneNumber || ''} onChange={e => setFormData({...formData, mother: { ...formData.mother, phoneNumber: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
-                </div>
-                <div className="col-span-2">
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">SĐT Liên hệ chính</label>
-                  <input value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                <div className="col-span-2 md:col-span-1">
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Zalo phụ huynh</label>
+                  <input value={formData.parent?.zalo || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, zalo: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
                 </div>
               </div>
             </section>

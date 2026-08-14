@@ -18,7 +18,9 @@ export interface ClassroomSettings {
 
 export interface ParentInfo {
   fullName?: string;
+  yearOfBirth?: string;
   phoneNumber?: string;
+  zalo?: string;
 }
 
 export interface Student {
@@ -33,9 +35,7 @@ export interface Student {
   classroomRole?: string;
   potentialNote?: string;
   teamId?: string;
-  father?: ParentInfo;
-  mother?: ParentInfo;
-  phoneNumber?: string;
+  parent?: ParentInfo;
   points: number;
   totalRewards: number;
   createdAt: string;

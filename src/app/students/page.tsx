@@ -126,9 +126,9 @@ export default function StudentsPage() {
           !q ||
           s.name.toLowerCase().includes(q) ||
           s.hometown?.toLowerCase().includes(q) ||
-          s.phoneNumber?.toLowerCase().includes(q) ||
-          s.father?.fullName?.toLowerCase().includes(q) ||
-          s.mother?.fullName?.toLowerCase().includes(q)
+          s.parent?.fullName?.toLowerCase().includes(q) ||
+          s.parent?.phoneNumber?.toLowerCase().includes(q) ||
+          s.parent?.zalo?.toLowerCase().includes(q)
 
         const matchesGender = filterGender === 'all' || s.gender === filterGender
         const matchesTeam =
@@ -154,11 +154,27 @@ export default function StudentsPage() {
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Full Name', 'Date of Birth', 'Gender', 'Hometown', 'Previous Class',
-        'Father Name', 'Father Phone', 'Mother Name', 'Mother Phone', 'Primary Contact Phone'],
+      ['Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Năm sinh phụ huynh', 'SĐT phụ huynh', 'Zalo phụ huynh'],
+      ['Nguyễn Văn A', '10/03/2018', 'Nam', 'Hà Nội', 'Nguyễn Văn B', '1990', '0901234567', '0901234567']
     ])
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Template')
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học sinh')
+    
+    const wsGuide = XLSX.utils.aoa_to_sheet([
+      ['Hướng dẫn nhập liệu'],
+      [''],
+      ['Cột', 'Yêu cầu', 'Ví dụ'],
+      ['Họ và tên', 'Bắt buộc. Tên đầy đủ của học sinh.', 'Nguyễn Văn A'],
+      ['Ngày sinh', 'Tuỳ chọn. Định dạng ngày/tháng/năm.', '10/03/2018'],
+      ['Giới tính', 'Tuỳ chọn. Nam hoặc Nữ.', 'Nam'],
+      ['Quê quán', 'Tuỳ chọn.', 'Hà Nội'],
+      ['Họ tên phụ huynh', 'Tuỳ chọn.', 'Nguyễn Văn B'],
+      ['Năm sinh phụ huynh', 'Tuỳ chọn.', '1990'],
+      ['SĐT phụ huynh', 'Tuỳ chọn. Bắt đầu bằng số 0.', '0901234567'],
+      ['Zalo phụ huynh', 'Tuỳ chọn.', '0901234567'],
+    ])
+    XLSX.utils.book_append_sheet(wb, wsGuide, 'Hướng dẫn')
+
     XLSX.writeFile(wb, 'DanhSachHocSinh_Template.xlsx')
   }
 

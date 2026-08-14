@@ -31,16 +31,33 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Full Name', 'Date of Birth', 'Gender', 'Hometown', 'Previous Class', 'Father Name', 'Father Phone', 'Mother Name', 'Mother Phone', 'Primary Contact Phone']
+      ['Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Năm sinh phụ huynh', 'SĐT phụ huynh', 'Zalo phụ huynh'],
+      ['Nguyễn Văn A', '10/03/2018', 'Nam', 'Hà Nội', 'Nguyễn Văn B', '1990', '0901234567', '0901234567']
     ])
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Template')
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học sinh')
+    
+    const wsGuide = XLSX.utils.aoa_to_sheet([
+      ['Hướng dẫn nhập liệu'],
+      [''],
+      ['Cột', 'Yêu cầu', 'Ví dụ'],
+      ['Họ và tên', 'Bắt buộc. Tên đầy đủ của học sinh.', 'Nguyễn Văn A'],
+      ['Ngày sinh', 'Tuỳ chọn. Định dạng ngày/tháng/năm.', '10/03/2018'],
+      ['Giới tính', 'Tuỳ chọn. Nam hoặc Nữ.', 'Nam'],
+      ['Quê quán', 'Tuỳ chọn.', 'Hà Nội'],
+      ['Họ tên phụ huynh', 'Tuỳ chọn.', 'Nguyễn Văn B'],
+      ['Năm sinh phụ huynh', 'Tuỳ chọn.', '1990'],
+      ['SĐT phụ huynh', 'Tuỳ chọn. Bắt đầu bằng số 0.', '0901234567'],
+      ['Zalo phụ huynh', 'Tuỳ chọn.', '0901234567'],
+    ])
+    XLSX.utils.book_append_sheet(wb, wsGuide, 'Hướng dẫn')
+
     XLSX.writeFile(wb, 'DanhSachHocSinh_Template.xlsx')
   }
 
   const normalizeString = (str: string | undefined | null) => {
     if (!str) return ''
-    return String(str).trim().toLowerCase()
+    return String(str).trim().toLowerCase().replace(/\s+/g, ' ')
   }
 
   const parseExcelDate = (excelDate: any) => {
@@ -60,6 +77,16 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
     if (['nữ', 'nu', 'female', 'f'].includes(s)) return 'female'
     if (['khác', 'other'].includes(s)) return 'other'
     return 'unknown'
+  }
+
+  const formatPhoneNumber = (raw: any) => {
+      if (!raw) return undefined;
+      let str = String(raw).trim();
+      // If Excel stripped the leading zero because it treated it as a number
+      if (typeof raw === 'number' && str.length >= 8 && str.length <= 10 && !str.startsWith('0')) {
+          str = '0' + str;
+      }
+      return str;
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,17 +110,15 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
         const headers = (rawData[0] || []).map(normalizeString)
         
         // Find indices
-        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('họ và tên') || h.includes('họ tên') || h === 'full name')
-        const dobIdx = headers.findIndex(h => h.includes('dob') || h.includes('date of birth') || h.includes('ngày sinh'))
-        const genderIdx = headers.findIndex(h => h.includes('gender') || h.includes('sex') || h.includes('giới tính'))
-        const hometownIdx = headers.findIndex(h => h.includes('hometown') || h.includes('quê quán'))
-        const prevClassIdx = headers.findIndex(h => h.includes('previous class') || h.includes('lớp cũ'))
+        const nameIdx = headers.findIndex(h => h.includes('họ và tên') || h.includes('họ tên') || h.includes('full name') || h.includes('student name') || h === 'name')
+        const dobIdx = headers.findIndex(h => h.includes('ngày sinh') || h.includes('dob') || h.includes('date of birth'))
+        const genderIdx = headers.findIndex(h => h.includes('giới tính') || h.includes('gender') || h.includes('sex'))
+        const hometownIdx = headers.findIndex(h => h.includes('quê quán') || h.includes('hometown'))
         
-        const fatherNameIdx = headers.findIndex(h => h.includes('father name') || h.includes('họ tên cha') || h === 'cha')
-        const fatherPhoneIdx = headers.findIndex(h => h.includes('father phone') || h.includes('sđt cha') || h.includes('điện thoại cha'))
-        const motherNameIdx = headers.findIndex(h => h.includes('mother name') || h.includes('họ tên mẹ') || h === 'mẹ')
-        const motherPhoneIdx = headers.findIndex(h => h.includes('mother phone') || h.includes('sđt mẹ') || h.includes('điện thoại mẹ'))
-        const primaryPhoneIdx = headers.findIndex(h => h.includes('primary contact') || h.includes('phone') || h.includes('sđt') || h.includes('liên hệ'))
+        const parentNameIdx = headers.findIndex(h => h.includes('họ tên phụ huynh') || h.includes('phụ huynh') || h.includes('parent name') || h === 'parent')
+        const parentYearIdx = headers.findIndex(h => h.includes('năm sinh phụ huynh') || h.includes('parent birth year') || h.includes('parent year of birth'))
+        const parentPhoneIdx = headers.findIndex(h => h.includes('sđt phụ huynh') || h.includes('số điện thoại phụ huynh') || h.includes('parent phone') || h.includes('phone'))
+        const parentZaloIdx = headers.findIndex(h => h.includes('zalo phụ huynh') || h.includes('zalo') || h.includes('parent zalo'))
 
         const preview: PreviewRow[] = []
 
@@ -101,7 +126,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
           const row = rawData[i]
           if (!row || row.length === 0 || !row.some(c => !!c)) continue // skip empty rows
 
-          const rawName = row[nameIdx]
+          const rawName = nameIdx >= 0 ? row[nameIdx] : undefined
           
           if (!rawName || String(rawName).trim() === '') {
             preview.push({
@@ -114,27 +139,27 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
           }
 
           const parsedStudent: Partial<Student> = {
-            name: String(rawName).trim(),
-            dateOfBirth: parseExcelDate(row[dobIdx]),
-            gender: parseGender(row[genderIdx]),
-            hometown: row[hometownIdx] ? String(row[hometownIdx]).trim() : undefined,
-            previousClass: row[prevClassIdx] ? String(row[prevClassIdx]).trim() : undefined,
-            father: {
-              fullName: row[fatherNameIdx] ? String(row[fatherNameIdx]).trim() : undefined,
-              phoneNumber: row[fatherPhoneIdx] ? String(row[fatherPhoneIdx]).trim() : undefined,
+            name: String(rawName).trim().replace(/\s+/g, ' '),
+            dateOfBirth: dobIdx >= 0 ? parseExcelDate(row[dobIdx]) : undefined,
+            gender: genderIdx >= 0 ? parseGender(row[genderIdx]) : 'unknown',
+            hometown: hometownIdx >= 0 && row[hometownIdx] ? String(row[hometownIdx]).trim() : undefined,
+            parent: {
+              fullName: parentNameIdx >= 0 && row[parentNameIdx] ? String(row[parentNameIdx]).trim().replace(/\s+/g, ' ') : undefined,
+              yearOfBirth: parentYearIdx >= 0 && row[parentYearIdx] ? String(row[parentYearIdx]).trim() : undefined,
+              phoneNumber: parentPhoneIdx >= 0 ? formatPhoneNumber(row[parentPhoneIdx]) : undefined,
+              zalo: parentZaloIdx >= 0 ? formatPhoneNumber(row[parentZaloIdx]) : undefined,
             },
-            mother: {
-              fullName: row[motherNameIdx] ? String(row[motherNameIdx]).trim() : undefined,
-              phoneNumber: row[motherPhoneIdx] ? String(row[motherPhoneIdx]).trim() : undefined,
-            },
-            phoneNumber: row[primaryPhoneIdx] ? String(row[primaryPhoneIdx]).trim() : undefined,
           }
 
-          // Duplicate detection
-          const isDup = existingStudents.some(es => 
-            normalizeString(es.name) === normalizeString(parsedStudent.name) &&
-            (parsedStudent.dateOfBirth ? es.dateOfBirth === parsedStudent.dateOfBirth : true)
-          )
+          // Duplicate detection (normalized fullName + dateOfBirth, fallback to fullName)
+          const normNewName = normalizeString(parsedStudent.name)
+          const isDup = existingStudents.some(es => {
+              const normEsName = normalizeString(es.name)
+              if (parsedStudent.dateOfBirth && es.dateOfBirth) {
+                  return normEsName === normNewName && es.dateOfBirth === parsedStudent.dateOfBirth
+              }
+              return normEsName === normNewName
+          })
 
           preview.push({
             index: i + 1,
@@ -164,10 +189,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
       dateOfBirth: r.data.dateOfBirth,
       gender: r.data.gender || 'unknown',
       hometown: r.data.hometown,
-      previousClass: r.data.previousClass,
-      father: r.data.father || { fullName: '', phoneNumber: '' },
-      mother: r.data.mother || { fullName: '', phoneNumber: '' },
-      phoneNumber: r.data.phoneNumber,
+      parent: r.data.parent || {},
       points: 0,
       totalRewards: 0,
       createdAt: now,

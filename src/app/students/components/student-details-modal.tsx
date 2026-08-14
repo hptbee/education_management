@@ -78,17 +78,17 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
               <section className="flex flex-col gap-3">
                 <h4 className="text-sm font-bold text-brand-purple">Thông tin Phụ huynh (Bảo mật)</h4>
                 <div className="rounded-xl border border-slate-100 bg-white p-4 text-sm">
-                  <div className="mb-4">
-                    <p className="font-bold text-slate-700">Cha: {student.father?.fullName || 'Trống'}</p>
-                    <p className="text-slate-500">SĐT: {student.father?.phoneNumber || 'Trống'}</p>
+                  <div className="mb-2">
+                    <p className="font-bold text-slate-700">Họ tên: <span className="font-normal text-slate-500">{student.parent?.fullName || 'Trống'}</span></p>
                   </div>
-                  <div className="mb-4 border-t border-slate-100 pt-3">
-                    <p className="font-bold text-slate-700">Mẹ: {student.mother?.fullName || 'Trống'}</p>
-                    <p className="text-slate-500">SĐT: {student.mother?.phoneNumber || 'Trống'}</p>
+                  <div className="mb-2">
+                    <p className="font-bold text-slate-700">Năm sinh: <span className="font-normal text-slate-500">{student.parent?.yearOfBirth || 'Trống'}</span></p>
                   </div>
-                  <div className="border-t border-slate-100 pt-3">
-                    <p className="font-bold text-slate-700">SĐT Liên hệ chính:</p>
-                    <p className="text-slate-500">{student.phoneNumber || 'Trống'}</p>
+                  <div className="mb-2">
+                    <p className="font-bold text-slate-700">SĐT: <span className="font-normal text-slate-500">{student.parent?.phoneNumber || 'Trống'}</span></p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-700">Zalo: <span className="font-normal text-slate-500">{student.parent?.zalo || 'Trống'}</span></p>
                   </div>
                 </div>
               </section>
