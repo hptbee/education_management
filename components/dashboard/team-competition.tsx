@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { UsersRound, Star, ArrowRight, Trophy } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
