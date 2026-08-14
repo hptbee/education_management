@@ -16,6 +16,7 @@ interface TeamPointsDialogProps {
 export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProps) {
   const { updateTeamScore } = useAppData()
   const [customAmount, setCustomAmount] = useState('')
+  const [note, setNote] = useState('')
   const [mode, setMode] = useState<'add' | 'subtract'>('add')
 
   if (!isOpen || !team) return null
@@ -24,7 +25,8 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
     const delta = mode === 'add' ? amount : -amount
     // Don't allow score to go below 0
     if (team.score + delta < 0) return
-    updateTeamScore(team.id, delta)
+    updateTeamScore(team.id, delta, note.trim() || undefined)
+    setNote('')
     onClose()
   }
 
@@ -33,8 +35,9 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
     if (isNaN(n) || n <= 0) return
     const delta = mode === 'add' ? n : -n
     if (team.score + delta < 0) return
-    updateTeamScore(team.id, delta)
+    updateTeamScore(team.id, delta, note.trim() || undefined)
     setCustomAmount('')
+    setNote('')
     onClose()
   }
 
@@ -90,6 +93,18 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
                 {mode === 'add' ? '+' : '-'}{amt}
               </button>
             ))}
+          </div>
+
+          {/* Note */}
+          <div>
+            <input
+              type="text"
+              placeholder="Ghi chú (tùy chọn)..."
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple/50"
+              onKeyDown={e => e.key === 'Enter' && customAmount && handleCustom()}
+            />
           </div>
 
           {/* Custom amount */}

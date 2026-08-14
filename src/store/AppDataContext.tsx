@@ -32,7 +32,7 @@ interface AppDataContextValue {
   deleteStudent: (studentId: string) => void;
   saveTeam: (team: Team) => void;
   deleteTeam: (teamId: string) => void;
-  updateTeamScore: (teamId: string, delta: number) => void;
+  updateTeamScore: (teamId: string, delta: number, note?: string) => void;
   resetTeamScore: (teamId: string) => void;
   savePointAction: (action: PointAction) => void;
   deletePointAction: (actionId: string) => void;
@@ -189,7 +189,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             student.teamId === teamId ? { ...student, teamId: undefined } : student,
           ),
         })),
-      updateTeamScore: (teamId, delta) =>
+      updateTeamScore: (teamId, delta, note) =>
         setData((current) => {
           const history: TeamScoreHistory = {
             id: createId("team-score"),
@@ -197,6 +197,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             points: delta,
             actionName: delta > 0 ? "Cộng điểm tổ" : "Trừ điểm tổ",
             createdAt: new Date().toISOString(),
+            note,
           };
           return {
             ...current,

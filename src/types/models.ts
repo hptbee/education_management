@@ -98,6 +98,7 @@ export interface TeamScoreHistory {
   points: number;
   actionName: string;
   createdAt: string;
+  note?: string;
 }
 
 export interface Recognition {

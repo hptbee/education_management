@@ -161,6 +161,9 @@ export function TeamDetails({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-700">{h.actionName}</p>
+                      {h.note && (
+                        <p className="text-sm text-slate-600 italic mt-0.5 mb-1">{h.note}</p>
+                      )}
                       <p className="text-xs font-semibold text-slate-400">{formatDate(h.createdAt)}</p>
                     </div>
                   </div>
