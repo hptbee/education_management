@@ -5,6 +5,7 @@ import { Plus, Trophy, Users, Star, Medal, Edit2, Trash2 } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import type { Team, Student } from '@/src/types/models'
+import { getStudentAvatar } from '@/src/utils/student'
 
 import { TeamFormDialog } from './components/team-form-dialog'
 import { DeleteTeamDialog } from './components/delete-team-dialog'
@@ -90,7 +91,7 @@ function TeamCard({
           <>
             <div className="flex -space-x-2">
               {previewAvatars.map(s => (
-                <img key={s.id} src={s.avatar || '/placeholder.svg'} alt={s.name}
+                <img key={s.id} src={getStudentAvatar(s)} alt={s.name}
                   className="size-7 rounded-full border-2 border-white object-cover" />
               ))}
             </div>

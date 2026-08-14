@@ -2,6 +2,7 @@
 
 import { Star, Eye, Edit2, Trash2 } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
+import { getStudentAvatar } from '@/src/utils/student'
 
 const TEAM_COLORS = [
   { ring: 'ring-tot-1/30', badge: 'bg-pink-100 text-pink-700', dot: 'bg-pink-400' },
@@ -66,7 +67,7 @@ export function StudentCard({ student, teams, onView, onEdit, onDelete }: Studen
       {/* Avatar */}
       <div className="relative">
         <img
-          src={student.avatar || '/placeholder.svg'}
+          src={getStudentAvatar(student)}
           alt={student.name}
           className={`size-20 rounded-full border-2 border-white object-cover ring-4 shadow-sm ${gender.ring}`}
           onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg' }}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, ArrowRight } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
+import { getStudentAvatar } from '@/src/utils/student'
 
 interface MoveStudentDialogProps {
   isOpen: boolean
@@ -40,7 +41,7 @@ export function MoveStudentDialog({ isOpen, onClose, onMove, student, teams }: M
           {/* Student info */}
           <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
             <img
-              src={student.avatar || '/placeholder.svg'}
+              src={getStudentAvatar(student)}
               alt={student.name}
               className="size-11 rounded-full object-cover ring-2 ring-white"
             />

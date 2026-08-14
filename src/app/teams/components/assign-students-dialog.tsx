@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { X, Search, Check } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
+import { getStudentAvatar } from '@/src/utils/student'
 
 interface AssignStudentsDialogProps {
   isOpen: boolean
@@ -82,7 +83,7 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
                     }`}
                   >
                     <img
-                      src={s.avatar || '/placeholder.svg'}
+                      src={getStudentAvatar(s)}
                       alt={s.name}
                       className="size-9 rounded-full object-cover ring-2 ring-white"
                     />

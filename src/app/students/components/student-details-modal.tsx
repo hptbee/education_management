@@ -2,6 +2,7 @@
 
 import { X, Star, Trophy, Target } from 'lucide-react'
 import type { Student } from '@/src/types/models'
+import { getStudentAvatar } from '@/src/utils/student'
 
 interface StudentDetailsModalProps {
   isOpen: boolean
@@ -36,7 +37,7 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
             {/* Header Profile */}
             <div className="flex items-center gap-5 rounded-2xl bg-slate-50 p-5 border border-slate-100">
               <img
-                src={student.avatar || '/placeholder.svg'}
+                src={getStudentAvatar(student)}
                 alt={student.name}
                 className={`size-24 rounded-full object-cover ring-4 ${
                   student.gender === 'female' ? 'ring-pink-100' : 'ring-sky-100'

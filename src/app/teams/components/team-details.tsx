@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Plus, Star, ArrowLeftRight, UserMinus, History } from 'lucide-react'
 import type { Student, Team, TeamScoreHistory } from '@/src/types/models'
+import { getStudentAvatar } from '@/src/utils/student'
 import { AssignStudentsDialog } from './assign-students-dialog'
 import { MoveStudentDialog } from './move-student-dialog'
 
@@ -120,7 +121,7 @@ export function TeamDetails({
                 members.map(student => (
                   <div key={student.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3">
                     <img
-                      src={student.avatar || '/placeholder.svg'}
+                      src={getStudentAvatar(student)}
                       alt={student.name}
                       className="size-10 rounded-full object-cover ring-2 ring-slate-100"
                     />
