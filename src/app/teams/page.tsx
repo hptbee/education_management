@@ -217,6 +217,7 @@ export default function TeamsPage() {
                   totalTeams={sortedTeams.length}
                   highestScore={highestScore}
                   onEdit={() => handleOpenEdit(team)}
+                  onDelete={() => handleOpenDelete(team)}
                   onViewDetails={() => handleOpenDetails(team)}
                   onViewMembers={() => handleOpenDetails(team)}
                 />

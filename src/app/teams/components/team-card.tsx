@@ -1,4 +1,4 @@
-import { Users, Edit2 } from 'lucide-react'
+import { Users, Edit2, Trash2 } from 'lucide-react'
 import type { Team, Student } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
 import { getTeamMotivationMessage } from '@/src/utils/teams'
@@ -10,6 +10,7 @@ interface TeamCardProps {
   totalTeams: number
   highestScore: number
   onEdit: () => void
+  onDelete: () => void
   onViewDetails: () => void
   onViewMembers: () => void
 }
@@ -21,6 +22,7 @@ export function TeamCard({
   totalTeams,
   highestScore,
   onEdit,
+  onDelete,
   onViewDetails,
   onViewMembers,
 }: TeamCardProps) {
@@ -43,13 +45,23 @@ export function TeamCard({
           <Users className="size-5 text-slate-700" />
           <h3 className="font-display text-lg font-extrabold text-slate-800">{team.name}</h3>
         </div>
-        <button
-          onClick={onEdit}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-brand-purple transition hover:bg-brand-purple/10"
-        >
-          <Edit2 className="size-3.5" />
-          Sửa
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEdit}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-brand-purple transition hover:bg-brand-purple/10"
+            title="Sửa nhóm"
+          >
+            <Edit2 className="size-3.5" />
+            Sửa
+          </button>
+          <button
+            onClick={onDelete}
+            className="flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+            title="Xóa nhóm"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
