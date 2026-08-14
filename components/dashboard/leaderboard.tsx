@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { Crown, Star, ArrowRight } from 'lucide-react'
-import { leaderboard, totColors } from '@/lib/mock-data'
+import { useAppData } from '@/src/store/AppDataContext'
+import { getStudentAvatar } from '@/src/utils/student'
 
 const rankBadge: Record<number, string> = {
   1: 'bg-gradient-to-b from-amber-300 to-amber-500 text-white',
@@ -14,6 +16,13 @@ const pointColor: Record<number, string> = {
 }
 
 export function Leaderboard() {
+  const { data } = useAppData()
+  const students = data?.students || []
+  const teams = data?.teams || []
+
+  // Top 10 students by points
+  const topStudents = [...students].sort((a, b) => b.points - a.points).slice(0, 10)
+
   return (
     <section className="flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
       <header className="mb-4 flex items-center gap-2">
@@ -25,14 +34,17 @@ export function Leaderboard() {
         </h3>
       </header>
 
-      <ul className="flex flex-1 flex-col gap-2.5">
-        {leaderboard.map((s, i) => {
+      <ul className="flex flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
+        {topStudents.length === 0 ? (
+          <li className="p-4 text-center text-sm font-semibold text-slate-400">Chưa có dữ liệu</li>
+        ) : topStudents.map((s, i) => {
           const rank = i + 1
-          const tot = totColors[s.tot]
+          const team = teams.find(t => t.id === s.teamId)
+          
           return (
             <li
               key={s.id}
-              className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5"
+              className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 transition-colors hover:bg-slate-100/50"
             >
               <span
                 className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${
@@ -42,7 +54,7 @@ export function Leaderboard() {
                 {rank}
               </span>
               <img
-                src={s.avatar || '/placeholder.svg'}
+                src={getStudentAvatar(s)}
                 alt={s.name}
                 className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
               />
@@ -50,7 +62,7 @@ export function Leaderboard() {
                 <p className={`truncate text-sm font-extrabold ${pointColor[rank] ?? 'text-slate-700'}`}>
                   {s.name}
                 </p>
-                <p className={`text-[11px] font-bold ${tot.text}`}>Tổ {s.tot}</p>
+                <p className="text-[11px] font-bold text-slate-500">{team ? team.name : 'Chưa có nhóm'}</p>
               </div>
               <div className="flex items-center gap-1.5 pl-1">
                 <div className="text-right leading-none">
@@ -66,10 +78,10 @@ export function Leaderboard() {
         })}
       </ul>
 
-      <button className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
-        Xem bảng xếp hạng
+      <Link href="/students" className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
+        Xem danh sách học sinh
         <ArrowRight className="size-4" />
-      </button>
+      </Link>
     </section>
   )
 }

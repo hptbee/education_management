@@ -1,8 +1,10 @@
 'use client'
 
 import { Users, Search, Plus, Star, ArrowRight } from 'lucide-react'
-import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
-import type { Student } from '@/src/types/models'
+import Link from 'next/link'
+import { useAppData } from '@/src/store/AppDataContext'
+import { getStudentAvatar } from '@/src/utils/student'
+import type { Student, Team } from '@/src/types/models'
 
 // Temporary colors mapping to use teamId instead of 'tot'
 const teamColors = [
@@ -12,31 +14,32 @@ const teamColors = [
   { bg: 'bg-amber-100 text-amber-600' },
 ]
 
-function StudentCard({ student, index }: { student: Student, index: number }) {
-  // Use teamId or fallback to index color
+function StudentCard({ student, team, index }: { student: Student, team?: Team, index: number }) {
   const color = teamColors[index % teamColors.length]
-  const teamName = student.teamId ? `Team ${student.teamId}` : 'Chưa có nhóm'
+  const teamName = team ? team.name : 'Chưa có nhóm'
   
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-black/5 bg-white p-3 text-center shadow-sm">
+    <div className="flex flex-col items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
       <img
-        src={student.avatar || '/placeholder.svg'}
+        src={getStudentAvatar(student)}
         alt={student.name}
-        className={`size-16 rounded-full object-cover ring-2 ${
+        className={`size-14 rounded-full object-cover ring-2 ring-offset-2 ${
           student.gender === 'female' ? 'ring-pink-200' : 'ring-sky-200'
         }`}
       />
-      <p className="mt-2 text-sm font-extrabold text-slate-800 line-clamp-1" title={student.name}>{student.name}</p>
-      <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
-        {student.gender === 'female' ? 'Nữ' : student.gender === 'male' ? 'Nam' : ''} {student.dateOfBirth ? `• ${student.dateOfBirth}` : ''}
-      </p>
-      <span
-        className={`mt-1.5 rounded-md px-2 py-0.5 text-[11px] font-bold ${color.bg}`}
-      >
-        {teamName}
-      </span>
-      <div className="mt-2 flex items-center gap-1 text-sm font-extrabold text-slate-700">
-        <Star className="size-4 fill-star text-star" />
+      <div className="mt-3 flex-1 flex flex-col items-center">
+        <p className="text-sm font-extrabold text-slate-800 line-clamp-1" title={student.name}>{student.name}</p>
+        <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
+          {student.gender === 'female' ? 'Nữ' : student.gender === 'male' ? 'Nam' : 'Khác'} {student.dateOfBirth ? `• ${student.dateOfBirth}` : ''}
+        </p>
+        <span
+          className={`mt-2 rounded-md px-2 py-0.5 text-[11px] font-bold ${team ? color.bg : 'bg-slate-100 text-slate-500'}`}
+        >
+          {teamName}
+        </span>
+      </div>
+      <div className="mt-3 flex items-center gap-1 text-sm font-extrabold text-brand-purple">
+        <Star className="size-4 fill-amber-400 text-amber-400" />
         {student.points} điểm
       </div>
     </div>
@@ -44,8 +47,9 @@ function StudentCard({ student, index }: { student: Student, index: number }) {
 }
 
 export function StudentList() {
-  const { database } = useActiveClassroom()
-  const students = database?.students || []
+  const { data } = useAppData()
+  const students = data?.students || []
+  const teams = data?.teams || []
   
   return (
     <section className="flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
@@ -67,22 +71,27 @@ export function StudentList() {
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400 focus:border-brand-purple/40"
           />
         </div>
-        <button className="flex items-center gap-1.5 rounded-xl bg-brand-purple px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-purple-dark">
+        <Link href="/students" className="flex items-center gap-1.5 rounded-xl bg-brand-purple px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-purple-dark">
           <Plus className="size-4" />
           Thêm học sinh
-        </button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {students.slice(0, 8).map((student, i) => (
-          <StudentCard key={student.id} student={student} index={i} />
+          <StudentCard 
+            key={student.id} 
+            student={student} 
+            team={teams.find(t => t.id === student.teamId)}
+            index={i} 
+          />
         ))}
       </div>
 
-      <button className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
+      <Link href="/students" className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
         Xem tất cả học sinh
         <ArrowRight className="size-4" />
-      </button>
+      </Link>
     </section>
   )
 }
