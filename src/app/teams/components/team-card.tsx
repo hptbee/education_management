@@ -42,7 +42,15 @@ export function TeamCard({
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Users className="size-5 text-slate-700" />
+          {team.avatar ? (
+            <span className="flex size-7 items-center justify-center rounded-xl bg-slate-100 text-lg">
+              {team.avatar}
+            </span>
+          ) : (
+            <div className="flex size-7 items-center justify-center rounded-xl bg-slate-100">
+              <Users className="size-4 text-slate-500" />
+            </div>
+          )}
           <h3 className="font-display text-lg font-extrabold text-slate-800">{team.name}</h3>
         </div>
         <div className="flex items-center gap-1">

@@ -55,7 +55,10 @@ export function TeamRankingList({ teams, getMembers }: TeamRankingListProps) {
                 
                 {/* Team Info */}
                 <div className="flex items-center gap-3">
-                  <h3 className="font-display text-lg font-black text-slate-800">{team.name}</h3>
+                  <div className="flex items-center gap-2">
+                    {team.avatar && <span className="text-xl">{team.avatar}</span>}
+                    <h3 className="font-display text-lg font-black text-slate-800">{team.name}</h3>
+                  </div>
                   <span className="text-xs font-semibold text-slate-400">
                     {championsCount > 0 ? `${championsCount} quán quân • ` : ''}{members.length} thành viên
                   </span>
