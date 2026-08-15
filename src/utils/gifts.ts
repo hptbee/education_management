@@ -50,7 +50,10 @@ export async function migrateLegacyGiftImages(
       }
     }
 
-    if (legacy.requiredPoints !== undefined || legacy.image) {
+    if (legacy.requiredPoints !== undefined) {
+      changed = true;
+    }
+    if (legacy.image && !legacy.image.startsWith("data:image/")) {
       changed = true;
     }
 

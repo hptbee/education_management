@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { X, Search, Check } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
@@ -16,6 +16,13 @@ interface AssignStudentsDialogProps {
 export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStudents }: AssignStudentsDialogProps) {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSelected(new Set())
+      setSearch('')
+    }
+  }, [isOpen])
 
   // Must be before any early return to follow Rules of Hooks
   const eligible = useMemo(() => {

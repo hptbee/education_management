@@ -49,13 +49,3 @@ export function getAvatarPastelClass(seed: string | number): string {
   const index = typeof seed === 'number' ? seed : seed.length
   return AVATAR_PALETTE[index % AVATAR_PALETTE.length]
 }
-
-/** Legacy totColors shape for dashboard components */
-export function getTotColorClasses(totId: number): { text: string; bg: string; bar: string } {
-  const style = getTeamPastelStyle(totId - 1)
-  return {
-    text: style.text,
-    bg: `${style.bg} ${style.text}`,
-    bar: style.bar ?? 'bg-tot-2',
-  }
-}

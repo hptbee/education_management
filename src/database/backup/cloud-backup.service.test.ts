@@ -118,4 +118,46 @@ describe("CloudBackupScheduler", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(scheduler.getState()).toBe("synced");
   });
+
+  it("does not clear pending when a newer snapshot arrives during upload", async () => {
+    const first = makeDb();
+    const second = {
+      ...makeDb(),
+      metadata: {
+        ...makeDb().metadata,
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    };
+
+    let resolveUpload: (value: Response) => void = () => {};
+    const uploadPromise = new Promise<Response>((resolve) => {
+      resolveUpload = resolve;
+    });
+
+    const fetchMock = vi.fn().mockReturnValue(uploadPromise);
+    const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);
+
+    scheduler.scheduleAfterLocalSave(first);
+    const flush1 = scheduler.flushPending();
+    scheduler.scheduleAfterLocalSave(second);
+    resolveUpload(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    await flush1;
+    await scheduler.flushPending();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(scheduler.getState()).toBe("synced");
+  });
+
+  it("sends Authorization header when token is configured", async () => {
+    const originalToken = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN;
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "secret-token";
+
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    await uploadClassroomBackup(makeDb(), fetchMock as unknown as typeof fetch);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer secret-token");
+
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = originalToken;
+  });
 });

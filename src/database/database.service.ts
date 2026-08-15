@@ -264,8 +264,22 @@ export class DatabaseService {
       },
     };
 
-    await storage.save(updatedDb);
-    await classroomAssetService.moveClassroomAssets(currentId, newId);
+    await classroomAssetService.copyClassroomGiftImages(
+      currentId,
+      newId,
+      currentDb.rewards ?? [],
+    );
+    try {
+      await storage.save(updatedDb);
+    } catch (error) {
+      try {
+        await classroomAssetService.deleteClassroomAssets(newId);
+      } catch (cleanupError) {
+        console.warn("[renameClassroomDatabase] failed to clean copied assets", cleanupError);
+      }
+      throw error;
+    }
+
     const verified = await storage.load(newId);
     if (!verified || verified.metadata.id !== newId) {
       throw new Error("Không thể xác minh lớp học sau khi đổi tên. Vui lòng thử lại.");
@@ -279,6 +293,12 @@ export class DatabaseService {
       throw new Error(
         `Lớp mới đã được lưu thành công nhưng không thể xóa bản ghi cũ (${message}). Hãy xóa thủ công lớp cũ trong Cài đặt.`,
       );
+    }
+
+    try {
+      await classroomAssetService.deleteClassroomAssets(currentId);
+    } catch (error) {
+      console.warn("[renameClassroomDatabase] failed to remove old classroom assets", error);
     }
 
     await persistActiveClassroomId(newId);
@@ -336,8 +356,18 @@ export class DatabaseService {
       };
     }
 
-    await storage.save(newDb);
     await classroomAssetService.copyClassroomGiftImages(sourceId, newId, newDb.rewards ?? []);
+    try {
+      await storage.save(newDb);
+    } catch (error) {
+      try {
+        await classroomAssetService.deleteClassroomAssets(newId);
+      } catch (cleanupError) {
+        console.warn("[duplicateDatabase] failed to clean copied assets", cleanupError);
+      }
+      throw error;
+    }
+
     await persistActiveClassroomId(newDb.metadata.id);
     return newDb;
   }
@@ -345,7 +375,11 @@ export class DatabaseService {
   async deleteDatabase(id: string): Promise<void> {
     const storage = await this.getStorage();
     await storage.delete(id);
-    await classroomAssetService.deleteClassroomAssets(id);
+    try {
+      await classroomAssetService.deleteClassroomAssets(id);
+    } catch (error) {
+      console.warn("[deleteDatabase] failed to remove classroom assets", error);
+    }
     const activeId = await this.getPreferredClassroomId();
     if (activeId === id) {
       const remaining = await storage.list();

@@ -121,6 +121,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
       setSession(createDefaultPickerSession())
       setSearchQuery('')
       setShowCalledList(false)
+      setInitialized(false)
     }
   }, [isOpen, clearTimers, resetRoundState])
 
@@ -274,10 +275,11 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
 
   const updateBagForStudent = useCallback(
     (student: Student) => {
+      if (!session.preventRepeat) return
       const result = pickWithoutRepeat([student], bagRef.current)
       setWheelStudentBag(result.nextBag)
     },
-    [setWheelStudentBag],
+    [session.preventRepeat, setWheelStudentBag],
   )
 
   const revealNextInBatch = useCallback(
@@ -342,6 +344,15 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
 
   const spinSingleOrSequential = () => {
     if (eligibleStudents.length === 0) return
+
+    if (!session.preventRepeat) {
+      const selected = eligibleStudents[Math.floor(Math.random() * eligibleStudents.length)]
+      runSpinToStudent(selected, () => {
+        recordLuckyWheelSelection([selected.id])
+        revealTimeoutRef.current = setTimeout(() => setShowStudentList(true), LIST_REVEAL_DELAY_MS)
+      })
+      return
+    }
 
     const result = pickWithoutRepeat(eligibleStudents, bagRef.current)
     if (!result.selected) return

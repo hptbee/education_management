@@ -1,11 +1,20 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { AppDataShell } from "@/src/components/classroom";
 import { usePresentationMode } from "@/src/store/PresentationModeContext";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isPresentationMode } = usePresentationMode();
+  const pathname = usePathname();
+  const { isPresentationMode, exitPresentationMode } = usePresentationMode();
+
+  useEffect(() => {
+    if (pathname !== "/rewards" && isPresentationMode) {
+      exitPresentationMode();
+    }
+  }, [pathname, isPresentationMode, exitPresentationMode]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-page">

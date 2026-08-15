@@ -20,7 +20,7 @@ import { GiftPresentationView } from "./gift-presentation-view";
 export function GiftCabinetPage() {
   const { data, saveGift, deleteGift } = useAppData();
   const { isLoaded } = useActiveClassroom();
-  const { showConfirm } = useClassroomDialog();
+  const { showConfirm, showAlert } = useClassroomDialog();
   const { isPresentationMode, enterPresentationMode } = usePresentationMode();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -44,8 +44,12 @@ export function GiftCabinetPage() {
     setFormOpen(true);
   };
 
-  const handleToggleActive = (gift: Gift) => {
-    saveGift({ ...gift, isActive: !gift.isActive, updatedAt: new Date().toISOString() });
+  const handleToggleActive = async (gift: Gift) => {
+    try {
+      await saveGift({ ...gift, isActive: !gift.isActive, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      await showAlert(err instanceof Error ? err.message : "Không thể lưu quà.", { variant: "error" });
+    }
   };
 
   const handleDelete = async (gift: Gift) => {
@@ -54,7 +58,12 @@ export function GiftCabinetPage() {
       confirmLabel: "Xóa",
       variant: "warning",
     });
-    if (confirmed) await deleteGift(gift.id);
+    if (!confirmed) return;
+    try {
+      await deleteGift(gift.id);
+    } catch (err) {
+      await showAlert(err instanceof Error ? err.message : "Không thể xóa quà.", { variant: "error" });
+    }
   };
 
   const renderGrid = (items: Gift[]) => (
@@ -68,7 +77,7 @@ export function GiftCabinetPage() {
             setEditingGift(gift);
             setFormOpen(true);
           }}
-          onToggleActive={() => handleToggleActive(gift)}
+          onToggleActive={() => void handleToggleActive(gift)}
           onDelete={() => void handleDelete(gift)}
         />
       ))}

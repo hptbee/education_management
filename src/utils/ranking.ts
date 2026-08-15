@@ -1,4 +1,5 @@
 import type { PointHistory, Student, Team, TeamScoreHistory } from '@/src/types/models'
+import { getMondayWeekStart, getMonthStart } from './datePeriods'
 
 export type RankingPeriod = 'all-time' | 'week' | 'month'
 
@@ -129,16 +130,10 @@ export function getRankingPeriodRange(period: RankingPeriod, now = new Date()): 
   }
 
   if (period === 'week') {
-    const from = new Date(now)
-    const day = from.getDay()
-    const diffToMonday = day === 0 ? -6 : 1 - day
-    from.setDate(from.getDate() + diffToMonday)
-    from.setHours(0, 0, 0, 0)
-    return { from, to: now }
+    return { from: getMondayWeekStart(now), to: now }
   }
 
-  const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
-  return { from, to: now }
+  return { from: getMonthStart(now), to: now }
 }
 
 export function buildStudentRanking(

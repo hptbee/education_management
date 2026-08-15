@@ -65,7 +65,3 @@ export function clampQuantity(quantity: number, eligibleCount: number): number {
   const min = Math.min(2, eligibleCount)
   return Math.min(max, Math.max(min, quantity))
 }
-
-export function getMaxQuantity(eligibleCount: number): number {
-  return Math.max(2, eligibleCount)
-}

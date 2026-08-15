@@ -46,6 +46,10 @@ function teamNameById(teams: Team[], teamId: string) {
   return teams.find((t) => t.id === teamId)?.name ?? 'Tổ'
 }
 
+function studentTeamId(students: Student[], studentId: string): string | undefined {
+  return students.find((s) => s.id === studentId)?.teamId
+}
+
 function resolveStudentNames(students: Student[], studentIds: string[]) {
   return studentIds.map((id) => studentNameById(students, id))
 }
@@ -62,34 +66,44 @@ export function buildClassroomActivity(database: ClassroomDatabase): ActivityEnt
     badgeAwardHistory,
   } = database
 
-  const pointEntries: ActivityEntry[] = pointHistory.map((entry: PointHistory) => ({
-    id: `points-${entry.id}`,
-    kind: 'points',
-    referenceType: 'points',
-    referenceId: entry.id,
-    createdAt: entry.createdAt,
-    title: entry.actionName,
-    subtitle: entry.note,
-    points: entry.points,
-    studentId: entry.studentId,
-    studentIds: [entry.studentId],
-    studentName: studentNameById(students, entry.studentId),
-    studentNames: [studentNameById(students, entry.studentId)],
-  }))
+  const pointEntries: ActivityEntry[] = pointHistory.map((entry: PointHistory) => {
+    const teamId = studentTeamId(students, entry.studentId)
+    return {
+      id: `points-${entry.id}`,
+      kind: 'points',
+      referenceType: 'points',
+      referenceId: entry.id,
+      createdAt: entry.createdAt,
+      title: entry.actionName,
+      subtitle: entry.note,
+      points: entry.points,
+      studentId: entry.studentId,
+      studentIds: [entry.studentId],
+      studentName: studentNameById(students, entry.studentId),
+      studentNames: [studentNameById(students, entry.studentId)],
+      teamId,
+      teamName: teamId ? teamNameById(teams, teamId) : undefined,
+    }
+  })
 
-  const rewardEntries: ActivityEntry[] = rewardHistory.map((entry: RewardHistory) => ({
-    id: `reward-${entry.id}`,
-    kind: 'reward',
-    referenceType: 'reward',
-    referenceId: entry.id,
-    createdAt: entry.createdAt,
-    title: `Đổi quà: ${entry.rewardName}`,
-    points: -entry.pointsSpent,
-    studentId: entry.studentId,
-    studentIds: [entry.studentId],
-    studentName: studentNameById(students, entry.studentId),
-    studentNames: [studentNameById(students, entry.studentId)],
-  }))
+  const rewardEntries: ActivityEntry[] = rewardHistory.map((entry: RewardHistory) => {
+    const teamId = studentTeamId(students, entry.studentId)
+    return {
+      id: `reward-${entry.id}`,
+      kind: 'reward',
+      referenceType: 'reward',
+      referenceId: entry.id,
+      createdAt: entry.createdAt,
+      title: `Đổi quà: ${entry.rewardName}`,
+      points: -entry.pointsSpent,
+      studentId: entry.studentId,
+      studentIds: [entry.studentId],
+      studentName: studentNameById(students, entry.studentId),
+      studentNames: [studentNameById(students, entry.studentId)],
+      teamId,
+      teamName: teamId ? teamNameById(teams, teamId) : undefined,
+    }
+  })
 
   const recognitionEntries: ActivityEntry[] = recognitions.map((entry: Recognition) => ({
     id: `recognition-${entry.id}`,
@@ -104,6 +118,13 @@ export function buildClassroomActivity(database: ClassroomDatabase): ActivityEnt
     studentIds: [entry.studentId],
     studentName: entry.studentName ?? studentNameById(students, entry.studentId),
     studentNames: [entry.studentName ?? studentNameById(students, entry.studentId)],
+    teamId: entry.teamId ?? studentTeamId(students, entry.studentId),
+    teamName: entry.teamId
+      ? teamNameById(teams, entry.teamId)
+      : (() => {
+          const tid = studentTeamId(students, entry.studentId)
+          return tid ? teamNameById(teams, tid) : undefined
+        })(),
   }))
 
   const teamEntries: ActivityEntry[] = teamScoreHistory.map((entry: TeamScoreHistory) => ({
@@ -139,6 +160,11 @@ export function buildClassroomActivity(database: ClassroomDatabase): ActivityEnt
       studentIds,
       studentName: studentNames[0],
       studentNames,
+      teamId: studentTeamId(students, studentIds[0]),
+      teamName: (() => {
+        const tid = studentTeamId(students, studentIds[0])
+        return tid ? teamNameById(teams, tid) : undefined
+      })(),
     }
   })
 
@@ -161,6 +187,11 @@ export function buildClassroomActivity(database: ClassroomDatabase): ActivityEnt
       studentIds: entry.studentIds,
       studentName: isMultiple ? undefined : studentNames[0],
       studentNames,
+      teamId: studentTeamId(students, entry.studentIds[0]),
+      teamName: (() => {
+        const tid = studentTeamId(students, entry.studentIds[0])
+        return tid ? teamNameById(teams, tid) : undefined
+      })(),
     }
   })
 

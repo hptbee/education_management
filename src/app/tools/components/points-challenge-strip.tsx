@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowRight, Star, Trophy } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
+import { rankStudents } from '@/src/utils/ranking'
 import { ClassroomCard, EmptyState } from '@/src/components/classroom'
 
 const TOP_COUNT = 4
@@ -12,7 +13,9 @@ export function PointsChallengeStrip() {
   const { data } = useAppData()
   const students = data?.students ?? []
 
-  const topStudents = [...students].sort((a, b) => b.points - a.points).slice(0, TOP_COUNT)
+  const topStudents = rankStudents(students)
+    .slice(0, TOP_COUNT)
+    .map((entry) => entry.student)
 
   return (
     <ClassroomCard>

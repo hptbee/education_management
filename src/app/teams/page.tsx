@@ -6,6 +6,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import type { Team, Student } from '@/src/types/models'
 import { sortTeamMembersByLeadershipThenStt } from '@/src/utils/student'
+import { rankTeams } from '@/src/utils/ranking'
 
 import { TeamFormDialog } from './components/team-form-dialog'
 import { DeleteTeamDialog } from './components/delete-team-dialog'
@@ -55,9 +56,9 @@ export default function TeamsPage() {
   }, [teams, filteredStudents, searchQuery])
 
   // Sorted teams for the Top Cards (could be score, or just alphabetical as before)
-  const sortedTeams = useMemo(() =>
-    [...filteredTeams].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)),
-    [filteredTeams]
+  const sortedTeams = useMemo(
+    () => rankTeams(filteredTeams).map((entry) => entry.team),
+    [filteredTeams],
   )
 
   const getMembers = (teamId: string) => {

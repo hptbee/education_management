@@ -20,6 +20,11 @@ export function getCloudBackupUrl(): string | null {
   return url || null;
 }
 
+export function getCloudBackupToken(): string | null {
+  const token = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN?.trim();
+  return token || null;
+}
+
 export function isCloudBackupEnabled(): boolean {
   return Boolean(getCloudBackupUrl());
 }
@@ -57,11 +62,17 @@ export async function uploadClassroomBackup(
     payload: db,
   };
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = getCloudBackupToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetchImpl(`${baseUrl.replace(/\/$/, "")}/backup`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
@@ -164,14 +175,26 @@ export class CloudBackupScheduler {
     if (!isCloudBackupEnabled() || this.uploading || !this.pendingDb) return;
 
     const db = this.pendingDb;
+    const uploadedId = db.metadata.id;
+    const uploadedAt = db.metadata.updatedAt;
     this.uploading = true;
     this.setState("uploading", null);
 
     try {
       await uploadClassroomBackup(db, this.fetchImpl);
-      this.pendingDb = null;
-      this.failureCount = 0;
-      this.setState("synced", null);
+      const hasNewerPending =
+        this.pendingDb !== null &&
+        (this.pendingDb.metadata.id !== uploadedId ||
+          this.pendingDb.metadata.updatedAt !== uploadedAt);
+      if (hasNewerPending) {
+        this.failureCount = 0;
+        this.setState("pending", null);
+        void this.flushPending();
+      } else {
+        this.pendingDb = null;
+        this.failureCount = 0;
+        this.setState("synced", null);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await backupMetadataService.recordCloudBackupFailure(db.metadata.id, message);

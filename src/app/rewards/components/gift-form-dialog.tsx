@@ -106,19 +106,30 @@ export function GiftFormDialog({
                 nextImagePath = await classroomAssetService.saveGiftImage(classroomId, giftId, pendingFile);
               }
 
-              await onSave(
-                {
-                  id: giftId,
-                  name: name.trim(),
-                  description: description.trim() || undefined,
-                  imagePath: nextImagePath,
-                  isActive,
-                  createdAt: initialData?.createdAt ?? now,
-                  updatedAt: now,
-                },
-                { previousImagePath: pendingFile ? previousImagePath : undefined },
-              );
-              onClose();
+              try {
+                await onSave(
+                  {
+                    id: giftId,
+                    name: name.trim(),
+                    description: description.trim() || undefined,
+                    imagePath: nextImagePath,
+                    isActive,
+                    createdAt: initialData?.createdAt ?? now,
+                    updatedAt: now,
+                  },
+                  { previousImagePath: pendingFile ? previousImagePath : undefined },
+                );
+                onClose();
+              } catch (saveErr) {
+                if (pendingFile && nextImagePath) {
+                  try {
+                    await classroomAssetService.deleteGiftImage(classroomId, nextImagePath);
+                  } catch (cleanupErr) {
+                    console.warn("[gift-form-dialog] failed to remove orphan image", cleanupErr);
+                  }
+                }
+                throw saveErr;
+              }
             } catch (err) {
               setError(err instanceof Error ? err.message : "Không thể lưu quà.");
             } finally {

@@ -188,7 +188,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lastPersistedRef.current = saved;
       setLocalSaveStatus("saved");
       setSaveError(null);
-      await backupMetadataService.recordLocalSave(saved.metadata.id, saved.metadata.updatedAt);
+      try {
+        await backupMetadataService.recordLocalSave(saved.metadata.id, saved.metadata.updatedAt);
+      } catch (error) {
+        console.warn("[AppDataProvider] backup metadata failed:", error);
+      }
       cloudBackupScheduler.scheduleAfterLocalSave(saved);
       return true;
     } catch (error) {
@@ -211,6 +215,32 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (pendingSaveRef.current) {
         void flushSave();
       }
+    }
+  }, []);
+
+  const persistSnapshot = useCallback(async (next: ClassroomDatabase): Promise<boolean> => {
+    setLocalSaveStatus("saving");
+    try {
+      const saved = await databaseService.saveDatabase(next);
+      lastPersistedRef.current = saved;
+      dataRef.current = saved;
+      setDataState(saved);
+      setLocalSaveStatus("saved");
+      setSaveError(null);
+      try {
+        await backupMetadataService.recordLocalSave(saved.metadata.id, saved.metadata.updatedAt);
+      } catch (error) {
+        console.warn("[AppDataProvider] backup metadata failed:", error);
+      }
+      cloudBackupScheduler.scheduleAfterLocalSave(saved);
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
+      console.error("[AppDataProvider] persistSnapshot failed:", error);
+      setLocalSaveStatus("error");
+      setSaveError(message);
+      return false;
     }
   }, []);
 
@@ -360,7 +390,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         try {
           const persisted = await persistNow();
-          if (!persisted) return;
+          if (!persisted) {
+            throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
+          }
           const db = await databaseService.renameClassroomDatabase(
             data.metadata.id,
             newClassName,
@@ -376,7 +408,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         try {
           const persisted = await persistNow();
-          if (!persisted) return;
+          if (!persisted) {
+            throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
+          }
           const db = await databaseService.duplicateDatabase(
             data.metadata.id,
             newClassName,
@@ -520,6 +554,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const saved: Student = {
             ...student,
             name: student.name.trim(),
+            classroomRole: undefined,
             classroomRoleIds: student.classroomRoleIds ?? existing?.classroomRoleIds ?? [],
             badgeIds: student.badgeIds ?? existing?.badgeIds ?? [],
             points: existing?.points ?? student.points,
@@ -738,24 +773,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           options?.previousImagePath ??
           (existing?.imagePath && existing.imagePath !== gift.imagePath ? existing.imagePath : undefined);
         const classroomId = current.metadata.id;
-
-        setData((db) => {
-          const prior = db.rewards.find((item) => item.id === gift.id);
-          const now = new Date().toISOString();
-          const saved = normalizeGift({
-            ...gift,
-            createdAt: prior?.createdAt ?? gift.createdAt ?? now,
-            updatedAt: now,
-          });
-          return {
-            ...db,
-            rewards: prior
-              ? db.rewards.map((item) => (item.id === gift.id ? saved : item))
-              : [...db.rewards, saved],
-          };
+        const now = new Date().toISOString();
+        const saved = normalizeGift({
+          ...gift,
+          createdAt: existing?.createdAt ?? gift.createdAt ?? now,
+          updatedAt: now,
         });
+        const next: ClassroomDatabase = {
+          ...current,
+          rewards: existing
+            ? current.rewards.map((item) => (item.id === gift.id ? saved : item))
+            : [...current.rewards, saved],
+          metadata: { ...current.metadata, updatedAt: now },
+        };
 
-        const persisted = await persistNow();
+        const persisted = await persistSnapshot(next);
         if (!persisted) {
           throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
         }
@@ -772,11 +804,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (!current) return;
         const gift = current.rewards.find((item) => item.id === giftId);
         const classroomId = current.metadata.id;
+        const now = new Date().toISOString();
+        const next: ClassroomDatabase = {
+          ...current,
+          rewards: current.rewards.filter((item) => item.id !== giftId),
+          metadata: { ...current.metadata, updatedAt: now },
+        };
 
-        setData((db) => ({ ...db, rewards: db.rewards.filter((item) => item.id !== giftId) }));
-
-        const persisted = await persistNow();
-        if (!persisted || !gift?.imagePath) return;
+        const persisted = await persistSnapshot(next);
+        if (!persisted) {
+          throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
+        }
+        if (!gift?.imagePath) return;
 
         try {
           await classroomAssetService.deleteGiftImage(classroomId, gift.imagePath);
@@ -835,12 +874,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return created;
       },
       updateRecognitionMessage: (recognitionId, message) =>
-        setData((current) => ({
-          ...current,
-          recognitions: current.recognitions.map((item) =>
-            item.id === recognitionId ? { ...item, message: message.trim() || undefined } : item,
-          ),
-        })),
+        setData((current) => {
+          const recognition = current.recognitions.find((item) => item.id === recognitionId);
+          const trimmed = message.trim() || undefined;
+          return {
+            ...current,
+            recognitions: current.recognitions.map((item) =>
+              item.id === recognitionId ? { ...item, message: trimmed } : item,
+            ),
+            pointHistory: recognition?.pointHistoryId
+              ? current.pointHistory.map((item) =>
+                  item.id === recognition.pointHistoryId ? { ...item, note: trimmed } : item,
+                )
+              : current.pointHistory,
+          };
+        }),
       deleteRecognition: (recognitionId) =>
         setData((current) => {
           const recognition = current.recognitions.find((item) => item.id === recognitionId);
@@ -869,6 +917,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               );
               pointHistory = capHistory([reversal, ...pointHistory]);
             }
+          }
+
+          if (recognition.awardedBadgeId) {
+            const now = new Date().toISOString();
+            students = students.map((s) =>
+              s.id === recognition.studentId
+                ? {
+                    ...s,
+                    badgeIds: (s.badgeIds ?? []).filter((id) => id !== recognition.awardedBadgeId),
+                    updatedAt: now,
+                  }
+                : s,
+            );
           }
 
           return {
@@ -905,7 +966,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, persistNow],
+    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, persistNow, persistSnapshot],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

@@ -73,6 +73,15 @@ function assertUploadBody(data: unknown): BackupUploadBody {
   return record as unknown as BackupUploadBody;
 }
 
+function requireBackupAuth(request: Request, env: Env): Response | null {
+  if (!env.BACKUP_API_TOKEN) return null;
+  const auth = request.headers.get("Authorization");
+  if (auth !== `Bearer ${env.BACKUP_API_TOKEN}`) {
+    return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+  }
+  return null;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") {
@@ -83,12 +92,8 @@ export default {
 
     try {
       if (request.method === "PUT" && url.pathname === "/backup") {
-        if (env.BACKUP_API_TOKEN) {
-          const auth = request.headers.get("Authorization");
-          if (auth !== `Bearer ${env.BACKUP_API_TOKEN}`) {
-            return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
-          }
-        }
+        const authError = requireBackupAuth(request, env);
+        if (authError) return authError;
 
         const body = assertUploadBody(await request.json());
         const key = buildBackupStorageKey(body.deviceId, body.classroomId);
@@ -107,6 +112,9 @@ export default {
       }
 
       if (request.method === "GET" && url.pathname === "/backup") {
+        const authError = requireBackupAuth(request, env);
+        if (authError) return authError;
+
         const deviceId = url.searchParams.get("deviceId");
         const classroomId = url.searchParams.get("classroomId");
 

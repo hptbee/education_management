@@ -124,23 +124,32 @@ export function StudyTimerTool() {
   }, [selection, customMinutes, secondsLeft, isRunning, isFinished, endAt, isHydrated])
 
   useEffect(() => {
-    if (!isRunning) return
+    if (!isRunning || endAt === null) return
 
-    intervalRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearTimer()
-          setIsRunning(false)
-          setIsFinished(true)
-          setEndAt(null)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000))
+      setSecondsLeft(remaining)
+      if (remaining <= 0) {
+        clearTimer()
+        setIsRunning(false)
+        setIsFinished(true)
+        setEndAt(null)
+      }
+    }
 
-    return clearTimer
-  }, [isRunning])
+    tick()
+    intervalRef.current = setInterval(tick, 1000)
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') tick()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      clearTimer()
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [isRunning, endAt])
 
   const applySelection = (nextSelection: TimerSelection, minutes?: number) => {
     if (isRunning) return

@@ -29,9 +29,6 @@ function getVisibleTabs() {
   })
 }
 
-export function hasVisibleSettingsTabs() {
-  return getVisibleTabs().length > 0
-}
 
 interface SettingsTabsProps {
   activeTab: SettingsTab

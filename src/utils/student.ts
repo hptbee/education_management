@@ -25,8 +25,7 @@ export function getStudentRosterOrder(student: Student, roster: Student[]): numb
 }
 
 export function studentHasClassroomRole(student: Student): boolean {
-  if ((student.classroomRoleIds?.length ?? 0) > 0) return true
-  return Boolean(student.classroomRole?.trim())
+  return (student.classroomRoleIds?.length ?? 0) > 0
 }
 
 export function sortStudentsByClassroomRoleThenStt(students: Student[], roster: Student[]): Student[] {

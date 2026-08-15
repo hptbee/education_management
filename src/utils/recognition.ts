@@ -1,6 +1,7 @@
 import type { Recognition, BadgeAwardHistory, Badge, RecognitionTitle } from '../types/models'
 import type { ClassroomDatabase } from '../database/types'
 import { createId } from './id'
+import { getMondayWeekStart, getMonthStart } from './datePeriods'
 
 export interface RecognizeStudentsInput {
   studentIds: string[]
@@ -23,11 +24,11 @@ export function getRecognitionTimeRange(filter: RecognitionTimeFilter): { start:
   start.setHours(0, 0, 0, 0)
 
   if (filter === 'week') {
-    const day = start.getDay()
-    const diff = day === 0 ? 6 : day - 1
-    start.setDate(start.getDate() - diff)
-  } else if (filter === 'month') {
-    start.setDate(1)
+    return { start: getMondayWeekStart(), end }
+  }
+
+  if (filter === 'month') {
+    return { start: getMonthStart(), end }
   }
 
   return { start, end }

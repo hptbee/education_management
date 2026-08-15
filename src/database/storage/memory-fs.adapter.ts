@@ -104,10 +104,6 @@ export class MemoryFileStorageAdapter implements FileStorageAdapter {
       .replace(/\/+/g, "/");
   }
 
-  getFile(path: string): string | undefined {
-    return this.files.get(this.normalize(path));
-  }
-
   listPaths(): string[] {
     return [...this.files.keys()];
   }

@@ -28,41 +28,69 @@ fn path_is_under(base: &Path, candidate: &Path) -> bool {
     candidate_key == base_key || candidate_key.starts_with(&format!("{}/", base_key))
 }
 
-fn resolve_under_data_path(path: &Path, create_missing_parent: bool) -> Result<PathBuf, String> {
+fn resolve_under_data_path(
+    path: &Path,
+    canonical_data: &Path,
+    create_missing_parent: bool,
+) -> Result<PathBuf, String> {
     if path.exists() {
-        return std::fs::canonicalize(path)
-            .map_err(|e| format!("Failed to canonicalize {}: {}", path.display(), e));
+        let resolved = std::fs::canonicalize(path)
+            .map_err(|e| format!("Failed to canonicalize {}: {}", path.display(), e))?;
+        if !path_is_under(canonical_data, &resolved) {
+            return Err("Access denied: path is outside application data directory".to_string());
+        }
+        return Ok(resolved);
     }
 
     let parent = path
         .parent()
         .ok_or_else(|| format!("Invalid path: {}", path.display()))?;
 
-    if !parent.exists() {
-        if !create_missing_parent {
-            if path.file_name().is_none() {
-                return Err(format!("Path not found: {}", path.display()));
-            }
-            // Allow checking or removing a not-yet-created file under an existing parent.
-            if !parent.as_os_str().is_empty() {
-                let canonical_parent = std::fs::canonicalize(parent).map_err(|_| {
-                    format!("Path not found: {}", path.display())
-                })?;
-                return Ok(canonical_parent.join(path.file_name().unwrap()));
-            }
+    let resolved_parent = if parent.exists() {
+        let canonical_parent = std::fs::canonicalize(parent)
+            .map_err(|e| format!("Failed to canonicalize {}: {}", parent.display(), e))?;
+        if !path_is_under(canonical_data, &canonical_parent) {
+            return Err("Access denied: path is outside application data directory".to_string());
+        }
+        canonical_parent
+    } else if !create_missing_parent {
+        if path.file_name().is_none() {
             return Err(format!("Path not found: {}", path.display()));
         }
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create parent dir {}: {}", parent.display(), e))?;
+        if !parent.as_os_str().is_empty() {
+            let canonical_parent = std::fs::canonicalize(parent).map_err(|_| {
+                format!("Path not found: {}", path.display())
+            })?;
+            if !path_is_under(canonical_data, &canonical_parent) {
+                return Err("Access denied: path is outside application data directory".to_string());
+            }
+            return Ok(canonical_parent.join(path.file_name().unwrap()));
+        }
+        return Err(format!("Path not found: {}", path.display()));
+    } else if !path_is_under(canonical_data, parent) {
+        return Err("Access denied: path is outside application data directory".to_string());
+    } else {
+        parent.to_path_buf()
+    };
+
+    let resolved = match path.file_name() {
+        Some(name) => resolved_parent.join(name),
+        None => resolved_parent.clone(),
+    };
+
+    if !path_is_under(canonical_data, &resolved) {
+        return Err("Access denied: path is outside application data directory".to_string());
     }
 
-    let canonical_parent = std::fs::canonicalize(parent)
-        .map_err(|e| format!("Failed to canonicalize {}: {}", parent.display(), e))?;
-
-    match path.file_name() {
-        Some(name) => Ok(canonical_parent.join(name)),
-        None => Ok(canonical_parent),
+    if create_missing_parent {
+        if let Some(parent_dir) = resolved.parent() {
+            std::fs::create_dir_all(parent_dir).map_err(|e| {
+                format!("Failed to create parent dir {}: {}", parent_dir.display(), e)
+            })?;
+        }
     }
+
+    Ok(resolved)
 }
 
 fn assert_under_data_dir(app: &AppHandle, path: &str, create_missing_parent: bool) -> Result<PathBuf, String> {
@@ -74,13 +102,7 @@ fn assert_under_data_dir(app: &AppHandle, path: &str, create_missing_parent: boo
         .map_err(|e| format!("Failed to canonicalize data dir {}: {}", data_dir.display(), e))?;
 
     let requested = PathBuf::from(path);
-    let resolved = resolve_under_data_path(&requested, create_missing_parent)?;
-
-    if !path_is_under(&canonical_data, &resolved) {
-        return Err("Access denied: path is outside application data directory".to_string());
-    }
-
-    Ok(resolved)
+    resolve_under_data_path(&requested, &canonical_data, create_missing_parent)
 }
 
 #[tauri::command]

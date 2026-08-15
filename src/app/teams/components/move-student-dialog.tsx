@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, ArrowRight } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
@@ -15,6 +15,11 @@ interface MoveStudentDialogProps {
 
 export function MoveStudentDialog({ isOpen, onClose, onMove, student, teams }: MoveStudentDialogProps) {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('none')
+
+  useEffect(() => {
+    if (!isOpen || !student) return
+    setSelectedTeamId(student.teamId ?? 'none')
+  }, [isOpen, student])
 
   if (!isOpen || !student) return null
 

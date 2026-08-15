@@ -32,7 +32,11 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
   const awardedBadges = getStudentBadges(student, data?.badges ?? [])
   const recentActivity = data
     ? buildClassroomActivity(data)
-        .filter((entry) => entry.studentId === student.id)
+        .filter(
+          (entry) =>
+            entry.studentId === student.id ||
+            (entry.studentIds?.includes(student.id) ?? false),
+        )
         .slice(0, 10)
     : []
 

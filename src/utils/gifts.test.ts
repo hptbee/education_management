@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { normalizeGift, normalizeGiftsOnDatabase } from "./gifts";
+import { describe, expect, it, vi } from "vitest";
+import { normalizeGift, normalizeGiftsOnDatabase, migrateLegacyGiftImages } from "./gifts";
 import type { ClassroomDatabase } from "../database/types";
+
+vi.mock("../database/assets/classroom-asset.service", () => ({
+  classroomAssetService: {
+    saveGiftImageFromDataUrl: vi.fn(),
+  },
+}));
+
+import { classroomAssetService } from "../database/assets/classroom-asset.service";
 
 function minimalDb(rewards: ClassroomDatabase["rewards"]): ClassroomDatabase {
   return {
@@ -76,5 +84,28 @@ describe("gifts normalization", () => {
 
     expect(db.rewards[0].name).toBe("Quà");
     expect("requiredPoints" in db.rewards[0]).toBe(false);
+  });
+
+  it("keeps legacy data-URL image when migration save fails", async () => {
+    vi.mocked(classroomAssetService.saveGiftImageFromDataUrl).mockRejectedValueOnce(
+      new Error("disk full"),
+    );
+
+    const db = minimalDb([
+      {
+        id: "gift-1",
+        name: "Quà",
+        image: "data:image/png;base64,abc",
+        isActive: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      } as never,
+    ]);
+
+    const { database, didMigrate } = await migrateLegacyGiftImages(db);
+
+    expect(didMigrate).toBe(false);
+    expect(database.rewards[0].imagePath).toBeUndefined();
+    expect(database.rewards[0].name).toBe("Quà");
   });
 });
