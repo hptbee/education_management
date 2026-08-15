@@ -196,6 +196,7 @@ export class DatabaseService {
       newDb.rewards = sourceDb.rewards;
       newDb.classroomRoles = sourceDb.classroomRoles ?? newDb.classroomRoles;
       newDb.badges = sourceDb.badges ?? newDb.badges;
+      newDb.recognitionTitles = sourceDb.recognitionTitles ?? newDb.recognitionTitles;
       newDb.appSettings = sourceDb.appSettings;
     } else {
       newDb = {

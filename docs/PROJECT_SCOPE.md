@@ -577,18 +577,34 @@ This supports history and makes reset operations understandable.
 ## 6.9 Recognition
 
 ```ts
+interface RecognitionTitle {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 interface Recognition {
   id: string;
-
   studentId: string;
-
   type: string;
   title: string;
+  titleId?: string;
+  titleIcon?: string;
+  studentName?: string;
+  teamId?: string;
   message?: string;
-
+  awardedPoints?: number;
+  pointHistoryId?: string;
   createdAt: string;
 }
 ```
+
+Recognition titles are configurable per classroom database. Recognition records snapshot title name/icon, student name, and team at creation time so historical records remain readable after edits.
+
+Optional points use the existing `PointHistory` pipeline with `source: "recognition"`.
 
 ## 6.10 Lucky Wheel Selection History
 
@@ -1242,6 +1258,24 @@ Do not implement future modes unless requested.
 - Fair selection cycle (bag-based, no repeat until cycle completes)
 - Reset selection history
 
+## Selection modes (in-memory picker session)
+
+The Lucky Wheel dialog supports three temporary selection modes. Session state lives in dialog React state only — it is **not** stored on `Student` and is **not** persisted to the classroom JSON database.
+
+| Mode | Behavior |
+|---|---|
+| Single | One spin selects one student (default) |
+| Multiple | Teacher sets quantity (min 2); students are drawn without duplicates and revealed one-by-one via repeated spins |
+| Sequential | Each click calls the next student; progress bar shows called vs total |
+
+Shared options:
+
+- **Scope:** entire classroom or a single team
+- **Prevent repeat:** exclude already-called students from future picks (default on)
+- **New round:** reset session and restore eligibility
+
+Eligible students = scoped checklist participants minus session picks when prevent-repeat is enabled.
+
 ## Fair Selection Cycle
 
 Avoid repeatedly selecting the same student before others have a chance.
@@ -1478,57 +1512,56 @@ The final selection should use the reusable random selection utility.
 
 ## Goal
 
-Allow the teacher to praise students for positive achievements or behavior.
+Allow the teacher to praise one or more students for positive achievements or behavior, optionally award points, and present a celebration screen suitable for classroom projection.
 
-## Default Recognition Types
+## Page Structure (`/recognition`)
 
-Examples:
+Three in-page tabs:
 
-- Học sinh của ngày
-- Tiến bộ xuất sắc
-- Hành vi tốt
-- Câu trả lời thông minh
-- Người bạn tốt
-- Cải thiện vượt bậc
+- **Tuyên dương mới** — recognition form
+- **Danh hiệu** — title catalog CRUD
+- **Góc tuyên dương** — Wall of Fame with filters
 
-The teacher may also enter a custom title.
+## Recognition Titles
+
+Configurable catalog (`RecognitionTitle`) seeded with defaults (e.g. Ngôi sao chăm chỉ, Học tập tiến bộ, Bạn tốt). Teachers can create, edit, enable/disable titles. Titles used in history are archived (disabled) instead of deleted.
 
 ## Recognition Flow
 
 ```text
-Select Student
+Select Student(s) — single or multiple
       ↓
-Select Recognition Type
+Select Recognition Title
       ↓
 Enter Optional Message
       ↓
-Choose:
-[ Save ]
-or
-[ Save & Present ]
+Optional Points Award
+      ↓
+Preview
+      ↓
+[ Tuyên dương ] → Celebration overlay
 ```
 
-## Save
+## Points Integration
 
-Create a recognition record.
-
-## Save & Present
-
-Create the record and immediately open a presentation-ready recognition screen.
+When points are awarded, use the existing point transaction system (`PointHistory`, `source: "recognition"`). Deleting a recognition with awarded points reverses the transaction once.
 
 ## Presentation Screen
 
-Show:
+Full-screen overlay after recognition:
 
-- Recognition title
-- Large student avatar
-- Student name
+- Large student name and avatar
+- Title with icon
 - Message
-- Stars
-- Trophy/sparkles
-- Confetti
+- Optional points badge
+- Gentle confetti (respects `animationsEnabled` and reduced-motion)
+- Multi-student: reveal one-by-one, then group finale
 
-Do not show teacher notes or negative history.
+## Wall of Fame
+
+Card grid (not audit log) with filters: today / week / month / all, student, title, team. Teachers can view details, edit message, or delete records.
+
+Do not show teacher notes or negative history on the celebration screen.
 
 ---
 
@@ -2030,20 +2063,41 @@ The implementation should make future custom chibi avatars easy to add.
 
 # 12.8 Color System
 
+Primary brand color: pastel sky blue (`--color-brand` / `--color-brand-purple`, `#4ba3e8`). Map `--primary` CSS variable to readable sky blue.
+
+Supporting accent: dusty pink (`--color-accent-pink`, `#efa3bc`) for rewards, celebration, and playful moments.
+
+Page background: `--color-page` (`#f7fafd`) — warm blue-cream with a faint pink wash.
+
+Semantic tokens:
+
+- `brand` / `brand-dark` / `brand-light` / `brand-soft` — primary blue family
+- `surface` / `surface-soft` — card and shell backgrounds
+- `success`, `warning`, `danger`, `info` — soft semantic feedback
+- `pastel-sky`, `pastel-pink`, `pastel-peach`, `pastel-lavender`, `pastel-yellow`, `pastel-mint`
+
+Pastel accent tokens (use sparingly, not rainbow per card):
+
+- `pastel-sky`, `pastel-pink`, `pastel-peach`, `pastel-lavender`, `pastel-yellow`
+
+Team accent colors (`tot-1`…`tot-4`) cycle pink, sky, lavender, peach — soft pastel, not neon.
+
 Preferred direction:
 
-- Sky blue
-- Soft purple
+- Sky blue (primary)
+- Dusty pink (accent)
 - Warm yellow
-- Peach/orange
-- Light pink
-- Mint green
+- Peach
+- Lavender
+- Light mint (supporting only)
 
 Semantic colors:
 
-- Positive points: green
-- Rewards: yellow/gold
-- Recognition: purple/gold
+- Positive points: mint-green
+- Rewards: yellow/gold with pink accent
+- Recognition: pink/gold
+- Team competition: curated pastel cycle
+- Penalties: dusty rose (not aggressive red)
 - Team competition: distinct friendly accents
 - Penalties: soft red/orange
 
@@ -2053,6 +2107,33 @@ Avoid:
 - Large dark-gray areas
 - Corporate-only blue UI
 - Too many competing colors
+- Rainbow gradients on every quick-action button
+
+# 12.8a Shared UI Primitives
+
+Reuse components from `src/components/classroom/`:
+
+- `ClassroomButton` — large click targets, `rounded-2xl`, primary/outline/ghost variants
+- `ClassroomCard` — `rounded-3xl`, `border-slate-200/80`, white background
+- `PageHeader` — icon box + `font-display` title + subtitle
+- `EmptyState` — illustration or emoji, Vietnamese message, optional CTA
+
+Do not create per-page one-off button or card styles when these primitives apply.
+
+# 12.8b Teacher vs Student-Facing Balance
+
+Teacher management pages (~70% clean / 30% playful):
+
+- Dashboard, Students, Teams, Points, Badges, Settings, Import
+
+Student-facing / presentation pages (~40% structure / 60% playful):
+
+- Lucky Wheel, Study Timer, Lucky Star, Rewards, Recognition, Games
+
+Teacher pages: minimal motion (hover lift only).
+Student-facing pages: larger typography, celebration moments allowed (confetti on wheel result), respect `prefers-reduced-motion`.
+
+Chibi illustrations (`banner-boy.png`, `banner-girl.png`, `class-photo.png`): 1–2 per page maximum — dashboard greeting, empty states, coming-soon placeholders.
 
 # 12.9 Chibi Illustrations
 
@@ -2492,3 +2573,363 @@ AppLayout
 Sidebar + Shared UI
   ↓
 Feature Page
+
+==================================================
+VISUAL DESIGN SYSTEM
+==================================================
+
+This application is a classroom management application designed for:
+
+- Elementary school teachers
+- Elementary school students
+
+The visual design must feel:
+
+- Friendly
+- Warm
+- Encouraging
+- Playful
+- Modern
+- Safe
+- Easy to understand
+
+The application should feel like a modern digital classroom,
+not a corporate admin dashboard.
+
+However, the UI must NOT become childish, cluttered, or visually overwhelming.
+
+==================================================
+DESIGN BALANCE
+==================================================
+
+Target design balance:
+
+Teacher management pages:
+
+70% clean professional UI
+30% playful classroom personality
+
+Student-facing / classroom presentation pages:
+
+40% structured UI
+60% playful and engaging
+
+Teacher management pages include:
+
+- Dashboard
+- Students
+- Teams
+- Settings
+- Import
+- Data management
+
+Student-facing pages include:
+
+- Lucky Wheel
+- Student Picker
+- Rewards
+- Recognition
+- Team Competition
+- Classroom Games
+- Presentation Mode
+
+==================================================
+VISUAL STYLE
+==================================================
+
+Use a:
+
+"Cute Modern Classroom"
+
+visual style.
+
+Combine:
+
+- Modern dashboard structure
+- Soft pastel colors
+- Rounded corners
+- Friendly illustrations
+- Chibi characters
+- Playful micro-interactions
+- Clean typography
+- Spacious layouts
+
+The design should feel polished and intentional.
+
+Do NOT create a generic corporate dashboard.
+
+==================================================
+COLORS
+==================================================
+
+Use a controlled pastel color system.
+
+Preferred color families:
+
+- Soft blue
+- Warm yellow
+- Soft pink
+- Mint green
+- Lavender
+- Peach
+
+Use one primary color consistently.
+
+Use accent colors sparingly.
+
+Do NOT use every pastel color in every component.
+
+Avoid:
+
+- Neon colors
+- Excessively saturated colors
+- Random colors for every card
+- Rainbow UI everywhere
+
+The background should remain calm and light.
+
+==================================================
+CARDS AND COMPONENTS
+==================================================
+
+Use:
+
+- Rounded corners
+- Soft shadows
+- Gentle borders
+- Comfortable spacing
+- Clear visual hierarchy
+
+Recommended feeling:
+
+Soft
+Friendly
+Tactile
+Modern
+
+Do not overuse:
+
+- Heavy shadows
+- Thick borders
+- Excessive gradients
+- Glassmorphism everywhere
+- Pill shapes for every component
+
+Use pill shapes mainly for:
+
+- Badges
+- Tags
+- Small status indicators
+
+==================================================
+CHIBI ILLUSTRATIONS
+==================================================
+
+Chibi illustrations are an important visual identity element.
+
+Use them strategically.
+
+Recommended usage:
+
+- Dashboard greeting area
+- Empty states
+- Recognition screens
+- Rewards
+- Games
+- Lucky Wheel
+- Onboarding
+
+Do NOT place large chibi illustrations on every card.
+
+Prefer:
+
+1 or 2 meaningful illustrations per page.
+
+All illustrations should maintain a consistent art style.
+
+Preferred illustration themes:
+
+- Friendly teacher
+- Elementary school students
+- Books
+- Backpacks
+- Pencils
+- Stars
+- Rewards
+- Classroom objects
+- Friendly animals when appropriate
+
+==================================================
+TYPOGRAPHY
+==================================================
+
+Typography must remain easy to read.
+
+Use:
+
+- Friendly sans-serif headings
+- Clean sans-serif body text
+
+Avoid:
+
+- Decorative fonts for long text
+- Handwriting fonts for normal UI
+- Small unreadable text
+
+Vietnamese text must render clearly.
+
+Headings can be playful.
+
+Body content must remain practical and readable.
+
+==================================================
+ICONS
+==================================================
+
+Use a consistent icon system.
+
+Icons should feel:
+
+- Rounded
+- Friendly
+- Simple
+
+Emoji can be used selectively for:
+
+- Rewards
+- Games
+- Recognition
+- Empty states
+- Decorative classroom elements
+
+Do NOT replace every UI icon with emoji.
+
+==================================================
+ANIMATION
+==================================================
+
+Use subtle, meaningful animations.
+
+Examples:
+
+- Gentle card hover
+- Small button feedback
+- Point gain animation
+- Reward celebration
+- Lucky Wheel animation
+- Recognition celebration
+
+Teacher management pages should use minimal motion.
+
+Student-facing pages can be more playful.
+
+Avoid:
+
+- Constant bouncing elements
+- Auto-playing distracting animations
+- Excessive confetti
+- Animation on every interaction
+
+Animations should enhance feedback,
+not distract from classroom activities.
+
+==================================================
+EMPTY STATES
+==================================================
+
+Do not use plain empty pages.
+
+Use friendly empty states with:
+
+- Small illustration
+- Friendly Vietnamese message
+- Clear primary action
+
+Example:
+
+"Chưa có học sinh nào 🌱"
+
+"Thêm học sinh đầu tiên để bắt đầu xây dựng lớp học nhé!"
+
+[ + Thêm học sinh ]
+
+==================================================
+STUDENT-FACING EXPERIENCE
+==================================================
+
+Student-facing screens should feel exciting and rewarding.
+
+Use:
+
+- Larger typography
+- Clear visuals
+- Friendly colors
+- Celebration moments
+- Chibi illustrations
+- Stars
+- Rewards
+- Simple interactions
+
+Important information must remain easy to read from a distance.
+
+Avoid dense tables or complex forms in presentation mode.
+
+==================================================
+TEACHER-FACING EXPERIENCE
+==================================================
+
+Teacher-facing screens should prioritize:
+
+- Efficiency
+- Clear information
+- Easy CRUD operations
+- Comfortable spacing
+- Fast scanning
+
+Keep the playful visual identity,
+but do not sacrifice usability for decoration.
+
+==================================================
+CONSISTENCY
+==================================================
+
+Before implementing a new page or component:
+
+1. Inspect existing UI components.
+2. Reuse existing design tokens.
+3. Reuse existing card patterns.
+4. Reuse existing buttons.
+5. Reuse existing modal patterns.
+6. Reuse existing illustration style.
+
+Do NOT create a completely different visual style for each page.
+
+==================================================
+FINAL DESIGN CHECK
+==================================================
+
+Before completing UI work, verify:
+
+[ ] The page feels friendly and suitable for elementary school.
+[ ] The UI is still comfortable for teachers.
+[ ] Colors are controlled and not overwhelming.
+[ ] Typography is easy to read.
+[ ] Chibi illustrations are used strategically.
+[ ] The design is playful but not childish.
+[ ] The page is not visually cluttered.
+[ ] Animations are meaningful and subtle.
+[ ] Existing navigation remains consistent.
+[ ] Existing design patterns are reused.
+
+The final result should feel like:
+
+"A polished modern classroom experience with a warm,
+playful personality."
+
+Not:
+
+"A corporate admin dashboard."
+
+And not:
+
+"A chaotic children's game interface."

@@ -7,6 +7,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { createId } from '@/src/utils/id'
 import { EmojiIconPicker } from '@/src/components/EmojiIconPicker'
 import { BADGE_EMOJI_OPTIONS } from '@/src/utils/emojiIcons'
+import { ClassroomButton } from '@/src/components/classroom'
 
 function BadgeFormDialog({
   isOpen,
@@ -65,7 +66,7 @@ function BadgeFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ví dụ: Yêu sách"
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+              className="classroom-field px-4"
             />
           </div>
           <div>
@@ -74,16 +75,14 @@ function BadgeFormDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+              className="classroom-field px-4"
             />
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">
               Hủy
             </button>
-            <button type="submit" className="rounded-xl bg-brand-purple px-5 py-2 text-sm font-bold text-white hover:bg-brand-purple-dark">
-              Lưu
-            </button>
+            <ClassroomButton type="submit">Lưu</ClassroomButton>
           </div>
         </form>
       </div>
@@ -100,37 +99,55 @@ export function BadgeCatalogSection() {
   const badges = data?.badges ?? []
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-lg font-black text-slate-800">Quản lý danh mục huy hiệu</h2>
           <p className="text-sm font-semibold text-slate-500">Thêm, sửa hoặc xóa loại huy hiệu trong lớp</p>
         </div>
-        <button
-          onClick={() => { setEditingBadge(null); setFormOpen(true) }}
-          className="flex items-center gap-2 rounded-xl bg-brand-purple px-4 py-2 text-sm font-bold text-white hover:bg-brand-purple-dark"
-        >
+        <ClassroomButton onClick={() => { setEditingBadge(null); setFormOpen(true) }}>
           <Plus className="size-4" /> Thêm huy hiệu
-        </button>
+        </ClassroomButton>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {badges.map((badge) => (
-          <div key={badge.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">{badge.icon ?? '🏅'}</span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-bold text-slate-800">{badge.name}</p>
-              {badge.description ? <p className="truncate text-xs text-slate-500">{badge.description}</p> : null}
+      {badges.length === 0 ? (
+        <p className="rounded-2xl bg-brand-soft px-4 py-8 text-center text-sm font-semibold text-brand-dark">
+          Chưa có huy hiệu nào. Bấm Thêm huy hiệu để tạo loại đầu tiên.
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {badges.map((badge) => (
+            <div
+              key={badge.id}
+              className="group flex items-center gap-3 rounded-2xl border border-sky-100 bg-brand-soft/60 p-3 transition hover:border-accent-pink/40 hover:bg-pastel-pink/50"
+            >
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                {badge.icon ?? '🏅'}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-slate-800">{badge.name}</p>
+                {badge.description ? <p className="truncate text-xs text-slate-500">{badge.description}</p> : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setEditingBadge(badge); setFormOpen(true) }}
+                className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white hover:text-brand"
+                title="Sửa"
+              >
+                <PencilLine className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(badge)}
+                className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white hover:text-rose-500"
+                title="Xóa"
+              >
+                <Trash2 className="size-4" />
+              </button>
             </div>
-            <button onClick={() => { setEditingBadge(badge); setFormOpen(true) }} className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-brand-purple">
-              <PencilLine className="size-4" />
-            </button>
-            <button onClick={() => setDeleteTarget(badge)} className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-rose-500">
-              <Trash2 className="size-4" />
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {formOpen ? (
         <BadgeFormDialog

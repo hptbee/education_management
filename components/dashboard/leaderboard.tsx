@@ -4,17 +4,18 @@ import Link from 'next/link'
 import { Crown, Star, ArrowRight } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
+import { ClassroomCard, EmptyState } from '@/src/components/classroom'
 
 const rankBadge: Record<number, string> = {
-  1: 'bg-gradient-to-b from-amber-300 to-amber-500 text-white',
-  2: 'bg-gradient-to-b from-slate-300 to-slate-400 text-white',
-  3: 'bg-gradient-to-b from-orange-300 to-orange-500 text-white',
+  1: 'bg-pastel-yellow text-amber-800 ring-2 ring-amber-200',
+  2: 'bg-slate-100 text-slate-600 ring-2 ring-slate-200',
+  3: 'bg-pastel-peach text-orange-800 ring-2 ring-orange-200',
 }
 
-const pointColor: Record<number, string> = {
-  1: 'text-amber-500',
-  2: 'text-emerald-500',
-  3: 'text-orange-500',
+const rankRow: Record<number, string> = {
+  1: 'border-amber-100 bg-pastel-yellow/50',
+  2: 'border-slate-100 bg-slate-50',
+  3: 'border-orange-100 bg-pastel-peach/40',
 }
 
 export function Leaderboard() {
@@ -22,68 +23,74 @@ export function Leaderboard() {
   const students = data?.students || []
   const teams = data?.teams || []
 
-  // Top 10 students by points
-  const topStudents = [...students].sort((a, b) => b.points - a.points).slice(0, 10)
+  const topStudents = [...students].sort((a, b) => b.points - a.points).slice(0, 8)
 
   return (
-    <section className="flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+    <ClassroomCard className="flex flex-col">
       <header className="mb-4 flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-amber-100">
-          <Crown className="size-4 text-amber-500" />
+        <span className="flex size-8 items-center justify-center rounded-xl bg-pastel-yellow">
+          <Crown className="size-4 text-amber-600" />
         </span>
-        <h3 className="font-display text-lg font-extrabold text-slate-800">
-          BẢNG XẾP HẠNG ĐIỂM
-        </h3>
+        <h3 className="font-display text-lg font-extrabold text-slate-800">Bảng xếp hạng</h3>
       </header>
 
-      <ul className="flex flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
+      <ul className="flex flex-1 flex-col gap-2 overflow-y-auto pr-1">
         {topStudents.length === 0 ? (
-          <li className="p-4 text-center text-sm font-semibold text-slate-400">Chưa có dữ liệu</li>
-        ) : topStudents.map((s, i) => {
-          const rank = i + 1
-          const team = teams.find(t => t.id === s.teamId)
-          
-          return (
-            <li
-              key={s.id}
-              className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 transition-colors hover:bg-slate-100/50"
-            >
-              <span
-                className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${
-                  rankBadge[rank] ?? 'bg-slate-100 text-slate-500'
+          <li>
+            <EmptyState
+              compact
+              emoji="⭐"
+              title="Chưa có dữ liệu xếp hạng"
+              description="Tích điểm cho học sinh để bảng xếp hạng hiển thị tại đây."
+            />
+          </li>
+        ) : (
+          topStudents.map((s, i) => {
+            const rank = i + 1
+            const team = teams.find((t) => t.id === s.teamId)
+
+            return (
+              <li
+                key={s.id}
+                className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${
+                  rankRow[rank] ?? 'border-sky-50 bg-slate-50/70'
                 }`}
               >
-                {rank}
-              </span>
-              <img
-                src={getStudentAvatar(s)}
-                alt={s.name}
-                className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
-              />
-              <div className="min-w-0 flex-1">
-                <p className={`truncate text-sm font-extrabold ${pointColor[rank] ?? 'text-slate-700'}`}>
-                  {s.name}
-                </p>
-                <p className="text-[11px] font-bold text-slate-500">{team ? team.name : 'Chưa có nhóm'}</p>
-              </div>
-              <div className="flex items-center gap-1.5 pl-1">
-                <div className="text-right leading-none">
-                  <span className="font-display text-xl font-extrabold text-slate-800">
-                    {s.points}
-                  </span>
-                  <span className="ml-1 text-[11px] font-semibold text-slate-400">điểm</span>
+                <span
+                  className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${
+                    rankBadge[rank] ?? 'bg-white text-slate-500'
+                  }`}
+                >
+                  {rank}
+                </span>
+                <img
+                  src={getStudentAvatar(s)}
+                  alt={s.name}
+                  className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-extrabold text-slate-800">{s.name}</p>
+                  <p className="truncate text-[11px] font-bold text-slate-500">
+                    {team ? team.name : 'Chưa có tổ'}
+                  </p>
                 </div>
-                <Star className="size-4 fill-star text-star" />
-              </div>
-            </li>
-          )
-        })}
+                <div className="flex shrink-0 items-center gap-1 rounded-full bg-white/80 px-2 py-1">
+                  <Star className="size-3.5 fill-star text-star" />
+                  <span className="font-display text-sm font-extrabold text-slate-800">{s.points}</span>
+                </div>
+              </li>
+            )
+          })
+        )}
       </ul>
 
-      <Link href="/students" className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
-        Xem danh sách học sinh
+      <Link
+        href="/points"
+        className="mt-4 flex items-center justify-center gap-1.5 border-t border-sky-100 pt-4 text-sm font-bold text-brand transition hover:text-brand-dark"
+      >
+        Tích điểm ngay
         <ArrowRight className="size-4" />
       </Link>
-    </section>
+    </ClassroomCard>
   )
 }

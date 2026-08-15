@@ -3,6 +3,7 @@ import { defaultData } from "../store/defaultData";
 import { generateDatabaseId } from "./database.utils";
 import { createDefaultBadges } from "../utils/badges";
 import { createDefaultClassroomRoles } from "../utils/classroomRoles";
+import { createDefaultRecognitionTitles } from "../utils/recognitionTitles";
 import type { ClassroomDatabase } from "./types";
 import type { ClassroomSettings } from "../types/models";
 
@@ -38,6 +39,7 @@ export function createEmptyDatabase(
     pointHistory: [],
     rewards: [],
     rewardHistory: [],
+    recognitionTitles: createDefaultRecognitionTitles(),
     recognitions: [],
     luckyWheelHistory: [],
     wheelStudentBag: [],

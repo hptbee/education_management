@@ -100,7 +100,7 @@ function Sidebar() {
   const { data } = useAppData();
   const settings = data.classroomSettings;
   return (
-    <aside className="sticky top-3 flex h-[calc(100vh-1.5rem)] flex-col rounded-[2.25rem] bg-gradient-to-b from-[#7c5cff] via-[#6a66ee] to-[#5a90ef] p-4 text-white shadow-[0_20px_50px_rgba(81,64,194,0.35)]">
+    <aside className="sticky top-3 flex h-[calc(100vh-1.5rem)] flex-col rounded-[2.25rem] bg-gradient-to-b from-brand-purple via-brand-purple-light to-brand-purple-light p-4 text-white shadow-lg shadow-sky-200/40">
       <div className="rounded-[1.7rem] bg-white/14 p-4 text-center shadow-inner backdrop-blur-sm">
         <div className="mx-auto grid h-20 w-20 place-items-center rounded-[34%] bg-white/90 text-4xl shadow-[0_10px_0_rgba(255,255,255,0.18)]">📚</div>
         <h1 className="mt-3 text-3xl font-black tracking-wide">LÊ THƯ</h1>
@@ -153,11 +153,11 @@ function Dashboard() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-2">
-                <h2 className="truncate text-2xl font-black text-[#273055]">{formatClassroomTitle(data.classroomSettings)}</h2>
-                <PencilLine className="mt-1 text-[#7c5cff]" size={18} />
+                <h2 className="truncate text-2xl font-black text-slate-800">{formatClassroomTitle(data.classroomSettings)}</h2>
+                <PencilLine className="mt-1 text-brand-purple" size={18} />
               </div>
-              <p className="mt-2 text-sm font-semibold text-[#6a6f91]">Giáo viên: {data.classroomSettings.teacher?.name}</p>
-              <p className="mt-1 text-sm font-semibold text-[#6a6f91]">Năm học: {data.classroomSettings.schoolYear}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-500">Giáo viên: {data.classroomSettings.teacher?.name}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Năm học: {data.classroomSettings.schoolYear}</p>
               <Button className="mt-4 w-full justify-center" variant="ghost"><MonitorPlay size={18} />Đổi ảnh lớp</Button>
             </div>
           </div>
@@ -168,7 +168,7 @@ function Dashboard() {
           <div className="relative grid h-full gap-4 xl:grid-cols-[170px_1fr_170px] xl:items-center">
             <Mascot side="left" />
             <div className="py-4 text-center">
-              <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-1 text-sm font-black text-[#7c5cff] shadow-sm">✨ Cùng nhau học tập thật tốt</div>
+              <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-1 text-sm font-black text-brand-purple shadow-sm">✨ Cùng nhau học tập thật tốt</div>
               <div className="mb-2 text-base font-black text-[#ff7f96]">Chào {data.classroomSettings.teacher?.name}! 👋</div>
               <h1 className="text-4xl font-black leading-tight text-[#2c2f77] md:text-5xl">
                 Ai sẽ là người
@@ -189,7 +189,7 @@ function Dashboard() {
 
         <Card className="bg-white/88">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-black uppercase tracking-wide text-[#7c5cff]">Thao tác nhanh</h3>
+            <h3 className="text-lg font-black uppercase tracking-wide text-brand-purple">Thao tác nhanh</h3>
             <Badge className="bg-[#fff0ad] text-[#4d3b00]">Trình chiếu</Badge>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -208,7 +208,7 @@ function Dashboard() {
           <SectionTitle icon={Users} title="DANH SÁCH HỌC SINH" />
           <div className="mt-4 flex flex-wrap gap-3">
             <div className="relative min-w-[240px] flex-1">
-              <input className="w-full rounded-full border border-[#dde2ff] bg-[#fbfbff] py-3 pl-11 pr-4 outline-none" placeholder="Tìm kiếm học sinh..." />
+              <input className="w-full rounded-full border border-slate-200 bg-surface-soft py-3 pl-11 pr-4 outline-none" placeholder="Tìm kiếm học sinh..." />
               <Star className="absolute left-4 top-3.5 text-[#b4b9da]" size={18} />
             </div>
             <Button><Plus size={18} />Thêm học sinh</Button>
@@ -216,7 +216,7 @@ function Dashboard() {
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {topStudents.map((student) => <StudentPreviewCard key={student.id} student={student} />)}
           </div>
-          <Link className="mt-4 inline-flex items-center gap-2 font-black text-[#6f55ee]" to="/students">Xem tất cả học sinh <ChevronRight size={18} /></Link>
+          <Link className="mt-4 inline-flex items-center gap-2 font-black text-brand-purple" to="/students">Xem tất cả học sinh <ChevronRight size={18} /></Link>
         </Card>
 
         <Card className="bg-white/90">
@@ -224,7 +224,7 @@ function Dashboard() {
           <div className="mt-4 grid gap-2">
             {topStudents.map((student, index) => <LeaderboardRow key={student.id} student={student} rank={index + 1} />)}
           </div>
-          <Link className="mt-4 inline-flex items-center gap-2 font-black text-[#6f55ee]" to="/points">Xem bảng xếp hạng <ChevronRight size={18} /></Link>
+          <Link className="mt-4 inline-flex items-center gap-2 font-black text-brand-purple" to="/points">Xem bảng xếp hạng <ChevronRight size={18} /></Link>
         </Card>
 
         <Card className="bg-white/90">
@@ -232,7 +232,7 @@ function Dashboard() {
           <div className="mt-4 grid gap-3">
             {rankedTeams.map((team, index) => <TeamCompetitionRow key={team.id} team={team} rank={index + 1} />)}
           </div>
-          <Link className="mt-4 inline-flex items-center gap-2 font-black text-[#6f55ee]" to="/teams">Xem chi tiết <ChevronRight size={18} /></Link>
+          <Link className="mt-4 inline-flex items-center gap-2 font-black text-brand-purple" to="/teams">Xem chi tiết <ChevronRight size={18} /></Link>
         </Card>
       </section>
 
@@ -283,8 +283,8 @@ function StudentsPage() {
           <Card key={student.id} className="bg-white/90">
             <div className="grid justify-items-center gap-3 text-center">
               <Avatar name={student.name} size="lg" />
-              <h3 className="text-xl font-black text-[#273055]">{student.name}</h3>
-              <Badge className="bg-[#f5f7ff] text-[#63709d]">{student.gender === "female" ? "Nữ" : "Nam"} • {student.dateOfBirth ?? "15/03/2016"}</Badge>
+              <h3 className="text-xl font-black text-slate-800">{student.name}</h3>
+              <Badge className="bg-brand-soft text-[#63709d]">{student.gender === "female" ? "Nữ" : "Nam"} • {student.dateOfBirth ?? "15/03/2016"}</Badge>
               <Badge className="bg-[#fff0f7] text-[#de4f89]">{teamName(data.teams, student.teamId, "Tổ 1")}</Badge>
               <p className="font-black text-[#ff9a00]">⭐ {student.points} điểm</p>
               <Button size="sm" variant="danger" onClick={() => deleteStudent(student.id)}>Xóa</Button>
@@ -307,7 +307,7 @@ function StudentProfilePage() {
       <Card className="bg-white/90">
         <div className="flex flex-col items-center gap-4 text-center">
           <Avatar name={student.name} size="xl" />
-          <p className="text-5xl font-black text-[#7c5cff]">{student.points}</p>
+          <p className="text-5xl font-black text-brand-purple">{student.points}</p>
           <Badge>Điểm hiện tại</Badge>
         </div>
       </Card>
@@ -359,7 +359,7 @@ function PointsPage() {
           <Card key={action.id} className="flex items-center justify-between bg-white/90 py-3">
             <div>
               <p className="font-black">{action.name}</p>
-              <p className="text-sm text-[#6a6f91]">{action.points > 0 ? "+" : ""}{action.points} điểm</p>
+              <p className="text-sm text-slate-500">{action.points > 0 ? "+" : ""}{action.points} điểm</p>
             </div>
             <Button size="sm" variant={action.points > 0 ? "mint" : "peach"} onClick={() => applyPoints(studentId, action)}>{action.points > 0 ? "Cộng" : "Trừ"}</Button>
           </Card>
@@ -371,7 +371,7 @@ function PointsPage() {
 
 function RewardsPage() {
   const { data } = useAppData();
-  return <Page><PageHeading title="QUÀ TẶNG" description="Phần thưởng và quà khích lệ." /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{data.rewards.map((reward) => <Card key={reward.id} className="bg-white/90"><h3 className="text-xl font-black">{reward.name}</h3><p className="mt-2 text-sm text-[#6a6f91]">{reward.description}</p><p className="mt-4 font-black text-[#ff9a00]">⭐ {reward.requiredPoints} điểm</p></Card>)}</div></Page>;
+  return <Page><PageHeading title="QUÀ TẶNG" description="Phần thưởng và quà khích lệ." /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{data.rewards.map((reward) => <Card key={reward.id} className="bg-white/90"><h3 className="text-xl font-black">{reward.name}</h3><p className="mt-2 text-sm text-slate-500">{reward.description}</p><p className="mt-4 font-black text-[#ff9a00]">⭐ {reward.requiredPoints} điểm</p></Card>)}</div></Page>;
 }
 
 function RecognitionPage() {
@@ -392,7 +392,7 @@ function RecognitionPage() {
           </form>
         </Card>
         <Card className="bg-gradient-to-br from-[#fff7d4] via-[#fff2fb] to-[#e9e6ff] text-center">
-          <Sparkles className="mx-auto text-[#7c5cff]" size={54} />
+          <Sparkles className="mx-auto text-brand-purple" size={54} />
           <h3 className="mt-3 text-4xl font-black text-[#2c2f77]">{latest?.title ?? "Học sinh tích cực"}</h3>
           {student ? <div className="mt-8 grid justify-items-center gap-4"><Avatar name={student.name} size="xl" /><h4 className="text-4xl font-black">{student.name}</h4><p className="max-w-2xl text-xl font-semibold text-[#5e668b]">{latest?.message ?? message}</p></div> : null}
         </Card>
@@ -416,7 +416,7 @@ function LuckyWheelPage() {
       <Card className="grid min-h-[520px] place-items-center bg-gradient-to-br from-[#8fd8ff] via-[#fff0ad] to-[#ff9fd0]">
         <motion.div animate={{ rotate: winner ? 1440 : 0 }} transition={{ duration: 1.25, ease: "easeOut" }} className="grid h-[min(68vw,440px)] w-[min(68vw,440px)] place-items-center rounded-full border-[18px] border-white bg-conic-gradient shadow-[0_20px_0_rgba(41,48,77,0.12)]">
           <div className="rounded-full bg-white/90 p-10 text-center">
-            <WandSparkles className="mx-auto text-[#7c5cff]" size={48} />
+            <WandSparkles className="mx-auto text-brand-purple" size={48} />
             <p className="mt-2 text-3xl font-black">Spin</p>
           </div>
         </motion.div>
@@ -546,10 +546,10 @@ export function SettingsPage() {
               activeTab === tab.id
                 ? tab.id === "danger"
                   ? "bg-rose-500 text-white shadow-lg shadow-rose-200"
-                  : "bg-[#7c5cff] text-white shadow-lg shadow-purple-200"
+                  : "bg-brand-purple text-white shadow-lg shadow-sky-200"
                 : tab.id === "danger"
                   ? "bg-rose-50 text-rose-500 hover:bg-rose-100"
-                  : "bg-white/80 text-[#6a6f91] hover:bg-white"
+                  : "bg-white/80 text-slate-500 hover:bg-white"
             }`}
           >
             {tab.icon}
@@ -575,12 +575,12 @@ export function SettingsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="bg-white/90">
             <div className="mb-6 flex items-center gap-4">
-              <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-[#7c5cff] to-[#5a90ef] text-white shadow-lg text-3xl">
+              <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-brand-purple to-brand-purple-light text-white shadow-lg text-3xl">
                 👩‍🏫
               </div>
               <div>
-                <h2 className="text-xl font-black text-[#273055]">Hồ sơ giáo viên</h2>
-                <p className="text-sm text-[#6a6f91]">Tên hiển thị trong lớp học</p>
+                <h2 className="text-xl font-black text-slate-800">Hồ sơ giáo viên</h2>
+                <p className="text-sm text-slate-500">Tên hiển thị trong lớp học</p>
               </div>
             </div>
             <div className="grid gap-4">
@@ -591,8 +591,8 @@ export function SettingsPage() {
                   placeholder="Ví dụ: Cô Thu"
                 />
               </Field>
-              <div className="rounded-2xl bg-[#f7f5ff] border border-[#e8e3ff] p-4 text-sm text-[#6a6f91]">
-                <p className="font-bold text-[#7c5cff] mb-1">💡 Hiển thị tên ở đâu?</p>
+              <div className="rounded-2xl bg-brand-soft border border-slate-200 p-4 text-sm text-slate-500">
+                <p className="font-bold text-brand-purple mb-1">💡 Hiển thị tên ở đâu?</p>
                 <ul className="grid gap-1 list-disc list-inside">
                   <li>Trang tổng quan (Dashboard)</li>
                   <li>Thẻ tuyên dương học sinh</li>
@@ -611,10 +611,10 @@ export function SettingsPage() {
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="grid h-20 w-20 place-items-center rounded-[38%] bg-white/70 text-5xl shadow-lg">👩‍🏫</div>
               <div>
-                <p className="text-xl font-black text-[#273055]">{teacherDraft.name || "Tên giáo viên"}</p>
-                <p className="text-sm text-[#6a6f91] mt-1">Giáo viên chủ nhiệm</p>
+                <p className="text-xl font-black text-slate-800">{teacherDraft.name || "Tên giáo viên"}</p>
+                <p className="text-sm text-slate-500 mt-1">Giáo viên chủ nhiệm</p>
               </div>
-              <div className="rounded-2xl bg-[#f3efff] px-4 py-2 text-sm font-bold text-[#7c5cff]">
+              <div className="rounded-2xl bg-brand-soft px-4 py-2 text-sm font-bold text-brand-purple">
                 ✨ {teacherDraft.name || "Cô giáo"} khen bạn rất tuyệt!
               </div>
             </div>
@@ -631,8 +631,8 @@ export function SettingsPage() {
                 🏫
               </div>
               <div>
-                <h2 className="text-xl font-black text-[#273055]">Thông tin lớp học</h2>
-                <p className="text-sm text-[#6a6f91]">Tên hiển thị của lớp học</p>
+                <h2 className="text-xl font-black text-slate-800">Thông tin lớp học</h2>
+                <p className="text-sm text-slate-500">Tên hiển thị của lớp học</p>
               </div>
             </div>
             <div className="grid gap-4">
@@ -656,7 +656,7 @@ export function SettingsPage() {
           {/* Stats */}
           <div className="grid gap-4">
             <Card className="bg-white/90">
-              <p className="text-xs font-black uppercase tracking-widest text-[#7c5cff] mb-3">Thống kê lớp</p>
+              <p className="text-xs font-black uppercase tracking-widest text-brand-purple mb-3">Thống kê lớp</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Học sinh", value: data!.students.length, emoji: "🧑‍🎓" },
@@ -664,16 +664,16 @@ export function SettingsPage() {
                   { label: "Hành động điểm", value: data!.pointActions.length, emoji: "⭐" },
                   { label: "Phần thưởng", value: data!.rewards.length, emoji: "🎁" },
                 ].map(({ label, value, emoji }) => (
-                  <div key={label} className="rounded-2xl bg-[#f7f5ff] p-3 text-center">
+                  <div key={label} className="rounded-2xl bg-brand-soft p-3 text-center">
                     <p className="text-2xl">{emoji}</p>
-                    <p className="text-2xl font-black text-[#7c5cff]">{value}</p>
-                    <p className="text-xs font-bold text-[#6a6f91]">{label}</p>
+                    <p className="text-2xl font-black text-brand-purple">{value}</p>
+                    <p className="text-xs font-bold text-slate-500">{label}</p>
                   </div>
                 ))}
               </div>
             </Card>
             <Card className="bg-white/90">
-              <p className="text-xs font-black uppercase tracking-widest text-[#7c5cff] mb-3">Xuất / Nhập dữ liệu</p>
+              <p className="text-xs font-black uppercase tracking-widest text-brand-purple mb-3">Xuất / Nhập dữ liệu</p>
               <Button variant="ghost" className="w-full justify-center" onClick={handleExport}>
                 <Download size={18} /> Xuất JSON
               </Button>
@@ -693,10 +693,10 @@ export function SettingsPage() {
           {/* Rename */}
           <Card className="bg-white/90">
             <div className="mb-5 flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#f3efff] text-[#7c5cff]"><Settings size={22} /></div>
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand-purple"><Settings size={22} /></div>
               <div>
-                <h2 className="text-lg font-black text-[#273055]">Đổi tên / Năm học</h2>
-                <p className="text-xs text-[#6a6f91]">Tạo database ID mới — an toàn tuyệt đối</p>
+                <h2 className="text-lg font-black text-slate-800">Đổi tên / Năm học</h2>
+                <p className="text-xs text-slate-500">Tạo database ID mới — an toàn tuyệt đối</p>
               </div>
             </div>
             <div className="grid gap-3">
@@ -720,8 +720,8 @@ export function SettingsPage() {
             <div className="mb-5 flex items-center gap-3">
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#f0fff4] text-emerald-600"><Copy size={22} /></div>
               <div>
-                <h2 className="text-lg font-black text-[#273055]">Nhân bản database</h2>
-                <p className="text-xs text-[#6a6f91]">Tạo lớp mới từ lớp hiện tại</p>
+                <h2 className="text-lg font-black text-slate-800">Nhân bản database</h2>
+                <p className="text-xs text-slate-500">Tạo lớp mới từ lớp hiện tại</p>
               </div>
             </div>
             <div className="grid gap-3">
@@ -737,10 +737,10 @@ export function SettingsPage() {
                     key={mode}
                     type="button"
                     onClick={() => setDupDraft({ ...dupDraft, mode })}
-                    className={`rounded-2xl border-2 p-3 text-left transition-all ${dupDraft.mode === mode ? "border-emerald-500 bg-emerald-50" : "border-[#e8e3ff] bg-white hover:border-emerald-300"}`}
+                    className={`rounded-2xl border-2 p-3 text-left transition-all ${dupDraft.mode === mode ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-white hover:border-emerald-300"}`}
                   >
-                    <p className="font-black text-sm text-[#273055]">{mode === "settings-only" ? "📋 Chỉ cài đặt" : "📦 Bản sao đầy đủ"}</p>
-                    <p className="text-xs text-[#6a6f91] mt-1">{mode === "settings-only" ? "Giữ điểm, phần thưởng — không copy học sinh" : "Copy toàn bộ học sinh & lịch sử"}</p>
+                    <p className="font-black text-sm text-slate-800">{mode === "settings-only" ? "📋 Chỉ cài đặt" : "📦 Bản sao đầy đủ"}</p>
+                    <p className="text-xs text-slate-500 mt-1">{mode === "settings-only" ? "Giữ điểm, phần thưởng — không copy học sinh" : "Copy toàn bộ học sinh & lịch sử"}</p>
                   </button>
                 ))}
               </div>
@@ -758,8 +758,8 @@ export function SettingsPage() {
                   <FolderOpen size={22} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-[#273055]">📂 Mở thư mục dữ liệu</h2>
-                  <p className="text-xs text-[#6a6f91]">Xem file JSON của tất cả lớp học trong File Explorer</p>
+                  <h2 className="text-lg font-black text-slate-800">📂 Mở thư mục dữ liệu</h2>
+                  <p className="text-xs text-slate-500">Xem file JSON của tất cả lớp học trong File Explorer</p>
                 </div>
               </div>
               <Button variant="ghost" onClick={handleOpenDataFolder}>
@@ -779,16 +779,16 @@ export function SettingsPage() {
             </div>
             <div>
               <h2 className="text-xl font-black text-rose-600">Vùng nguy hiểm</h2>
-              <p className="text-sm text-[#6a6f91]">Các thao tác không thể hoàn tác</p>
+              <p className="text-sm text-slate-500">Các thao tác không thể hoàn tác</p>
             </div>
           </div>
 
           <div className="grid gap-4">
             {/* Export backup */}
-            <div className="rounded-2xl border border-[#e8e3ff] bg-[#fbfbff] p-4 flex items-center justify-between gap-4">
+            <div className="rounded-2xl border border-slate-200 bg-surface-soft p-4 flex items-center justify-between gap-4">
               <div>
-                <p className="font-black text-[#273055]">📥 Sao lưu trước khi xóa</p>
-                <p className="text-sm text-[#6a6f91]">Xuất toàn bộ dữ liệu ra file JSON</p>
+                <p className="font-black text-slate-800">📥 Sao lưu trước khi xóa</p>
+                <p className="text-sm text-slate-500">Xuất toàn bộ dữ liệu ra file JSON</p>
               </div>
               <Button variant="ghost" onClick={handleExport}><Download size={16} />Xuất</Button>
             </div>
@@ -865,8 +865,8 @@ export function ClassroomSelectorScreen() {
     <div className="grid min-h-screen place-items-center p-4">
       <Card className="w-full max-w-4xl bg-white/95">
         <div className="text-center mb-8">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-[#7c5cff]">🎉 Chào mừng đến với Lớp Học Vui!</p>
-          <h1 className="mt-2 text-3xl font-black text-[#273055]">Chọn hoặc tạo lớp học mới</h1>
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-brand-purple">🎉 Chào mừng đến với Lớp Học Vui!</p>
+          <h1 className="mt-2 text-3xl font-black text-slate-800">Chọn hoặc tạo lớp học mới</h1>
         </div>
         
         <div className="grid md:grid-cols-2 gap-8">
@@ -894,8 +894,8 @@ export function ClassroomSelectorScreen() {
             
             <div className="mt-6 border-t pt-6">
               <h2 className="text-xl font-bold mb-4">Nhập dữ liệu</h2>
-              <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dde2ff] bg-[#fbfbff] py-6 hover:bg-[#f0f4ff]">
-                <div className="flex flex-col items-center justify-center pb-2 pt-1 text-[#6a4feb]">
+              <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-surface-soft py-6 hover:bg-brand-soft">
+                <div className="flex flex-col items-center justify-center pb-2 pt-1 text-brand-purple">
                   <MonitorPlay size={32} className="mb-2" />
                   <p className="text-sm font-bold">Bấm để tải tệp JSON lên</p>
                 </div>
@@ -908,15 +908,19 @@ export function ClassroomSelectorScreen() {
             <h2 className="text-xl font-bold mb-4">Lớp học gần đây</h2>
             <div className="grid gap-3 h-full max-h-[400px] overflow-y-auto pr-2">
               {databases.length === 0 ? (
-                <div className="text-center p-8 text-gray-500 bg-gray-50 rounded-xl border">Chưa có dữ liệu lớp học nào</div>
+                <div className="rounded-3xl border border-dashed border-brand-purple/20 bg-gradient-to-b from-pastel-lavender/40 to-transparent p-8 text-center">
+                  <p className="text-4xl">📚</p>
+                  <p className="mt-3 font-bold text-slate-700">Chưa có dữ liệu lớp học nào</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">Tạo lớp mới hoặc nhập dữ liệu JSON để bắt đầu.</p>
+                </div>
               ) : (
                 databases.map(db => (
-                  <Card key={db.id} className="cursor-pointer hover:border-[#7c5cff] transition-colors" onClick={() => switchDatabase(db.id)}>
+                  <Card key={db.id} className="cursor-pointer hover:border-brand-purple transition-colors" onClick={() => switchDatabase(db.id)}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Avatar name={db.className} size="md" />
                         <div>
-                          <p className="font-bold text-[#273055]">{db.className}</p>
+                          <p className="font-bold text-slate-800">{db.className}</p>
                           <p className="text-sm text-gray-500">{db.schoolYear} • {db.teacherName}</p>
                         </div>
                       </div>
@@ -937,10 +941,10 @@ function SectionTitle({ icon: Icon, title, action }: { icon: LucideIcon; title: 
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#f3efff] text-[#7c5cff]"><Icon size={20} /></div>
-        <h3 className="text-lg font-black tracking-wide text-[#6a4feb]">{title}</h3>
+        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-soft text-brand-purple"><Icon size={20} /></div>
+        <h3 className="text-lg font-black tracking-wide text-brand-purple">{title}</h3>
       </div>
-      {action ? <span className="text-sm font-black text-[#7c5cff]">{action}</span> : null}
+      {action ? <span className="text-sm font-black text-brand-purple">{action}</span> : null}
     </div>
   );
 }
@@ -949,9 +953,9 @@ function PageHeading({ title, description, action }: { title: string; descriptio
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-sm font-black uppercase tracking-[0.2em] text-[#7c5cff]">Lớp học</p>
-        <h1 className="mt-1 text-3xl font-black text-[#273055] md:text-5xl">{title}</h1>
-        <p className="mt-2 max-w-3xl font-semibold text-[#6a6f91]">{description}</p>
+        <p className="text-sm font-black uppercase tracking-[0.2em] text-brand-purple">Lớp học</p>
+        <h1 className="mt-1 text-3xl font-black text-slate-800 md:text-5xl">{title}</h1>
+        <p className="mt-2 max-w-3xl font-semibold text-slate-500">{description}</p>
       </div>
       {action}
     </header>
@@ -969,10 +973,10 @@ function Mascot({ side }: { side: "left" | "right" }) {
 
 function StudentPreviewCard({ student }: { student: Student }) {
   return (
-    <div className="grid justify-items-center rounded-[1.4rem] border border-[#edf0ff] bg-[#fbfbff] p-4 text-center shadow-[0_8px_18px_rgba(51,52,96,0.05)]">
+    <div className="grid justify-items-center rounded-[1.4rem] border border-slate-200 bg-surface-soft p-4 text-center shadow-[0_8px_18px_rgba(51,52,96,0.05)]">
       <Avatar name={student.name} size="md" />
       <p className="mt-3 font-black text-[#ff4f72]">{student.name}</p>
-      <p className="text-sm font-semibold text-[#6a6f91]">{student.gender === "female" ? "Nữ" : "Nam"} • {student.dateOfBirth ?? "15/03/2016"}</p>
+      <p className="text-sm font-semibold text-slate-500">{student.gender === "female" ? "Nữ" : "Nam"} • {student.dateOfBirth ?? "15/03/2016"}</p>
       <Badge className="mt-2 bg-[#fff0f7] text-[#d0477f]">{teamNameFallback(student.teamId)}</Badge>
       <p className="mt-3 font-black text-[#ff9a00]">⭐ {student.points} điểm</p>
     </div>
@@ -982,12 +986,12 @@ function StudentPreviewCard({ student }: { student: Student }) {
 function LeaderboardRow({ student, rank }: { student: Student; rank: number }) {
   const rankTone = rank === 1 ? "bg-[#fff1c2] text-[#b27c00]" : rank === 2 ? "bg-[#eef1f8] text-[#78819f]" : rank === 3 ? "bg-[#ffe2c7] text-[#c96e2f]" : "bg-[#f4f6ff] text-[#69739a]";
   return (
-    <div className="flex items-center gap-3 rounded-[1.2rem] border border-[#edf0ff] bg-white px-4 py-3">
+    <div className="flex items-center gap-3 rounded-[1.2rem] border border-slate-200 bg-white px-4 py-3">
       <div className={`grid h-10 w-10 place-items-center rounded-full font-black ${rankTone}`}>{rank}</div>
       <Avatar name={student.name} size="sm" />
       <div className="min-w-0">
-        <p className="truncate font-black text-[#273055]">{student.name}</p>
-        <p className="text-sm text-[#6a6f91]">{teamNameFallback(student.teamId)}</p>
+        <p className="truncate font-black text-slate-800">{student.name}</p>
+        <p className="text-sm text-slate-500">{teamNameFallback(student.teamId)}</p>
       </div>
       <p className="ml-auto font-black text-[#ff9a00]">⭐ {student.points}</p>
     </div>
@@ -995,14 +999,14 @@ function LeaderboardRow({ student, rank }: { student: Student; rank: number }) {
 }
 
 function TeamCompetitionRow({ team, rank }: { team: Team; rank: number }) {
-  const colors = ["#ff7f96", "#60d394", "#5b8cff", "#8f6bff"];
+  const colors = ["#efa3bc", "#4ba3e8", "#d4c8f0", "#f5d4b8"];
   const color = colors[(rank - 1) % colors.length];
   return (
-    <div className="rounded-[1.2rem] border border-[#edf0ff] bg-[#fbfbff] p-4">
+    <div className="rounded-[1.2rem] border border-slate-200 bg-surface-soft p-4">
       <div className="flex items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-xl shadow-sm">🏆</div>
         <div className="min-w-0 flex-1">
-          <p className="font-black text-[#273055]">{team.name}</p>
+          <p className="font-black text-slate-800">{team.name}</p>
           <div className="mt-3 h-3 rounded-full bg-[#eef1f8]">
             <div className="h-3 rounded-full" style={{ width: `${Math.min(100, (team.score / 60) * 100)}%`, background: color }} />
           </div>
@@ -1021,8 +1025,8 @@ function RecognitionPreview({ recognition, student, teacherName }: { recognition
       <div className="mt-4 flex items-center gap-3">
         <Avatar name={student?.name ?? "Nguyễn Minh Quân"} size="md" />
         <div>
-          <p className="font-black text-[#273055]">{student?.name ?? "Nguyễn Minh Quân"}</p>
-          <p className="text-sm font-semibold text-[#6a6f91]">{recognition?.message ?? `${teacherName} khen bạn rất tuyệt!`}</p>
+          <p className="font-black text-slate-800">{student?.name ?? "Nguyễn Minh Quân"}</p>
+          <p className="text-sm font-semibold text-slate-500">{recognition?.message ?? `${teacherName} khen bạn rất tuyệt!`}</p>
         </div>
       </div>
     </div>
@@ -1033,10 +1037,10 @@ function ActivityFeed({ items }: { items: { text: string; delta: string; positiv
   return (
     <div className="grid gap-3">
       {items.map((item) => (
-        <div key={item.text} className="flex items-center gap-3 rounded-[1.2rem] bg-[#fbfbff] p-3">
+        <div key={item.text} className="flex items-center gap-3 rounded-[1.2rem] bg-surface-soft p-3">
           <div className={`font-black ${item.positive ? "text-emerald-600" : "text-rose-500"}`}>{item.delta}</div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-[#273055]">{item.text}</p>
+            <p className="font-semibold text-slate-800">{item.text}</p>
             <p className="text-sm text-[#7c82a3]">{item.time}</p>
           </div>
         </div>
@@ -1048,7 +1052,7 @@ function ActivityFeed({ items }: { items: { text: string; delta: string; positiv
 function GameCard({ title, icon: Icon }: { title: string; icon: LucideIcon }) {
   return (
     <Card className="grid min-h-52 place-items-center bg-white/90 text-center">
-      <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-[#f3efff] text-[#7c5cff]"><Icon size={30} /></div>
+      <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-brand-soft text-brand-purple"><Icon size={30} /></div>
       <p className="mt-4 text-2xl font-black">{title}</p>
     </Card>
   );

@@ -9,6 +9,8 @@ export default function RewardsPage() {
       title="Quản lý quà tặng"
       description="Quản lý danh sách phần thưởng và lịch sử đổi quà của học sinh."
       icon={Gift}
+      emoji="🎁"
+      statusMessage="Quà tặng đang được chuẩn bị — sắp có kho phần thưởng hấp dẫn cho học sinh!"
     />
   );
 }

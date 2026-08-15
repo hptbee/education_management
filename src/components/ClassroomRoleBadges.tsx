@@ -1,4 +1,5 @@
 import type { ClassroomRole } from "@/src/types/models";
+import { getRolePastelStyle } from "@/src/utils/pastelPalette";
 
 interface ClassroomRoleBadgesProps {
   roles: ClassroomRole[];
@@ -14,15 +15,18 @@ export function ClassroomRoleBadges({ roles, className = "", size = "sm" }: Clas
 
   return (
     <div className={`flex flex-wrap justify-center gap-1 ${className}`}>
-      {roles.map((role) => (
-        <span
-          key={role.id}
-          className={`inline-flex items-center gap-1 rounded-full bg-violet-100 font-bold text-violet-700 ${textClass} ${paddingClass}`}
-        >
-          {role.icon ? <span>{role.icon}</span> : null}
-          <span>{role.name}</span>
-        </span>
-      ))}
+      {roles.map((role, index) => {
+        const style = getRolePastelStyle(index);
+        return (
+          <span
+            key={role.id}
+            className={`inline-flex items-center gap-1 rounded-full font-bold ${style.badge} ${textClass} ${paddingClass}`}
+          >
+            {role.icon ? <span>{role.icon}</span> : null}
+            <span>{role.name}</span>
+          </span>
+        );
+      })}
     </div>
   );
 }

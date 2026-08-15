@@ -150,6 +150,7 @@ export const defaultData: AppData = {
     },
   ],
   rewardHistory: [],
+  recognitionTitles: [],
   recognitions: [],
   luckyWheelHistory: [],
   wheelStudentBag: [],

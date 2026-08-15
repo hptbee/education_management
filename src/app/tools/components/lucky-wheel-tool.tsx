@@ -4,41 +4,45 @@ import { useState } from 'react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { LuckyWheelDialog } from './lucky-wheel-dialog'
 import { WheelPreview } from './named-wheel'
+import { ClassroomCard, ClassroomButton, EmptyState } from '@/src/components/classroom'
 
 export function LuckyWheelTool() {
   const { data } = useAppData()
   const students = data?.students ?? []
+  const teams = data?.teams ?? []
   const [dialogOpen, setDialogOpen] = useState(false)
 
   return (
     <>
-      <section className="flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <ClassroomCard className="flex flex-col">
         <header className="mb-4">
-          <h2 className="font-display text-base font-extrabold text-slate-800">Vòng quay may mắn</h2>
-          <p className="mt-1 text-xs font-semibold text-slate-500">Chọn ngẫu nhiên một học sinh trong lớp.</p>
+          <h2 className="font-display text-lg font-extrabold text-slate-800">Vòng quay may mắn</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Chọn ngẫu nhiên một học sinh trong lớp.</p>
         </header>
 
         {students.length === 0 ? (
-          <p className="py-10 text-center text-sm font-semibold text-slate-400">Chưa có học sinh</p>
+          <EmptyState
+            compact
+            emoji="🎡"
+            title="Chưa có học sinh"
+            description="Thêm học sinh để bắt đầu quay vòng may mắn."
+          />
         ) : (
-          <div className="flex flex-col items-center">
-            <WheelPreview size={140} />
-            <p className="mt-4 text-xs font-semibold text-slate-400">Mở vòng quay để chọn học sinh</p>
-            <button
-              type="button"
-              onClick={() => setDialogOpen(true)}
-              className="mt-4 w-full rounded-2xl bg-brand-purple py-3 text-sm font-extrabold text-white transition hover:bg-brand-purple-dark"
-            >
+          <div className="flex flex-col items-center rounded-2xl bg-gradient-to-b from-pastel-sky/50 via-white to-pastel-pink/40 px-4 py-6">
+            <WheelPreview size={180} />
+            <p className="mt-5 text-sm font-bold text-brand-purple/70">Mở vòng quay để chọn học sinh</p>
+            <ClassroomButton size="lg" className="mt-4 w-full shadow-md shadow-brand-purple/25" onClick={() => setDialogOpen(true)}>
               QUAY NGAY
-            </button>
+            </ClassroomButton>
           </div>
         )}
-      </section>
+      </ClassroomCard>
 
       <LuckyWheelDialog
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
         students={students}
+        teams={teams}
       />
     </>
   )

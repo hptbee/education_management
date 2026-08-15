@@ -105,8 +105,8 @@ export const activities: Activity[] = [
 ]
 
 export const totColors: Record<TotId, { text: string; bg: string; bar: string }> = {
-  1: { text: 'text-tot-1', bg: 'bg-pink-50 text-tot-1', bar: 'bg-tot-1' },
-  2: { text: 'text-tot-2', bg: 'bg-green-50 text-tot-2', bar: 'bg-tot-2' },
-  3: { text: 'text-tot-3', bg: 'bg-amber-50 text-tot-3', bar: 'bg-tot-3' },
-  4: { text: 'text-tot-4', bg: 'bg-violet-50 text-tot-4', bar: 'bg-tot-4' },
+  1: { text: 'text-rose-800', bg: 'bg-pastel-pink text-rose-800', bar: 'bg-tot-1' },
+  2: { text: 'text-sky-800', bg: 'bg-pastel-sky text-sky-800', bar: 'bg-tot-2' },
+  3: { text: 'text-violet-800', bg: 'bg-pastel-lavender text-violet-800', bar: 'bg-tot-3' },
+  4: { text: 'text-orange-800', bg: 'bg-pastel-peach text-orange-800', bar: 'bg-tot-4' },
 }

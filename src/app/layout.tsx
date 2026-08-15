@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#6d5ce7',
+  themeColor: '#4ba3e8',
 }
 
 import { AppDataProvider } from '@/src/store/AppDataContext'
@@ -35,12 +35,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="vi" className={`${nunito.variable} ${baloo.variable} bg-page`}>
+    <html lang="vi" className={`light ${nunito.variable} ${baloo.variable} bg-page`}>
       <body className="antialiased font-sans">
         <AppDataProvider>
           <div className="flex h-screen overflow-hidden bg-page">
             <Sidebar />
-            <main className="flex flex-1 flex-col overflow-hidden">
+            <main className="classroom-shell flex flex-1 flex-col overflow-hidden">
               {children}
             </main>
           </div>

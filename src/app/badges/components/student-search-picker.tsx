@@ -34,7 +34,7 @@ export function StudentSearchPicker({ students, selectedStudentId, onSelect }: S
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Tìm học sinh theo tên..."
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm font-semibold text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-brand-purple focus:ring-1 focus:ring-brand-purple"
+          className="classroom-search-field rounded-2xl py-2.5"
         />
         {searchQuery ? (
           <button
@@ -48,7 +48,7 @@ export function StudentSearchPicker({ students, selectedStudentId, onSelect }: S
         ) : null}
       </div>
 
-      <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50/80 p-2 scrollbar-thin">
+      <div className="max-h-56 overflow-y-auto rounded-2xl border border-sky-100 bg-slate-50/70 p-2 scrollbar-thin">
         {filteredStudents.length === 0 ? (
           <p className="py-6 text-center text-sm font-semibold text-slate-400">
             {searchQuery ? 'Không tìm thấy học sinh' : 'Chưa có học sinh'}
@@ -65,8 +65,8 @@ export function StudentSearchPicker({ students, selectedStudentId, onSelect }: S
                   onClick={() => onSelect(student.id)}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
                     isSelected
-                      ? 'bg-gradient-to-r from-amber-50 to-yellow-50 ring-2 ring-amber-300'
-                      : 'bg-white hover:bg-amber-50/60'
+                      ? 'bg-pastel-pink ring-2 ring-accent-pink/50'
+                      : 'bg-white hover:bg-brand-soft'
                   }`}
                 >
                   <img
@@ -79,7 +79,7 @@ export function StudentSearchPicker({ students, selectedStudentId, onSelect }: S
                     <p className="text-xs font-semibold text-slate-500">{badgeCount} huy hiệu</p>
                   </div>
                   {isSelected ? (
-                    <span className="shrink-0 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white">
+                    <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-rose-700">
                       Đang chọn
                     </span>
                   ) : null}

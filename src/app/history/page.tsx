@@ -9,6 +9,8 @@ export default function HistoryPage() {
       title="Lịch sử hoạt động"
       description="Xem lại toàn bộ nhật ký các hoạt động đã diễn ra trong lớp."
       icon={History}
+      emoji="📋"
+      statusMessage="Lịch sử hoạt động đang được chuẩn bị — sắp có nhật ký đầy đủ cho giáo viên!"
     />
   );
 }

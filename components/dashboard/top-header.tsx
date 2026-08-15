@@ -1,6 +1,6 @@
 'use client'
 
-import { MonitorPlay, Bell, ChevronDown } from 'lucide-react'
+import { MonitorPlay, Bell } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 
 export function TopHeader() {
@@ -8,25 +8,34 @@ export function TopHeader() {
   const teacherNameStr = teacher?.name || 'Giáo viên'
 
   return (
-    <div className="flex items-center justify-end gap-3">
-      <button className="flex items-center gap-2 rounded-xl border border-black/5 bg-white/90 px-4 py-2.5 text-sm font-bold text-brand-purple shadow-sm backdrop-blur transition hover:bg-white">
+    <div className="flex items-center justify-end gap-2">
+      <button
+        type="button"
+        className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white px-3 py-2 text-xs font-bold text-brand-dark shadow-sm transition hover:bg-brand-soft"
+      >
         <MonitorPlay className="size-4" />
-        Chế độ trình chiếu
+        Trình chiếu
       </button>
 
-      <button className="relative flex size-11 items-center justify-center rounded-xl border border-black/5 bg-white/90 text-slate-500 shadow-sm backdrop-blur transition hover:bg-white">
+      <button
+        type="button"
+        className="relative flex size-10 items-center justify-center rounded-xl border border-sky-100 bg-white text-slate-500 shadow-sm transition hover:bg-brand-soft"
+        aria-label="Thông báo"
+      >
         <Bell className="size-5" />
-        <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-red-500" />
+        <span className="absolute right-2 top-2 size-2 rounded-full bg-rose-400" />
       </button>
 
-      <button className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white/90 py-1.5 pl-1.5 pr-2.5 shadow-sm backdrop-blur transition hover:bg-white">
+      <button
+        type="button"
+        className="flex items-center rounded-xl border border-sky-100 bg-white p-1 shadow-sm transition hover:bg-brand-soft"
+        title={teacherNameStr}
+      >
         <img
           src="/avatar-teacher.png"
           alt={teacherNameStr}
-          title={teacherNameStr}
           className="size-8 rounded-lg object-cover"
         />
-        <ChevronDown className="size-4 text-slate-400 shrink-0" />
       </button>
     </div>
   )

@@ -120,7 +120,7 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
                     {assignedRoles.length > 0 ? (
                       <span className="inline-flex flex-wrap gap-1">
                         {assignedRoles.map((role) => (
-                          <span key={role.id} className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">
+                          <span key={role.id} className="rounded-full bg-pastel-sky px-2 py-0.5 text-xs font-bold text-sky-800">
                             {role.icon ? `${role.icon} ` : ''}{role.name}
                           </span>
                         ))}

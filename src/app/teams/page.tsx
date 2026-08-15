@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Users, Search, Shuffle, FilterX } from 'lucide-react'
+import { Plus, Users, Search, Shuffle, X } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import type { Team, Student } from '@/src/types/models'
@@ -15,6 +15,7 @@ import { RandomizeDialog } from './components/randomize-dialog'
 
 import { TeamCard } from './components/team-card'
 import { TeamRankingList } from './components/team-ranking-list'
+import { PageHeader, ClassroomCard, EmptyState, ClassroomButton } from '@/src/components/classroom'
 
 export default function TeamsPage() {
   const { data, saveTeam, deleteTeam, saveStudent } = useAppData()
@@ -166,61 +167,77 @@ export default function TeamsPage() {
     })
   }
 
+  const unassignedCount = students.filter((s) => !s.teamId).length
+
   if (!isLoaded || !classroom) return null
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#fafafa]">
+    <div className="flex h-full flex-col overflow-hidden bg-page">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6 pb-10 scrollbar-thin">
 
-        {/* ── HEADER ── */}
-        <header className="flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-brand-purple text-white">
-              <Users className="size-5" />
+        <PageHeader
+          icon={Users}
+          title="Quản lý nhóm"
+          subtitle="Quản lý thành viên, điểm và bảng xếp hạng từng tổ trong lớp."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <ClassroomButton onClick={() => { setSelectedTeam(null); setIsFormOpen(true) }}>
+                <Plus className="size-4" /> Thêm nhóm
+              </ClassroomButton>
+              <ClassroomButton variant="outline" onClick={handleRandomize}>
+                <Shuffle className="size-4" /> Chia ngẫu nhiên
+              </ClassroomButton>
             </div>
-            <h1 className="font-display text-2xl font-black uppercase text-slate-800">Quản lý nhóm</h1>
-          </div>
-          <p className="text-sm font-semibold text-slate-500">
-            Quản lý thành viên, điểm và bảng xếp hạng từng tổ trong lớp.
-          </p>
-        </header>
+          }
+        />
 
-        {/* ── TOOLBAR ── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {/* Search */}
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative max-w-md flex-1">
             <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Tìm nhóm hoặc tên học sinh..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-brand-purple focus:ring-1 focus:ring-brand-purple"
+              className="classroom-search-field rounded-2xl py-2.5"
             />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Xóa tìm kiếm"
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
           </div>
-
-          <div className="flex items-center gap-2 sm:ml-auto">
-            <button
-              onClick={() => { setSelectedTeam(null); setIsFormOpen(true) }}
-              className="flex items-center gap-2 rounded-xl bg-[#5944d4] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4833b5]"
-            >
-              <Plus className="size-4" /> Thêm nhóm
-            </button>
-            <button
-              onClick={handleRandomize}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              <Shuffle className="size-4" /> Chia ngẫu nhiên
-            </button>
-          </div>
+          {unassignedCount > 0 ? (
+            <p className="text-sm font-semibold text-rose-600">
+              {unassignedCount} học sinh chưa có tổ
+            </p>
+          ) : null}
         </div>
 
         {/* ── TOP SECTION: TEAM CARDS ── */}
         <section>
           {sortedTeams.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-white py-16 text-center">
-              <p className="text-sm font-semibold text-slate-500">Không tìm thấy nhóm nào</p>
-            </div>
+            <EmptyState
+              emoji="🏆"
+              title={searchQuery ? 'Không tìm thấy nhóm nào' : 'Chưa có tổ nào'}
+              description={
+                searchQuery
+                  ? 'Thử thay đổi từ khóa tìm kiếm.'
+                  : 'Tạo tổ đầu tiên để bắt đầu thi đua trong lớp nhé!'
+              }
+              action={
+                !searchQuery ? (
+                  <ClassroomButton onClick={() => { setSelectedTeam(null); setIsFormOpen(true) }}>
+                    <Plus className="size-4" /> Tạo tổ
+                  </ClassroomButton>
+                ) : undefined
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {sortedTeams.map((team, idx) => (
@@ -231,6 +248,7 @@ export default function TeamsPage() {
                   rank={idx}
                   totalTeams={sortedTeams.length}
                   highestScore={highestScore}
+                  colorIndex={Math.max(0, teams.findIndex((t) => t.id === team.id))}
                   onEdit={() => handleOpenEdit(team)}
                   onDelete={() => handleOpenDelete(team)}
                   onViewDetails={() => handleOpenDetails(team)}
@@ -243,22 +261,21 @@ export default function TeamsPage() {
 
         {/* ── BOTTOM SECTION: RANKING LIST ── */}
         {teams.length > 0 && (
-          <section className="mt-4 rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100 text-amber-500">
-                  <span className="text-lg">🏆</span>
-                </div>
-                <h2 className="font-display text-xl font-black uppercase text-slate-800">BXH Nhóm</h2>
+          <ClassroomCard>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-pastel-yellow text-lg">
+                🏆
               </div>
+              <h2 className="font-display text-xl font-black text-slate-800">Bảng xếp hạng nhóm</h2>
             </div>
 
             <TeamRankingList 
               teams={sortedTeams}
+              allTeams={teams}
               roster={students}
               getMembers={getMembers}
             />
-          </section>
+          </ClassroomCard>
         )}
       </div>
 

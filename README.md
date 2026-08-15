@@ -113,6 +113,29 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - Export / Import JSON database backups
 - Duplicate databases for new school years
 
+## Design System
+
+Visual style: **Cute Modern Classroom** — friendly and playful without feeling childish or cluttered.
+
+Shared UI primitives live in `src/components/classroom/`:
+
+| Component | Use |
+|---|---|
+| `ClassroomButton` | Primary actions (`rounded-2xl`, brand purple) |
+| `ClassroomCard` | Content panels (`rounded-3xl`, soft border/shadow) |
+| `PageHeader` | Page title + icon + subtitle |
+| `EmptyState` | Friendly Vietnamese empty/coming-soon states |
+
+Design tokens in `src/app/globals.css`:
+
+- Primary: `--color-brand-purple` (`#6d5ce7`)
+- Background: `--color-page` (`#f4f1fb`)
+- Pastel accents: `pastel-sky`, `pastel-mint`, `pastel-peach`, `pastel-lavender`, `pastel-yellow`
+- Typography: Nunito (body) + Baloo 2 (display headings)
+
+Teacher pages (Dashboard, Students, Teams, Settings): ~70% clean / 30% playful.
+Student-facing tools (Lucky Wheel, Timer, Lucky Star): larger type, more celebration, still readable from a projector.
+
 ## Project Scope
 
 See [docs/PROJECT_SCOPE.md](./docs/PROJECT_SCOPE.md) for the full product requirements and implementation scope.

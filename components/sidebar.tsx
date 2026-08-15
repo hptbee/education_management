@@ -16,26 +16,26 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
+import { SidebarClassContext } from './sidebar-class-context'
 
 type NavItem = {
   label: string
   href: string
   icon: React.ComponentType<{ className?: string }>
-  color: string
   wrapLabel?: boolean
 }
 
 const navItems: NavItem[] = [
-  { label: 'Trang chủ', href: '/', icon: Home, color: 'text-orange-500' },
-  { label: 'Học sinh', href: '/students', icon: Users, color: 'text-sky-500' },
-  { label: 'Tổ / Nhóm', href: '/teams', icon: UsersRound, color: 'text-pink-500' },
-  { label: 'Tích điểm', href: '/points', icon: Star, color: 'text-amber-400' },
-  { label: 'Quà tặng', href: '/rewards', icon: Gift, color: 'text-rose-400' },
-  { label: 'Huy hiệu', href: '/badges', icon: Medal, color: 'text-amber-500' },
-  { label: 'Thử thách & Công cụ', href: '/tools', icon: Sparkles, color: 'text-violet-400', wrapLabel: true },
-  { label: 'Trò chơi', href: '/games', icon: Gamepad2, color: 'text-indigo-400' },
-  { label: 'Tuyên dương', href: '/recognition', icon: Trophy, color: 'text-yellow-400' },
-  { label: 'Lịch sử', href: '/history', icon: History, color: 'text-teal-400' },
+  { label: 'Trang chủ', href: '/', icon: Home },
+  { label: 'Học sinh', href: '/students', icon: Users },
+  { label: 'Tổ / Nhóm', href: '/teams', icon: UsersRound },
+  { label: 'Tích điểm', href: '/points', icon: Star },
+  { label: 'Quà tặng', href: '/rewards', icon: Gift },
+  { label: 'Huy hiệu', href: '/badges', icon: Medal },
+  { label: 'Thử thách & Công cụ', href: '/tools', icon: Sparkles, wrapLabel: true },
+  { label: 'Trò chơi', href: '/games', icon: Gamepad2 },
+  { label: 'Tuyên dương', href: '/recognition', icon: Trophy },
+  { label: 'Lịch sử', href: '/history', icon: History },
 ]
 
 export function Sidebar() {
@@ -47,17 +47,21 @@ export function Sidebar() {
     : 'LÊ THƯ'
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col bg-gradient-to-b from-brand-purple-light to-brand-purple-dark text-white">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sky-100 bg-surface-soft">
       {/* Logo */}
-      <div className="flex flex-col items-center gap-1 px-6 pt-6 pb-5">
-        <div className="flex size-16 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
+      <div className="flex flex-col items-center gap-1 px-6 pt-5 pb-3">
+        <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-pastel-sky to-pastel-pink shadow-sm">
           <span className="text-3xl">📖</span>
         </div>
-        <h1 className="font-display text-2xl font-extrabold tracking-wide uppercase line-clamp-1 break-all text-center">{displayName}</h1>
-        <p className="text-[10px] font-semibold tracking-[0.2em] text-white/70">
+        <h1 className="font-display text-xl font-extrabold leading-tight text-center text-slate-800 line-clamp-2">
+          {displayName}
+        </h1>
+        <p className="text-[10px] font-semibold tracking-[0.2em] text-slate-500">
           CÔ GIÁO NHỎ 4.0
         </p>
       </div>
+
+      <SidebarClassContext />
 
       {/* Nav */}
       <nav className="flex flex-1 flex-col gap-1.5 px-4 overflow-y-auto scrollbar-none">
@@ -68,13 +72,13 @@ export function Sidebar() {
             <Link
               key={item.label}
               href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-left text-[15px] font-bold transition ${
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-[15px] font-bold transition ${
                 isActive
-                  ? 'bg-white text-brand-purple-dark shadow-md'
-                  : 'text-white/90 hover:bg-white/10'
+                  ? 'bg-white text-brand-dark shadow-sm'
+                  : 'text-slate-600 hover:bg-white/70 hover:text-brand-dark'
               }`}
             >
-              <Icon className={`size-5 shrink-0 ${isActive ? item.color : 'text-white'}`} />
+              <Icon className={`size-5 shrink-0 ${isActive ? 'text-brand' : 'text-slate-400'}`} />
               <span className={item.wrapLabel ? 'leading-tight' : 'truncate'}>{item.label}</span>
             </Link>
           )
@@ -82,16 +86,16 @@ export function Sidebar() {
       </nav>
 
       {/* Settings */}
-      <div className="border-t border-white/15 px-4 py-4 shrink-0">
+      <div className="border-t border-slate-200/80 px-4 py-4 shrink-0">
         <Link 
           href="/settings" 
-          className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-[15px] font-bold transition ${
+          className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[15px] font-bold transition ${
             pathname === '/settings' 
-              ? 'bg-white text-brand-purple-dark shadow-md' 
-              : 'text-white/90 hover:bg-white/10'
+              ? 'bg-white text-brand-dark shadow-sm' 
+              : 'text-slate-600 hover:bg-white/70 hover:text-brand-dark'
           }`}
         >
-          <Settings className={`size-5 shrink-0 ${pathname === '/settings' ? 'text-brand-purple' : 'text-white'}`} />
+          <Settings className={`size-5 shrink-0 ${pathname === '/settings' ? 'text-brand' : 'text-slate-400'}`} />
           <span className="truncate">Cài đặt</span>
         </Link>
       </div>

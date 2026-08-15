@@ -64,7 +64,7 @@ function PointActionFormDialog({
                 type="button"
                 onClick={() => setType('reward')}
                 className={`flex-1 py-2.5 text-sm font-bold transition ${
-                  type === 'reward' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:bg-slate-50'
+                  type === 'reward' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 Cộng điểm
@@ -73,7 +73,7 @@ function PointActionFormDialog({
                 type="button"
                 onClick={() => setType('penalty')}
                 className={`flex-1 py-2.5 text-sm font-bold transition ${
-                  type === 'penalty' ? 'bg-rose-500 text-white' : 'text-slate-500 hover:bg-slate-50'
+                  type === 'penalty' ? 'bg-pastel-pink text-rose-800' : 'text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 Trừ điểm

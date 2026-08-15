@@ -8,6 +8,7 @@ import type {
   PointHistory,
   PointHistorySource,
   Recognition,
+  RecognitionTitle,
   Reward,
   RewardHistory,
   Student,
@@ -23,6 +24,9 @@ import {
 } from "../utils/classroomRoles";
 import type { ClassroomDatabase } from "../database/types";
 import { databaseService } from "../database/database.service";
+import { buildRecognizeStudentsUpdate, type RecognizeStudentsInput } from "../utils/recognition";
+
+export type { RecognizeStudentsInput };
 
 interface AppDataContextValue {
   data: ClassroomDatabase | null;
@@ -58,6 +62,11 @@ interface AppDataContextValue {
   saveReward: (reward: Reward) => void;
   deleteReward: (rewardId: string) => void;
   redeemReward: (studentId: string, reward: Reward) => boolean;
+  saveRecognitionTitle: (title: RecognitionTitle) => void;
+  deleteRecognitionTitle: (titleId: string) => void;
+  recognizeStudents: (input: RecognizeStudentsInput) => Recognition[];
+  updateRecognitionMessage: (recognitionId: string, message: string) => void;
+  deleteRecognition: (recognitionId: string) => void;
   addRecognition: (recognition: Omit<Recognition, "id" | "createdAt">) => Recognition;
   setWheelStudentBag: (bag: string[]) => void;
 }
@@ -418,6 +427,93 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
         return success;
       },
+      saveRecognitionTitle: (title) =>
+        setData((current) => {
+          const existing = current.recognitionTitles.find((item) => item.id === title.id);
+          const now = new Date().toISOString();
+          const saved: RecognitionTitle = {
+            ...title,
+            name: title.name.trim(),
+            isActive: title.isActive ?? true,
+            createdAt: existing?.createdAt ?? title.createdAt ?? now,
+          };
+          return {
+            ...current,
+            recognitionTitles: existing
+              ? current.recognitionTitles.map((item) => (item.id === title.id ? saved : item))
+              : [...current.recognitionTitles, saved],
+          };
+        }),
+      deleteRecognitionTitle: (titleId) =>
+        setData((current) => {
+          const hasHistory = current.recognitions.some((item) => item.titleId === titleId);
+          if (hasHistory) {
+            return {
+              ...current,
+              recognitionTitles: current.recognitionTitles.map((title) =>
+                title.id === titleId ? { ...title, isActive: false } : title,
+              ),
+            };
+          }
+          return {
+            ...current,
+            recognitionTitles: current.recognitionTitles.filter((title) => title.id !== titleId),
+          };
+        }),
+      recognizeStudents: (input) => {
+        let created: Recognition[] = [];
+        setData((current) => {
+          const result = buildRecognizeStudentsUpdate(current, input);
+          if (!result) return current;
+          created = result.created;
+          return result.next;
+        });
+        return created;
+      },
+      updateRecognitionMessage: (recognitionId, message) =>
+        setData((current) => ({
+          ...current,
+          recognitions: current.recognitions.map((item) =>
+            item.id === recognitionId ? { ...item, message: message.trim() || undefined } : item,
+          ),
+        })),
+      deleteRecognition: (recognitionId) =>
+        setData((current) => {
+          const recognition = current.recognitions.find((item) => item.id === recognitionId);
+          if (!recognition) return current;
+
+          let students = current.students;
+          let pointHistory = current.pointHistory;
+
+          if (recognition.pointHistoryId && recognition.awardedPoints && recognition.awardedPoints > 0) {
+            const original = current.pointHistory.find((h) => h.id === recognition.pointHistoryId);
+            if (original) {
+              const now = new Date().toISOString();
+              const reversal: PointHistory = {
+                id: createId("points"),
+                studentId: recognition.studentId,
+                actionName: `Hoàn tác tuyên dương - ${recognition.title}`,
+                points: -recognition.awardedPoints,
+                source: "recognition",
+                createdAt: now,
+                note: "Xóa bản ghi tuyên dương",
+              };
+              students = students.map((s) =>
+                s.id === recognition.studentId
+                  ? { ...s, points: s.points - recognition.awardedPoints!, updatedAt: now }
+                  : s,
+              );
+              pointHistory = [reversal, ...pointHistory];
+            }
+          }
+
+          return {
+            ...current,
+            students,
+            pointHistory,
+            recognitions: current.recognitions.filter((item) => item.id !== recognitionId),
+          };
+        }),
       addRecognition: (recognition) => {
         const saved: Recognition = { ...recognition, id: createId("recognition"), createdAt: new Date().toISOString() };
         setData((current) => ({ ...current, recognitions: [saved, ...current.recognitions] }));

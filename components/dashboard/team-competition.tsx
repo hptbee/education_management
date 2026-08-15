@@ -3,73 +3,91 @@
 import Link from 'next/link'
 import { UsersRound, Star, ArrowRight, Trophy } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
-
-const medalColor: Record<number, string> = {
-  1: 'text-amber-400',
-  2: 'text-slate-400',
-  3: 'text-orange-400',
-  4: 'text-violet-400',
-}
+import { ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 
 export function TeamCompetition() {
   const { data } = useAppData()
   const teams = data?.teams || []
+  const students = data?.students || []
 
-  // Sort teams by score
   const sortedTeams = [...teams].sort((a, b) => b.score - a.score)
-  const highestScore = sortedTeams.length > 0 ? Math.max(1, sortedTeams[0].score) : 1
+  const highestScore = sortedTeams.reduce((max, team) => Math.max(max, team.score), 0)
 
   return (
-    <section className="flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+    <ClassroomCard className="flex flex-col">
       <header className="mb-4 flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-brand-purple/10">
-          <UsersRound className="size-4 text-brand-purple" />
+        <span className="flex size-8 items-center justify-center rounded-xl bg-pastel-pink">
+          <UsersRound className="size-4 text-rose-600" />
         </span>
-        <h3 className="font-display text-lg font-extrabold text-slate-800">
-          THI ĐUA TỔ / NHÓM
-        </h3>
+        <h3 className="font-display text-lg font-extrabold text-slate-800">Thi đua tổ</h3>
       </header>
 
       <ul className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
         {sortedTeams.length === 0 ? (
-          <li className="p-4 text-center text-sm font-semibold text-slate-400">Chưa có tổ nào</li>
-        ) : sortedTeams.map((team, i) => {
-          const pct = Math.min(100, Math.max(5, (team.score / highestScore) * 100))
-          return (
-            <li key={team.id} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 transition-colors hover:bg-slate-100/50">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {team.avatar ? (
-                    <span className="text-xl">{team.avatar}</span>
-                  ) : (
-                    <Trophy className={`size-5 ${medalColor[i + 1] || 'text-slate-400'}`} />
-                  )}
-                  <span className="font-display text-base font-extrabold text-slate-800">
-                    {team.name}
-                  </span>
+          <li>
+            <EmptyState
+              compact
+              emoji="🏆"
+              title="Chưa có tổ nào"
+              description="Tạo tổ để bắt đầu thi đua trong lớp nhé!"
+              action={
+                <Link
+                  href="/teams"
+                  className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark"
+                >
+                  + Tạo tổ
+                </Link>
+              }
+            />
+          </li>
+        ) : (
+          sortedTeams.map((team, i) => {
+            const originalIndex = teams.findIndex((t) => t.id === team.id)
+            const color = getTeamPastelStyle(originalIndex >= 0 ? originalIndex : i)
+            const memberCount = students.filter((s) => s.teamId === team.id).length
+            const pct = highestScore > 0 ? Math.min(100, (team.score / highestScore) * 100) : 0
+
+            return (
+              <li key={team.id} className={`rounded-2xl border border-white/80 p-3 ${color.bg}`}>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                      {team.avatar ? (
+                        <span className="text-lg leading-none">{team.avatar}</span>
+                      ) : (
+                        <Trophy className={`size-4 ${color.text}`} />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-display text-sm font-extrabold text-slate-800">{team.name}</p>
+                      <p className="text-[11px] font-semibold text-slate-500">{memberCount} thành viên</p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1 font-extrabold text-amber-700">
+                    <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                    <span className="font-display text-base">{team.score.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-500">
-                  <Star className="size-4 fill-amber-400 text-amber-400" />
-                  <span className="font-display text-lg font-extrabold">
-                    {team.score.toLocaleString()}
-                  </span>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/80">
+                  <div
+                    className={`h-full rounded-full ${color.bar} transition-all duration-500`}
+                    style={{ width: pct > 0 ? `${Math.max(pct, 8)}%` : '0%' }}
+                  />
                 </div>
-              </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full rounded-full bg-brand-purple transition-all duration-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </li>
-          )
-        })}
+              </li>
+            )
+          })
+        )}
       </ul>
 
-      <Link href="/teams" className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
+      <Link
+        href="/teams"
+        className="mt-4 flex items-center justify-center gap-1.5 border-t border-sky-100 pt-4 text-sm font-bold text-brand transition hover:text-brand-dark"
+      >
         Xem chi tiết
         <ArrowRight className="size-4" />
       </Link>
-    </section>
+    </ClassroomCard>
   )
 }

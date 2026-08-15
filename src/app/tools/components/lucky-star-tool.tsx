@@ -5,6 +5,7 @@ import { Gift, Star } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
+import { ClassroomCard, ClassroomButton, EmptyState } from '@/src/components/classroom'
 
 const STAR_COUNT = 9
 
@@ -30,14 +31,19 @@ export function LuckyStarTool() {
   }
 
   return (
-    <section className="flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <ClassroomCard className="flex flex-col">
       <header className="mb-4">
-        <h2 className="font-display text-base font-extrabold text-slate-800">Ngôi sao may mắn</h2>
-        <p className="mt-1 text-xs font-semibold text-slate-500">Chọn một ngôi sao để bất ngờ.</p>
+        <h2 className="font-display text-lg font-extrabold text-slate-800">Ngôi sao may mắn</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-500">Chọn một ngôi sao để bất ngờ.</p>
       </header>
 
       {students.length === 0 ? (
-        <p className="py-10 text-center text-sm font-semibold text-slate-400">Chưa có học sinh</p>
+        <EmptyState
+          compact
+          emoji="⭐"
+          title="Chưa có học sinh"
+          description="Thêm học sinh để chơi ngôi sao may mắn."
+        />
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2">
@@ -50,12 +56,12 @@ export function LuckyStarTool() {
                   type="button"
                   disabled={isDisabled}
                   onClick={() => handleStarClick(index)}
-                  className={`flex aspect-square items-center justify-center rounded-2xl border-2 text-3xl transition ${
+                  className={`motion-safe-hover flex aspect-square items-center justify-center rounded-2xl border-2 text-4xl transition ${
                     isPicked
-                      ? 'border-amber-400 bg-amber-50 shadow-md'
+                      ? 'border-amber-400 bg-pastel-yellow shadow-md'
                       : isDisabled
                         ? 'border-slate-100 bg-slate-50 opacity-40'
-                        : 'border-amber-100 bg-amber-50/60 hover:border-amber-300 hover:bg-amber-50'
+                        : 'border-amber-100 bg-pastel-yellow/60 hover:border-amber-300 hover:bg-pastel-yellow'
                   }`}
                 >
                   ⭐
@@ -65,30 +71,26 @@ export function LuckyStarTool() {
           </div>
 
           {revealedStudent ? (
-            <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl bg-violet-50 p-4">
+            <div className="mt-5 flex flex-col items-center gap-3 rounded-2xl bg-pastel-pink p-5">
               <img
                 src={getStudentAvatar(revealedStudent)}
                 alt={revealedStudent.name}
-                className="size-14 rounded-full object-cover ring-4 ring-violet-200"
+                className="size-20 rounded-full object-cover ring-4 ring-brand-purple/20"
               />
-              <p className="text-sm font-extrabold text-slate-800">{revealedStudent.name}</p>
-              <p className="flex items-center gap-1 text-xs font-semibold text-violet-600">
-                <Star className="size-3 fill-amber-400 text-amber-400" />
+              <p className="font-display text-2xl font-black text-slate-800">{revealedStudent.name}</p>
+              <p className="flex items-center gap-1 text-sm font-bold text-brand-purple">
+                <Star className="size-4 fill-amber-400 text-amber-400" />
                 Bất ngờ!
               </p>
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={resetRound}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-purple py-3 text-sm font-extrabold text-white transition hover:bg-brand-purple-dark"
-          >
+          <ClassroomButton size="lg" className="mt-4 w-full" onClick={resetRound}>
             <Gift className="size-4" />
             BÍ MẬT MỘT NGÔI SAO
-          </button>
+          </ClassroomButton>
         </>
       )}
-    </section>
+    </ClassroomCard>
   )
 }

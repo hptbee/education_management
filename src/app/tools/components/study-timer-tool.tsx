@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Clock, Pause, Play, RotateCcw } from 'lucide-react'
+import { ClassroomCard, ClassroomButton } from '@/src/components/classroom'
 
 const PRESETS = [1, 2, 5, 10] as const
 const STORAGE_KEY = 'education-management:study-timer'
@@ -187,21 +188,21 @@ export function StudyTimerTool() {
   }
 
   return (
-    <section className="flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <ClassroomCard className="flex flex-col">
       <header className="mb-4 flex items-center gap-2">
         <Clock className="size-5 text-amber-500" />
         <div>
-          <h2 className="font-display text-base font-extrabold text-slate-800">Đếm giờ học tập</h2>
-          <p className="text-xs font-semibold text-slate-500">Đặt thời gian rồi bắt đầu.</p>
+          <h2 className="font-display text-lg font-extrabold text-slate-800">Đếm giờ học tập</h2>
+          <p className="text-sm font-semibold text-slate-500">Đặt thời gian rồi bắt đầu.</p>
         </div>
       </header>
 
       <div
-        className={`rounded-2xl py-6 text-center transition ${
-          isFinished ? 'animate-pulse bg-rose-50 ring-2 ring-rose-300' : 'bg-amber-50'
+        className={`rounded-2xl py-8 text-center transition ${
+          isFinished ? 'bg-rose-50 ring-2 ring-rose-200' : 'bg-pastel-yellow/70'
         }`}
       >
-        <p className={`font-display text-5xl font-black tabular-nums ${isFinished ? 'text-rose-600' : 'text-amber-600'}`}>
+        <p className={`font-display text-6xl font-black tabular-nums ${isFinished ? 'text-rose-600' : 'text-amber-600'}`}>
           {formatTime(secondsLeft)}
         </p>
       </div>
@@ -247,18 +248,18 @@ export function StudyTimerTool() {
           }}
           className={`w-full rounded-xl border px-3 py-2 text-sm font-bold tabular-nums outline-none transition disabled:opacity-40 ${
             selection === 'custom'
-              ? 'border-brand-purple bg-violet-50 text-brand-purple ring-1 ring-brand-purple/30'
-              : 'border-slate-200 bg-white text-slate-700 focus:border-brand-purple focus:ring-1 focus:ring-brand-purple/30'
+              ? 'border-brand bg-brand-soft text-brand-dark ring-1 ring-brand/30'
+              : 'border-slate-200 bg-white text-slate-700 focus:border-brand focus:ring-1 focus:ring-brand/30'
           }`}
         />
         <span className="shrink-0 text-xs font-bold text-slate-500">phút</span>
       </div>
 
-      <button
-        type="button"
+      <ClassroomButton
+        size="lg"
+        className="mt-4 w-full"
         onClick={isRunning ? handlePause : handleStart}
         disabled={secondsLeft <= 0 && !isRunning}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-purple py-3 text-sm font-extrabold text-white transition hover:bg-brand-purple-dark disabled:opacity-50"
       >
         {isRunning ? (
           <>
@@ -269,15 +270,11 @@ export function StudyTimerTool() {
             <Play className="size-4" /> Bắt đầu
           </>
         )}
-      </button>
+      </ClassroomButton>
 
-      <button
-        type="button"
-        onClick={handleReset}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
-      >
+      <ClassroomButton variant="outline" size="lg" className="mt-2 w-full" onClick={handleReset}>
         <RotateCcw className="size-4" /> Đặt lại
-      </button>
-    </section>
+      </ClassroomButton>
+    </ClassroomCard>
   )
 }

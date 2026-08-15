@@ -80,7 +80,7 @@ export interface PointAction {
   isActive: boolean;
 }
 
-export type PointHistorySource = "action" | "game" | "reward-redemption" | "manual";
+export type PointHistorySource = "action" | "game" | "reward-redemption" | "manual" | "recognition";
 
 export interface PointHistory {
   id: string;
@@ -122,12 +122,30 @@ export interface TeamScoreHistory {
   note?: string;
 }
 
+export interface RecognitionTitle {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  /** Optional linked badge from Kho huy hiệu — awarded when students are recognized with this title */
+  badgeId?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface Recognition {
   id: string;
   studentId: string;
   type: string;
   title: string;
+  titleId?: string;
+  titleIcon?: string;
+  studentName?: string;
+  teamId?: string;
   message?: string;
+  awardedPoints?: number;
+  pointHistoryId?: string;
+  awardedBadgeId?: string;
   createdAt: string;
 }
 
@@ -155,6 +173,7 @@ export interface AppData {
   pointHistory: PointHistory[];
   rewards: Reward[];
   rewardHistory: RewardHistory[];
+  recognitionTitles: RecognitionTitle[];
   recognitions: Recognition[];
   luckyWheelHistory: LuckyWheelSelection[];
   wheelStudentBag: string[];

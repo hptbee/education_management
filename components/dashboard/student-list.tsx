@@ -6,21 +6,25 @@ import Link from 'next/link'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import type { Student, Team } from '@/src/types/models'
+import { ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 
-// Temporary colors mapping to use teamId instead of 'tot'
-const teamColors = [
-  { bg: 'bg-rose-100 text-rose-600' },
-  { bg: 'bg-emerald-100 text-emerald-600' },
-  { bg: 'bg-sky-100 text-sky-600' },
-  { bg: 'bg-amber-100 text-amber-600' },
-]
+function StudentCard({
+  student,
+  team,
+  teamIndex,
+}: {
+  student: Student
+  team?: Team
+  teamIndex: number
+}) {
+  const color = team ? getTeamPastelStyle(teamIndex) : null
 
-function StudentCard({ student, team, index }: { student: Student, team?: Team, index: number }) {
-  const color = teamColors[index % teamColors.length]
-  const teamName = team ? team.name : 'Chưa có nhóm'
-  
   return (
-    <div className="flex flex-col items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+    <Link
+      href="/students"
+      className="motion-safe-hover flex flex-col items-center rounded-2xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
+    >
       <img
         src={getStudentAvatar(student)}
         alt={student.name}
@@ -28,22 +32,21 @@ function StudentCard({ student, team, index }: { student: Student, team?: Team, 
           student.gender === 'female' ? 'ring-pink-200' : 'ring-sky-200'
         }`}
       />
-      <div className="mt-3 flex-1 flex flex-col items-center">
-        <p className="text-sm font-extrabold text-slate-800 line-clamp-1" title={student.name}>{student.name}</p>
-        <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
-          {student.gender === 'female' ? 'Nữ' : student.gender === 'male' ? 'Nam' : 'Khác'} {student.dateOfBirth ? `• ${student.dateOfBirth}` : ''}
-        </p>
-        <span
-          className={`mt-2 rounded-md px-2 py-0.5 text-[11px] font-bold ${team ? color.bg : 'bg-slate-100 text-slate-500'}`}
-        >
-          {teamName}
-        </span>
+      <p className="mt-2.5 line-clamp-2 min-h-10 text-sm font-extrabold leading-tight text-slate-800" title={student.name}>
+        {student.name}
+      </p>
+      <span
+        className={`mt-2 max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-bold ${
+          color ? `${color.bg} ${color.text}` : 'bg-slate-100 text-slate-500'
+        }`}
+      >
+        {team ? team.name : 'Chưa có tổ'}
+      </span>
+      <div className="mt-2.5 flex items-center gap-1 rounded-full bg-pastel-yellow/80 px-2 py-0.5 text-xs font-extrabold text-amber-800">
+        <Star className="size-3.5 fill-amber-400 text-amber-400" />
+        {student.points}
       </div>
-      <div className="mt-3 flex items-center gap-1 text-sm font-extrabold text-brand-purple">
-        <Star className="size-4 fill-amber-400 text-amber-400" />
-        {student.points} điểm
-      </div>
-    </div>
+    </Link>
   )
 }
 
@@ -61,61 +64,86 @@ export function StudentList() {
   }, [students, searchQuery])
 
   const displayedStudents = filteredStudents.slice(0, 8)
-  
+
   return (
-    <section className="flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-      <header className="mb-4 flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-brand-purple/10">
-          <Users className="size-4 text-brand-purple" />
+    <ClassroomCard className="flex flex-col">
+      <header className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-xl bg-pastel-sky">
+            <Users className="size-4 text-brand" />
+          </span>
+          <h3 className="font-display text-lg font-extrabold text-slate-800">Danh sách học sinh</h3>
+        </div>
+        <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-extrabold text-brand-dark">
+          {students.length}
         </span>
-        <h3 className="font-display text-lg font-extrabold text-slate-800">
-          DANH SÁCH HỌC SINH ({students.length})
-        </h3>
       </header>
 
-      <div className="mb-4 flex items-center gap-2.5">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm học sinh..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400 focus:border-brand-purple/40"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => setSearchQuery('')}
-          disabled={!searchQuery}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <X className="size-4" />
-          Xóa
-        </button>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Tìm học sinh..."
+          className="classroom-field py-2.5 pl-9 pr-10"
+        />
+        {searchQuery ? (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Xóa tìm kiếm"
+          >
+            <X className="size-4" />
+          </button>
+        ) : null}
       </div>
 
       {displayedStudents.length === 0 ? (
-        <p className="py-8 text-center text-sm font-semibold text-slate-400">
-          {searchQuery ? 'Không tìm thấy học sinh' : 'Chưa có học sinh'}
-        </p>
+        <EmptyState
+          compact
+          emoji={searchQuery ? '🔍' : '🌱'}
+          title={searchQuery ? 'Không tìm thấy học sinh' : 'Chưa có học sinh nào'}
+          description={
+            searchQuery
+              ? 'Thử thay đổi từ khóa tìm kiếm.'
+              : 'Thêm học sinh đầu tiên để bắt đầu xây dựng lớp học nhé!'
+          }
+          action={
+            !searchQuery ? (
+              <Link
+                href="/students"
+                className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark"
+              >
+                + Thêm học sinh
+              </Link>
+            ) : undefined
+          }
+        />
       ) : (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {displayedStudents.map((student, i) => (
-          <StudentCard 
-            key={student.id} 
-            student={student} 
-            team={teams.find(t => t.id === student.teamId)}
-            index={i} 
-          />
-        ))}
-      </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {displayedStudents.map((student) => {
+            const teamIdx = teams.findIndex((t) => t.id === student.teamId)
+            return (
+              <StudentCard
+                key={student.id}
+                student={student}
+                team={teamIdx >= 0 ? teams[teamIdx] : undefined}
+                teamIndex={Math.max(0, teamIdx)}
+              />
+            )
+          })}
+        </div>
       )}
 
-      <Link href="/students" className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
+      <Link
+        href="/students"
+        className="mt-4 flex items-center justify-center gap-1.5 border-t border-sky-100 pt-4 text-sm font-bold text-brand transition hover:text-brand-dark"
+      >
         Xem tất cả học sinh
         <ArrowRight className="size-4" />
       </Link>
-    </section>
+    </ClassroomCard>
   )
 }

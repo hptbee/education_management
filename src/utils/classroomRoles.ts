@@ -1,6 +1,7 @@
 import type { ClassroomRole, Student, Team } from "../types/models";
 import type { ClassroomDatabase } from "../database/types";
 import { normalizeBadgesOnDatabase } from "./badges";
+import { normalizeRecognitionTitlesOnDatabase } from "./recognitionTitles";
 import { createId } from "./id";
 
 export const DEFAULT_CLASSROOM_ROLE_SEEDS: Array<Pick<ClassroomRole, "name" | "icon">> = [
@@ -97,10 +98,13 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
 
   const teams = sanitizeAllTeamLeadership(db.teams ?? [], students);
 
-  return normalizeBadgesOnDatabase({
-    ...db,
-    classroomRoles,
-    students,
-    teams,
-  });
+  return normalizeRecognitionTitlesOnDatabase(
+    normalizeBadgesOnDatabase({
+      ...db,
+      classroomRoles,
+      students,
+      teams,
+      recognitions: db.recognitions ?? [],
+    }),
+  );
 }

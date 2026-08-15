@@ -52,7 +52,7 @@ export function TeamDetails({
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 p-5">
           <div className="flex items-center gap-3">
-            <span className="flex size-14 items-center justify-center rounded-2xl bg-brand-purple/10 text-4xl">
+            <span className="flex size-14 items-center justify-center rounded-2xl bg-pastel-sky text-4xl">
               {team.avatar || '🏆'}
             </span>
             <div>
@@ -79,7 +79,7 @@ export function TeamDetails({
           </button>
           <button
             onClick={() => setIsAssignOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-brand-purple/10 px-3 py-2 text-sm font-bold text-brand-purple transition hover:bg-brand-purple/20"
+            className="flex items-center gap-1.5 rounded-xl bg-brand-soft px-3 py-2 text-sm font-bold text-brand-dark transition hover:bg-pastel-sky"
           >
             <Plus className="size-4" /> Thêm thành viên
           </button>

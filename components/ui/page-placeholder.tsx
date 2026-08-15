@@ -3,12 +3,15 @@
 import { LucideIcon } from "lucide-react";
 import { ClassroomSelectorScreen } from "@/src/App";
 import { useActiveClassroom } from "@/src/hooks/useActiveClassroom";
+import { EmptyState } from "@/src/components/classroom";
 
 interface PagePlaceholderProps {
   title: string;
   description: string;
   icon: LucideIcon;
   statusMessage?: string;
+  emoji?: string;
+  imageSrc?: string;
 }
 
 export function PagePlaceholder({
@@ -16,13 +19,15 @@ export function PagePlaceholder({
   description,
   icon: Icon,
   statusMessage = "Tính năng này đang được chuẩn bị.",
+  emoji = "✨",
+  imageSrc,
 }: PagePlaceholderProps) {
   const { isLoaded, database } = useActiveClassroom();
 
   if (!isLoaded) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-xl font-bold text-gray-500">Đang tải dữ liệu...</p>
+        <p className="text-xl font-bold text-slate-500">Đang tải dữ liệu...</p>
       </div>
     );
   }
@@ -36,20 +41,25 @@ export function PagePlaceholder({
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
-      <div className="grid h-24 w-24 place-items-center rounded-3xl bg-gradient-to-br from-brand-purple/20 to-brand-purple/5 text-brand-purple shadow-inner">
-        <Icon size={48} strokeWidth={1.5} />
-      </div>
-      <h1 className="font-display text-4xl font-extrabold text-[#273055] mt-4">
-        {title}
-      </h1>
-      <p className="text-lg text-[#6a6f91] max-w-lg">
-        {description}
-      </p>
-      <div className="mt-8 rounded-2xl border-2 border-brand-purple/20 bg-brand-purple/5 px-6 py-4">
-        <p className="font-bold text-brand-purple flex items-center gap-2">
-          <span className="text-xl">✨</span> {statusMessage}
-        </p>
+    <div className="flex flex-1 overflow-y-auto scrollbar-thin">
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-6 p-8">
+        <div className="grid size-20 place-items-center rounded-3xl bg-pastel-sky text-brand-purple shadow-sm">
+          <Icon size={40} strokeWidth={1.5} />
+        </div>
+
+        <div className="text-center">
+          <h1 className="font-display text-4xl font-black text-slate-800">{title}</h1>
+          <p className="mt-3 text-lg font-semibold text-slate-500">{description}</p>
+        </div>
+
+        <EmptyState
+          emoji={emoji}
+          imageSrc={imageSrc}
+          title={statusMessage}
+          description="Chúng tôi đang hoàn thiện màn hình này để mang đến trải nghiệm vui và dễ dùng cho cả lớp."
+          compact
+          className="w-full"
+        />
       </div>
     </div>
   );

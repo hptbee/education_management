@@ -7,6 +7,7 @@ import type {
   PointAction,
   PointHistory,
   Recognition,
+  RecognitionTitle,
   Reward,
   RewardHistory,
   Student,
@@ -32,6 +33,7 @@ export interface ClassroomDatabase {
   pointHistory: PointHistory[];
   rewards: Reward[];
   rewardHistory: RewardHistory[];
+  recognitionTitles: RecognitionTitle[];
   recognitions: Recognition[];
   luckyWheelHistory: LuckyWheelSelection[];
   wheelStudentBag: string[];

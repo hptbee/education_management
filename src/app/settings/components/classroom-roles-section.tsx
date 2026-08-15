@@ -125,18 +125,18 @@ export function ClassroomRolesSection() {
             key={role.id}
             className="flex items-center gap-4 rounded-2xl border border-[#e8e3ff] bg-white/90 p-4"
           >
-            <div className="grid size-12 place-items-center rounded-2xl bg-[#f3efff] text-2xl">
+            <div className="grid size-12 place-items-center rounded-2xl bg-brand-soft text-2xl">
               {role.icon ?? '⭐'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-black text-[#273055]">{role.name}</p>
+              <p className="font-black text-slate-800">{role.name}</p>
               {role.description ? (
                 <p className="mt-0.5 text-sm font-semibold text-[#6a6f91]">{role.description}</p>
               ) : null}
             </div>
             <button
               onClick={() => openEdit(role)}
-              className="flex size-9 items-center justify-center rounded-xl text-[#7c5cff] transition hover:bg-[#f3efff]"
+              className="flex size-9 items-center justify-center rounded-xl text-brand-purple transition hover:bg-brand-soft"
               title="Chỉnh sửa"
             >
               <PencilLine size={18} />
@@ -154,7 +154,7 @@ export function ClassroomRolesSection() {
 
       <button
         onClick={openCreate}
-        className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#d9d2ff] bg-[#fbfbff] px-5 py-4 text-sm font-extrabold text-[#7c5cff] transition hover:border-[#7c5cff] hover:bg-[#f3efff]"
+        className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-surface-soft px-5 py-4 text-sm font-extrabold text-brand-purple transition hover:border-brand-purple hover:bg-brand-soft"
       >
         <Plus size={18} /> Thêm vai trò
       </button>
@@ -205,11 +205,11 @@ export function ClassroomRolesSection() {
 function CardHeader() {
   return (
     <div className="flex items-center gap-4 rounded-2xl bg-white/90 p-5 border border-[#e8e3ff]">
-      <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-[#7c5cff] to-[#5a90ef] text-white text-3xl shadow-lg">
+      <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-purple to-brand-purple-light text-white text-3xl shadow-lg">
         <Crown size={28} />
       </div>
       <div>
-        <h2 className="text-xl font-black text-[#273055]">Vai trò trong lớp</h2>
+        <h2 className="text-xl font-black text-slate-800">Vai trò trong lớp</h2>
         <p className="text-sm text-[#6a6f91]">Tùy chỉnh các vai trò cán bộ lớp cho học sinh</p>
       </div>
     </div>
