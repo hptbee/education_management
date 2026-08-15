@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { LuckyWheelTool } from './components/lucky-wheel-tool'
 import { StudyTimerTool } from './components/study-timer-tool'
-import { LuckyStarTool } from './components/lucky-star-tool'
+import { RandomStudentTool } from './components/random-student-tool'
 import { PointsChallengeStrip } from './components/points-challenge-strip'
 import { PageHeader } from '@/src/components/classroom'
 
@@ -36,10 +36,10 @@ export default function ToolsPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-3">
           <LuckyWheelTool />
           <StudyTimerTool />
-          <LuckyStarTool />
+          <RandomStudentTool />
         </div>
 
         <PointsChallengeStrip />

@@ -1,5 +1,6 @@
 import type { ClassroomDatabase, DatabaseSummary } from "../types";
 import type { ClassroomDatabaseStorage } from "./storage.interface";
+import { enqueueWrite } from "./write-queue";
 
 const DB_NAME = "ClassroomDatabases";
 const DB_VERSION = 1;
@@ -47,7 +48,7 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
   }
 
   async save(database: ClassroomDatabase): Promise<void> {
-    this.writeQueue = this.writeQueue.then(async () => {
+    const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
       const db = await this.getDB();
       await new Promise<void>((resolve, reject) => {
         const transaction = db.transaction(STORE_NAME, "readwrite");
@@ -58,20 +59,24 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
         request.onsuccess = () => resolve();
       });
     });
-
-    return this.writeQueue;
+    this.writeQueue = nextQueue;
+    return result;
   }
 
   async delete(id: string): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.delete(id);
+    const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
+      const db = await this.getDB();
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(id);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      });
     });
+    this.writeQueue = nextQueue;
+    return result;
   }
 
   async list(): Promise<DatabaseSummary[]> {

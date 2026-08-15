@@ -96,13 +96,10 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
       source = 'manual'
     }
 
-    if (!isAdd && student.points + action.points < 0) return
-
     applyPoints(student.id, action, undefined, source)
     onClose()
   }
 
-  const wouldGoNegative = !isAdd && student.points - pointValue < 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
@@ -177,16 +174,11 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
                 <Plus className="size-4" />
               </button>
             </div>
-            {wouldGoNegative ? (
-              <p className="mt-2 text-xs font-semibold text-rose-500">
-                Học sinh chỉ còn {student.points} điểm, không thể trừ {pointValue} điểm.
-              </p>
-            ) : null}
           </div>
 
           <button
             type="submit"
-            disabled={!reason.trim() || wouldGoNegative}
+            disabled={!reason.trim()}
             className={`mt-2 w-full rounded-2xl py-3.5 text-sm font-extrabold text-white shadow-md transition disabled:opacity-50 ${
               isAdd
                 ? 'bg-emerald-500 hover:bg-emerald-600'

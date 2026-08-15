@@ -15,6 +15,7 @@
 import type { ClassroomDatabase, DatabaseSummary } from "../types";
 import type { ClassroomDatabaseStorage } from "./storage.interface";
 import { tauriFs } from "../tauri-fs.service";
+import { enqueueWrite } from "./write-queue";
 
 // ─── INDEX FILE TYPES ────────────────────────────────────────────────────────
 
@@ -118,15 +119,12 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
   async save(db: ClassroomDatabase): Promise<void> {
     await this.initialize();
 
-    // Enqueue: each save awaits the previous one to finish
-    this.writeQueue = this.writeQueue.then(async () => {
+    const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
       const fileName = this.makeFileName(db);
       const filePath = this.classroomFilePath(fileName);
 
-      // Write classroom file atomically
       await tauriFs.writeTextFile(filePath, JSON.stringify(db, null, 2));
 
-      // Update index
       const index = await this.readIndex();
       const existingIdx = index.classrooms.findIndex((c) => c.id === db.metadata.id);
 
@@ -149,14 +147,14 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
 
       await this.writeIndex(index);
     });
-
-    return this.writeQueue;
+    this.writeQueue = nextQueue;
+    return result;
   }
 
   async delete(id: string): Promise<void> {
     await this.initialize();
 
-    this.writeQueue = this.writeQueue.then(async () => {
+    const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
       const index = await this.readIndex();
       const entry = index.classrooms.find((c) => c.id === id);
 
@@ -166,8 +164,8 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
         await this.writeIndex(index);
       }
     });
-
-    return this.writeQueue;
+    this.writeQueue = nextQueue;
+    return result;
   }
 
   // ── Utility ─────────────────────────────────────────────────────────────────

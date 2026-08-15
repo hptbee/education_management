@@ -9,7 +9,6 @@ import {
   Medal,
   Crown,
   Sparkles,
-  Gamepad2,
   Trophy,
   History,
   Settings,
@@ -55,7 +54,6 @@ const navSections: NavSection[] = [
     label: 'Hoạt động',
     items: [
       { label: 'Công cụ', href: '/tools', icon: Sparkles, title: 'Thử thách & Công cụ' },
-      { label: 'Trò chơi', href: '/games', icon: Gamepad2 },
       { label: 'Tuyên dương', href: '/recognition', icon: Trophy },
       { label: 'Lịch sử', href: '/history', icon: History },
     ],

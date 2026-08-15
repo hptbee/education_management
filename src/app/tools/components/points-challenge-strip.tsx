@@ -16,11 +16,11 @@ export function PointsChallengeStrip() {
 
   return (
     <ClassroomCard>
-      <header className="mb-4 flex items-start gap-3">
+      <header className="mb-4 flex flex-wrap items-start gap-3">
         <span className="flex size-10 items-center justify-center rounded-xl bg-pastel-yellow">
           <Trophy className="size-5 text-amber-600" />
         </span>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <h2 className="font-display text-xl font-black text-slate-800">Thử thách cộng điểm</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             Học sinh tích cực tham gia các hoạt động sẽ được cộng điểm.
@@ -28,7 +28,7 @@ export function PointsChallengeStrip() {
         </div>
         <Link
           href="/points"
-          className="flex shrink-0 items-center gap-1 rounded-2xl bg-brand-purple px-4 py-2 text-xs font-bold text-white transition hover:bg-brand-purple-dark"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-2xl bg-brand-purple px-4 py-2 text-xs font-bold text-white transition hover:bg-brand-purple-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         >
           Tích điểm
           <ArrowRight className="size-3.5" />
@@ -47,7 +47,11 @@ export function PointsChallengeStrip() {
           {topStudents.map((student, index) => (
             <div
               key={student.id}
-              className="flex flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-center"
+              className={`flex flex-col items-center rounded-2xl border p-4 text-center ${
+                index === 0
+                  ? 'border-amber-100 bg-pastel-yellow/70'
+                  : 'border-slate-100 bg-slate-50/80'
+              }`}
             >
               <img
                 src={getStudentAvatar(student)}

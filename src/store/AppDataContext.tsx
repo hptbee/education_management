@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
   Badge,
   ClassroomRole,
@@ -83,8 +83,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const dataRef = useRef<ClassroomDatabase | null>(null);
+  const lastPersistedRef = useRef<ClassroomDatabase | null>(null);
 
   const clearSaveError = () => setSaveError(null);
+
+  const applyLoadedDatabase = useCallback((db: ClassroomDatabase | null) => {
+    setDataState(db);
+    dataRef.current = db;
+    lastPersistedRef.current = db;
+  }, []);
 
   const loadInitialDatabase = useCallback(async () => {
     setIsLoading(true);
@@ -95,41 +103,70 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (databases.length > 0) {
         const latest = databases[0];
         const db = await databaseService.openDatabase(latest.id);
-        setDataState(db);
+        applyLoadedDatabase(db);
       } else {
-        setDataState(null);
+        applyLoadedDatabase(null);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không thể khởi tạo dữ liệu lớp học.";
       console.error("[AppDataProvider] init failed:", error);
       setInitError(message);
-      setDataState(null);
+      applyLoadedDatabase(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [applyLoadedDatabase]);
 
   useEffect(() => {
     void loadInitialDatabase();
   }, [loadInitialDatabase]);
 
-  const persistDatabase = (next: ClassroomDatabase) => {
-    databaseService.saveDatabase(next).catch((error) => {
-      const message =
-        error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
-      console.error("[AppDataProvider] save failed:", error);
-      setSaveError(message);
-    });
-  };
+  const commitData = useCallback((next: ClassroomDatabase) => {
+    setDataState(next);
+    dataRef.current = next;
 
-  const setData = (updater: (current: ClassroomDatabase) => ClassroomDatabase) => {
-    setDataState((current) => {
-      if (!current) return current;
+    void databaseService
+      .saveDatabase(next)
+      .then((saved) => {
+        lastPersistedRef.current = saved;
+      })
+      .catch(async (error) => {
+        const message =
+          error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
+        console.error("[AppDataProvider] save failed:", error);
+
+        const classroomId = next.metadata.id;
+        const rollback = lastPersistedRef.current;
+        if (rollback && rollback.metadata.id === classroomId) {
+          setDataState(rollback);
+          dataRef.current = rollback;
+        } else {
+          try {
+            const reloaded = await databaseService.openDatabase(classroomId);
+            if (reloaded) {
+              setDataState(reloaded);
+              dataRef.current = reloaded;
+              lastPersistedRef.current = reloaded;
+            }
+          } catch (reloadError) {
+            console.error("[AppDataProvider] reload after save failure failed:", reloadError);
+          }
+        }
+
+        setSaveError(message);
+      });
+  }, []);
+
+  const setData = useCallback(
+    (updater: (current: ClassroomDatabase) => ClassroomDatabase) => {
+      const current = dataRef.current;
+      if (!current) return;
       const next = updater(current);
-      persistDatabase(next);
-      return next;
-    });
-  };
+      if (next === current) return;
+      commitData(next);
+    },
+    [commitData],
+  );
 
   const value = useMemo<AppDataContextValue>(
     () => ({
@@ -147,7 +184,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
             return;
           }
-          setDataState(db);
+          applyLoadedDatabase(db);
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Không thể chuyển lớp học.";
@@ -158,13 +195,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       },
       closeDatabase: () => {
-        setDataState(null);
+        applyLoadedDatabase(null);
       },
       createDatabase: async (settings) => {
         setIsLoading(true);
         try {
           const db = await databaseService.createDatabase(settings);
-          setDataState(db);
+          applyLoadedDatabase(db);
         } finally {
           setIsLoading(false);
         }
@@ -173,7 +210,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         try {
           const db = await databaseService.importDatabase(file);
-          setDataState(db);
+          applyLoadedDatabase(db);
         } finally {
           setIsLoading(false);
         }
@@ -181,24 +218,42 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       renameDatabase: async (newClassName, newSchoolYear) => {
         if (!data) return;
         setIsLoading(true);
-        const db = await databaseService.renameClassroomDatabase(data.metadata.id, newClassName, newSchoolYear);
-        setDataState(db);
-        setIsLoading(false);
+        try {
+          const db = await databaseService.renameClassroomDatabase(
+            data.metadata.id,
+            newClassName,
+            newSchoolYear,
+          );
+          applyLoadedDatabase(db);
+        } finally {
+          setIsLoading(false);
+        }
       },
       duplicateDatabase: async (newClassName, newSchoolYear, mode) => {
         if (!data) return;
         setIsLoading(true);
-        const db = await databaseService.duplicateDatabase(data.metadata.id, newClassName, newSchoolYear, mode);
-        setDataState(db);
-        setIsLoading(false);
+        try {
+          const db = await databaseService.duplicateDatabase(
+            data.metadata.id,
+            newClassName,
+            newSchoolYear,
+            mode,
+          );
+          applyLoadedDatabase(db);
+        } finally {
+          setIsLoading(false);
+        }
       },
       deleteDatabase: async (id) => {
         setIsLoading(true);
-        await databaseService.deleteDatabase(id);
-        if (data?.metadata.id === id) {
-          setDataState(null);
+        try {
+          await databaseService.deleteDatabase(id);
+          if (data?.metadata.id === id) {
+            applyLoadedDatabase(null);
+          }
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       },
       updateClassroomSettings: (settings) =>
         setData((current) => ({
@@ -630,7 +685,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       setWheelStudentBag: (bag) => setData((current) => ({ ...current, wheelStudentBag: bag })),
     }),
-    [data, isLoading, initError, saveError, loadInitialDatabase],
+    [data, isLoading, initError, saveError, loadInitialDatabase, applyLoadedDatabase, setData, commitData],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

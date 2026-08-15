@@ -7,6 +7,43 @@ import { normalizeClassroomDatabase } from "../utils/classroomRoles";
 import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
 
+function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
+  if (!data || typeof data !== "object") {
+    throw new Error("Định dạng file không hợp lệ: dữ liệu trống hoặc không phải JSON object.");
+  }
+
+  const record = data as Record<string, unknown>;
+  const metadata = record.metadata as Record<string, unknown> | undefined;
+  const settings = record.classroomSettings as Record<string, unknown> | undefined;
+
+  if (!metadata?.id || typeof metadata.id !== "string") {
+    throw new Error("Định dạng file không hợp lệ: thiếu metadata.id.");
+  }
+  if (!settings?.className || typeof settings.className !== "string") {
+    throw new Error("Định dạng file không hợp lệ: thiếu thông tin lớp học.");
+  }
+
+  const arrayFields = [
+    "students",
+    "teams",
+    "pointActions",
+    "pointHistory",
+    "rewards",
+    "rewardHistory",
+    "recognitions",
+    "teamScoreHistory",
+    "classroomRoles",
+    "badges",
+    "recognitionTitles",
+  ] as const;
+
+  for (const field of arrayFields) {
+    if (!Array.isArray(record[field])) {
+      throw new Error(`Định dạng file không hợp lệ: thiếu hoặc sai kiểu mảng "${field}".`);
+    }
+  }
+}
+
 function createStorage(): ClassroomDatabaseStorage {
   if (isTauri()) {
     // Dynamic import — keeps Tauri code out of the browser bundle
@@ -247,11 +284,9 @@ export class DatabaseService {
           const text = e.target?.result as string;
           const data = JSON.parse(text);
 
-          if (!data.metadata || !data.metadata.id || !data.classroomSettings) {
-            throw new Error("Invalid database format: Missing metadata or classroom information");
-          }
+          assertImportShape(data);
 
-          const db = normalizeClassroomDatabase(data as ClassroomDatabase);
+          const db = normalizeClassroomDatabase(data);
           const existing = await this.storage.load(db.metadata.id);
           if (existing) {
             throw new Error(

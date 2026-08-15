@@ -188,17 +188,19 @@ export function StudyTimerTool() {
   }
 
   return (
-    <ClassroomCard className="flex flex-col">
-      <header className="mb-4 flex items-center gap-2">
-        <Clock className="size-5 text-amber-500" />
+    <ClassroomCard className="flex h-full flex-col">
+      <header className="mb-4 flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pastel-yellow">
+          <Clock className="size-5 text-amber-600" />
+        </span>
         <div>
           <h2 className="font-display text-lg font-extrabold text-slate-800">Đếm giờ học tập</h2>
-          <p className="text-sm font-semibold text-slate-500">Đặt thời gian rồi bắt đầu.</p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Đặt thời gian rồi bắt đầu.</p>
         </div>
       </header>
 
       <div
-        className={`rounded-2xl py-8 text-center transition ${
+        className={`flex min-h-[120px] flex-1 items-center justify-center rounded-2xl py-8 text-center transition ${
           isFinished ? 'bg-rose-50 ring-2 ring-rose-200' : 'bg-pastel-yellow/70'
         }`}
       >
@@ -214,7 +216,7 @@ export function StudyTimerTool() {
             type="button"
             onClick={() => applySelection(min)}
             disabled={isRunning}
-            className={`rounded-xl py-2 text-xs font-bold transition disabled:opacity-40 ${
+            className={`min-h-11 rounded-xl px-1 text-xs font-bold transition disabled:opacity-40 ${
               selection === min
                 ? 'bg-brand-purple text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -246,7 +248,7 @@ export function StudyTimerTool() {
               event.currentTarget.blur()
             }
           }}
-          className={`w-full rounded-xl border px-3 py-2 text-sm font-bold tabular-nums outline-none transition disabled:opacity-40 ${
+          className={`min-h-11 w-full rounded-xl border px-3 py-2 text-sm font-bold tabular-nums outline-none transition disabled:opacity-40 ${
             selection === 'custom'
               ? 'border-brand bg-brand-soft text-brand-dark ring-1 ring-brand/30'
               : 'border-slate-200 bg-white text-slate-700 focus:border-brand focus:ring-1 focus:ring-brand/30'
@@ -257,7 +259,7 @@ export function StudyTimerTool() {
 
       <ClassroomButton
         size="lg"
-        className="mt-4 w-full"
+        className="mt-4 min-h-11 w-full"
         onClick={isRunning ? handlePause : handleStart}
         disabled={secondsLeft <= 0 && !isRunning}
       >
@@ -272,7 +274,7 @@ export function StudyTimerTool() {
         )}
       </ClassroomButton>
 
-      <ClassroomButton variant="outline" size="lg" className="mt-2 w-full" onClick={handleReset}>
+      <ClassroomButton variant="outline" size="lg" className="mt-2 min-h-11 w-full" onClick={handleReset}>
         <RotateCcw className="size-4" /> Đặt lại
       </ClassroomButton>
     </ClassroomCard>

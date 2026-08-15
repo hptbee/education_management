@@ -85,6 +85,10 @@ export function ClassroomDialogProvider({ children }: { children: ReactNode }) {
 
   const showAlert = useCallback((message: string, options?: AlertOptions) => {
     return new Promise<void>((resolve) => {
+      if (alertResolver.current) {
+        alertResolver.current()
+        alertResolver.current = null
+      }
       alertResolver.current = resolve
       setAlertState({
         open: true,
@@ -97,6 +101,10 @@ export function ClassroomDialogProvider({ children }: { children: ReactNode }) {
 
   const showConfirm = useCallback((message: string, options?: ConfirmOptions) => {
     return new Promise<boolean>((resolve) => {
+      if (confirmResolver.current) {
+        confirmResolver.current(false)
+        confirmResolver.current = null
+      }
       confirmResolver.current = resolve
       setConfirmState({
         open: true,
