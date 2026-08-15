@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "QuanLyLopHoc",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "identifier": "com.hptbee.quanlylophoc",
   "build": {
     "frontendDist": "../out",
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'"
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' https://*.workers.dev"
     }
   },
   "bundle": {

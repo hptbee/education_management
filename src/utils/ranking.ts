@@ -173,6 +173,27 @@ export function buildTeamRanking(
   })
 }
 
+/** All ranked entries through `maxRank`, including every tied student at each rank. */
+export function getPodiumEntries(ranked: RankedStudent[], maxRank = 3): RankedStudent[] {
+  return ranked.filter((entry) => entry.rank <= maxRank)
+}
+
+export function groupRankedByRank(
+  ranked: RankedStudent[],
+  maxRank = 3,
+): Map<number, RankedStudent[]> {
+  const groups = new Map<number, RankedStudent[]>()
+
+  for (const entry of ranked) {
+    if (entry.rank > maxRank) continue
+    const list = groups.get(entry.rank) ?? []
+    list.push(entry)
+    groups.set(entry.rank, list)
+  }
+
+  return groups
+}
+
 export function filterRankedStudents(
   ranked: RankedStudent[],
   filters: {

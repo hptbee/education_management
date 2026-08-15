@@ -4,9 +4,12 @@ import { IndexedDbClassroomStorage } from "./storage/indexed-db.storage";
 import { createEmptyDatabase } from "./database.factory";
 import { generateDatabaseId, generateExportFilename } from "./database.utils";
 import { normalizeClassroomDatabase } from "../utils/classroomRoles";
+import { migrateLegacyGiftImages } from "../utils/gifts";
+import { classroomAssetService } from "./assets/classroom-asset.service";
 import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
 import { assertImportFileSize } from "./importLimits";
+import { getLastClassroomId, setLastClassroomId } from "../utils/lastClassroom";
 
 function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
   if (!data || typeof data !== "object") {
@@ -45,22 +48,48 @@ function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
   }
 }
 
-function createStorage(): ClassroomDatabaseStorage {
+let tauriStorageSingleton: ClassroomDatabaseStorage | null = null;
+
+async function resolveStorage(): Promise<ClassroomDatabaseStorage> {
   if (isTauri()) {
-    // Dynamic import — keeps Tauri code out of the browser bundle
-    // We return a lazy proxy that will initialize on first use.
-    // Since all storage methods are async, this is safe.
-    const { TauriFsClassroomStorage } = require("./storage/tauri-fs.storage") as typeof import("./storage/tauri-fs.storage");
-    return new TauriFsClassroomStorage();
+    if (!tauriStorageSingleton) {
+      const { TauriFsClassroomStorage } = await import("./storage/tauri-fs.storage");
+      tauriStorageSingleton = new TauriFsClassroomStorage();
+    }
+    return tauriStorageSingleton;
   }
   return new IndexedDbClassroomStorage();
 }
 
+async function persistActiveClassroomId(id: string | null): Promise<void> {
+  if (id) {
+    setLastClassroomId(id);
+  }
+  const storage = await resolveStorage();
+  if (storage.setActiveClassroomId) {
+    await storage.setActiveClassroomId(id);
+  }
+}
+
 export class DatabaseService {
-  private storage: ClassroomDatabaseStorage;
+  private storage: ClassroomDatabaseStorage | null = null;
+  private storagePromise: Promise<ClassroomDatabaseStorage> | null = null;
 
   constructor(storage?: ClassroomDatabaseStorage) {
-    this.storage = storage || createStorage();
+    if (storage) {
+      this.storage = storage;
+    }
+  }
+
+  private async getStorage(): Promise<ClassroomDatabaseStorage> {
+    if (this.storage) return this.storage;
+    if (!this.storagePromise) {
+      this.storagePromise = resolveStorage().then((resolved) => {
+        this.storage = resolved;
+        return resolved;
+      });
+    }
+    return this.storagePromise;
   }
 
   /**
@@ -69,24 +98,23 @@ export class DatabaseService {
    * If running in browser: run the legacy localStorage migration.
    */
   async initializeAndMigrate(): Promise<void> {
-    if (isTauri()) {
-      const { TauriFsClassroomStorage } = await import("./storage/tauri-fs.storage");
-      const { migrateIndexedDbToJson } = await import("./storage/migration.service");
+    const storage = await this.getStorage();
 
-      const tauriStorage = this.storage as InstanceType<typeof TauriFsClassroomStorage>;
-      const result = await migrateIndexedDbToJson(tauriStorage);
+    if (isTauri()) {
+      const { migrateIndexedDbToJson } = await import("./storage/migration.service");
+      const result = await migrateIndexedDbToJson(
+        storage as InstanceType<typeof import("./storage/tauri-fs.storage").TauriFsClassroomStorage>,
+      );
 
       if (result.status === "completed") {
         console.log(`[DatabaseService] Migration complete. ${result.migratedCount} classroom(s) migrated.`);
       } else if (result.status === "failed") {
         console.error("[DatabaseService] Migration failed:", result.error);
-        // Rethrow so the UI can show an error
         throw new Error(`Data migration failed: ${result.error}`);
       }
       return;
     }
 
-    // Legacy browser migration: localStorage → IndexedDB
     const legacyKey = "chibi-classroom-data";
     const raw = localStorage.getItem(legacyKey);
     if (!raw) return;
@@ -109,7 +137,7 @@ export class DatabaseService {
         newDb.teamScoreHistory = parsed.teamScoreHistory || [];
         newDb.appSettings = parsed.appSettings || newDb.appSettings;
 
-        await this.storage.save(normalizeClassroomDatabase(newDb));
+        await storage.save(normalizeClassroomDatabase(newDb));
         localStorage.removeItem(legacyKey);
       }
     } catch (e) {
@@ -118,25 +146,29 @@ export class DatabaseService {
   }
 
   async listDatabases(): Promise<DatabaseSummary[]> {
-    return this.storage.list();
+    const storage = await this.getStorage();
+    return storage.list();
   }
 
   async createDatabase(
-    settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">
+    settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">,
   ): Promise<ClassroomDatabase> {
+    const storage = await this.getStorage();
     const db = normalizeClassroomDatabase(createEmptyDatabase(settings));
-    const existing = await this.storage.load(db.metadata.id);
+    const existing = await storage.load(db.metadata.id);
     if (existing) {
       throw new Error(
         `Lớp "${settings.className}" năm học "${settings.schoolYear}" đã tồn tại. Hãy chọn tên hoặc năm học khác.`,
       );
     }
-    await this.storage.save(db);
+    await storage.save(db);
+    await persistActiveClassroomId(db.metadata.id);
     return db;
   }
 
   async openDatabase(id: string): Promise<ClassroomDatabase | null> {
-    const loaded = await this.storage.load(id);
+    const storage = await this.getStorage();
+    const loaded = await storage.load(id);
     if (!loaded) return null;
 
     let db = loaded;
@@ -160,7 +192,14 @@ export class DatabaseService {
       };
     }
 
-    return normalizeClassroomDatabase(db);
+    let normalized = normalizeClassroomDatabase(db);
+    const { database: migrated, didMigrate } = await migrateLegacyGiftImages(normalized);
+    normalized = migrated;
+    if (didMigrate) {
+      await storage.save(normalized);
+    }
+    await persistActiveClassroomId(normalized.metadata.id);
+    return normalized;
   }
 
   async loadDatabase(id: string): Promise<ClassroomDatabase | null> {
@@ -168,6 +207,7 @@ export class DatabaseService {
   }
 
   async saveDatabase(db: ClassroomDatabase): Promise<ClassroomDatabase> {
+    const storage = await this.getStorage();
     const normalized = normalizeClassroomDatabase(db);
     const updatedDb: ClassroomDatabase = {
       ...normalized,
@@ -176,15 +216,25 @@ export class DatabaseService {
         updatedAt: new Date().toISOString(),
       },
     };
-    await this.storage.save(updatedDb);
+    await storage.save(updatedDb);
     return updatedDb;
+  }
+
+  async getPreferredClassroomId(): Promise<string | null> {
+    const storage = await this.getStorage();
+    if (storage.getActiveClassroomId) {
+      const fromIndex = await storage.getActiveClassroomId();
+      if (fromIndex) return fromIndex;
+    }
+    return getLastClassroomId();
   }
 
   async renameClassroomDatabase(
     currentId: string,
     newClassName: string,
-    newSchoolYear: string
+    newSchoolYear: string,
   ): Promise<ClassroomDatabase> {
+    const storage = await this.getStorage();
     const currentDb = await this.openDatabase(currentId);
     if (!currentDb) throw new Error("Database not found");
 
@@ -193,7 +243,7 @@ export class DatabaseService {
       return currentDb;
     }
 
-    const existingDb = await this.storage.load(newId);
+    const existingDb = await storage.load(newId);
     if (existingDb) {
       throw new Error(`A database for "${newClassName}" in "${newSchoolYear}" already exists.`);
     }
@@ -214,14 +264,15 @@ export class DatabaseService {
       },
     };
 
-    await this.storage.save(updatedDb);
-    const verified = await this.storage.load(newId);
+    await storage.save(updatedDb);
+    await classroomAssetService.moveClassroomAssets(currentId, newId);
+    const verified = await storage.load(newId);
     if (!verified || verified.metadata.id !== newId) {
       throw new Error("Không thể xác minh lớp học sau khi đổi tên. Vui lòng thử lại.");
     }
 
     try {
-      await this.storage.delete(currentId);
+      await storage.delete(currentId);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Không thể xóa bản ghi lớp cũ.";
@@ -230,6 +281,7 @@ export class DatabaseService {
       );
     }
 
+    await persistActiveClassroomId(newId);
     return updatedDb;
   }
 
@@ -237,13 +289,14 @@ export class DatabaseService {
     sourceId: string,
     newClassName: string,
     newSchoolYear: string,
-    mode: "settings-only" | "full-copy"
+    mode: "settings-only" | "full-copy",
   ): Promise<ClassroomDatabase> {
+    const storage = await this.getStorage();
     const sourceDb = await this.openDatabase(sourceId);
     if (!sourceDb) throw new Error("Source database not found");
 
     const newId = generateDatabaseId(newClassName, newSchoolYear);
-    const existingDb = await this.storage.load(newId);
+    const existingDb = await storage.load(newId);
     if (existingDb) {
       throw new Error(`A database for "${newClassName}" in "${newSchoolYear}" already exists.`);
     }
@@ -283,12 +336,21 @@ export class DatabaseService {
       };
     }
 
-    await this.storage.save(newDb);
+    await storage.save(newDb);
+    await classroomAssetService.copyClassroomGiftImages(sourceId, newId, newDb.rewards ?? []);
+    await persistActiveClassroomId(newDb.metadata.id);
     return newDb;
   }
 
   async deleteDatabase(id: string): Promise<void> {
-    await this.storage.delete(id);
+    const storage = await this.getStorage();
+    await storage.delete(id);
+    await classroomAssetService.deleteClassroomAssets(id);
+    const activeId = await this.getPreferredClassroomId();
+    if (activeId === id) {
+      const remaining = await storage.list();
+      await persistActiveClassroomId(remaining[0]?.id ?? null);
+    }
   }
 
   async importDatabase(file: File): Promise<ClassroomDatabase> {
@@ -304,14 +366,16 @@ export class DatabaseService {
           assertImportShape(data);
 
           const db = normalizeClassroomDatabase(data);
-          const existing = await this.storage.load(db.metadata.id);
+          const storage = await this.getStorage();
+          const existing = await storage.load(db.metadata.id);
           if (existing) {
             throw new Error(
               `Đã có lớp "${existing.classroomSettings.className}" (${existing.classroomSettings.schoolYear}) với cùng mã dữ liệu. Hãy xóa lớp cũ hoặc chỉnh tên lớp/năm học trong file trước khi nhập.`,
             );
           }
-          await this.saveDatabase(db);
-          resolve(db);
+          const saved = await this.saveDatabase(db);
+          await persistActiveClassroomId(saved.metadata.id);
+          resolve(saved);
         } catch (err) {
           reject(err);
         }
@@ -336,21 +400,17 @@ export class DatabaseService {
     URL.revokeObjectURL(url);
   }
 
-  /**
-   * Returns the Tauri data directory path (only available in Tauri mode).
-   * Used by the Settings page "Open Data Folder" button.
-   */
   async getDataDirectory(): Promise<string | null> {
     if (!isTauri()) return null;
-    const { TauriFsClassroomStorage } = await import("./storage/tauri-fs.storage");
-    if (this.storage instanceof TauriFsClassroomStorage) {
-      return (this.storage as InstanceType<typeof TauriFsClassroomStorage>).getDataDirectory();
+    const storage = await this.getStorage();
+    if (storage.getDataDirectory) {
+      return storage.getDataDirectory();
     }
     return null;
   }
 
   async closeDatabase(): Promise<void> {
-    // Cleanup if needed
+    await persistActiveClassroomId(null);
   }
 }
 

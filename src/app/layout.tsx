@@ -26,9 +26,10 @@ export const viewport: Viewport = {
 }
 
 import { AppDataProvider } from '@/src/store/AppDataContext'
-import { ClassroomDialogProvider, AppDataShell } from '@/src/components/classroom'
+import { PresentationModeProvider } from '@/src/store/PresentationModeContext'
+import { ClassroomDialogProvider } from '@/src/components/classroom'
+import { AppShell } from '@/src/components/AppShell'
 import { ClassroomDocumentTitle } from '@/src/components/ClassroomDocumentTitle'
-import { Sidebar } from '@/components/sidebar'
 
 export default function RootLayout({
   children,
@@ -39,15 +40,12 @@ export default function RootLayout({
     <html lang="vi" className={`light ${nunito.variable} ${baloo.variable} bg-page`}>
       <body className="antialiased font-sans">
         <AppDataProvider>
-          <ClassroomDialogProvider>
-            <ClassroomDocumentTitle />
-            <div className="flex h-screen overflow-hidden bg-page">
-              <Sidebar />
-              <main className="classroom-shell flex flex-1 flex-col overflow-hidden">
-                <AppDataShell>{children}</AppDataShell>
-              </main>
-            </div>
-          </ClassroomDialogProvider>
+          <PresentationModeProvider>
+            <ClassroomDialogProvider>
+              <ClassroomDocumentTitle />
+              <AppShell>{children}</AppShell>
+            </ClassroomDialogProvider>
+          </PresentationModeProvider>
         </AppDataProvider>
       </body>
     </html>

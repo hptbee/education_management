@@ -90,7 +90,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
   - **Nguy hiểm** — delete classroom (name confirmation)
 - Configurable classroom roles (e.g. class president, vice president)
 - Student management with search, import, and detailed profiles
-- Student badges (award/toggle per student from a configurable catalog)
+- Student badges on cards and profiles; award/toggle via **Tuyên dương → Huy hiệu** tab (catalog in **Danh mục**)
 - Classroom role badges shown on student cards and team views
 
 ### Points & Rewards
@@ -111,7 +111,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - **Points Challenge** — top-students strip with shortcut to the points page
 
 ### Other
-- Recognition ceremony screen
+- **Tuyên dương** (`/recognition`) — ceremony, badge roster, title catalog (1:1 badge per title), Wall of Fame; `/badges` redirects here
 - Activity history (`/history`) — points, rewards, recognition, lucky wheel, badges
 - Classroom tools (`/tools`; `/games` redirects here)
 - Local image uploads (stored as base64 strings in the JSON database)

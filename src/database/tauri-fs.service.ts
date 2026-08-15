@@ -4,6 +4,8 @@
  * Feature code should NEVER use this directly — use TauriFsClassroomStorage instead.
  */
 
+import type { FileStorageAdapter } from "./storage/storage.interface";
+
 // Type guard to detect if we're running inside Tauri
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -14,45 +16,53 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
   return tauriInvoke<T>(cmd, args);
 }
 
-export const tauriFs = {
-  /** Returns the base data directory path (AppData/ClassroomManagement) */
+export const tauriFs: FileStorageAdapter = {
   async getDataDirectory(): Promise<string> {
     return invoke<string>("get_data_directory");
   },
 
-  /** Ensures a directory exists (creates recursively) */
   async ensureDir(path: string): Promise<void> {
     return invoke<void>("ensure_dir", { path });
   },
 
-  /** Reads a text file as a string */
   async readTextFile(path: string): Promise<string> {
     return invoke<string>("read_text_file", { path });
   },
 
-  /** Atomically writes a text file (via temp file rename) */
   async writeTextFile(path: string, contents: string): Promise<void> {
     return invoke<void>("write_text_file", { path, contents });
   },
 
-  /** Removes a file (no-op if not found) */
+  async readBinaryFile(path: string): Promise<Uint8Array> {
+    const bytes = await invoke<number[]>("read_binary_file", { path });
+    return Uint8Array.from(bytes);
+  },
+
+  async writeBinaryFile(path: string, contents: Uint8Array): Promise<void> {
+    return invoke<void>("write_binary_file", { path, contents: Array.from(contents) });
+  },
+
   async removeFile(path: string): Promise<void> {
     return invoke<void>("remove_file", { path });
   },
 
-  /** Checks if a file exists */
+  async removeDir(path: string): Promise<void> {
+    return invoke<void>("remove_dir", { path });
+  },
+
+  async renamePath(from: string, to: string): Promise<void> {
+    return invoke<void>("rename_path", { from, to });
+  },
+
   async fileExists(path: string): Promise<boolean> {
     return invoke<boolean>("file_exists", { path });
   },
 
-  /** Opens a directory in the OS file explorer */
   async openPath(path: string): Promise<void> {
     return invoke<void>("open_path", { path });
   },
 
-  /** Helper: join path segments for the current OS */
   joinPath(...parts: string[]): string {
-    // Tauri commands return Windows paths when on Windows, so we use the OS separator
     const sep = parts[0].includes("\\") ? "\\" : "/";
     return parts.join(sep);
   },

@@ -14,6 +14,11 @@ export function generateDatabaseId(className: string, schoolYear: string): strin
   return `${slugify(className)}_${slugify(schoolYear)}`;
 }
 
+/** Human-readable classroom JSON filename for new databases. */
+export function makeClassroomFileName(databaseId: string): string {
+  return `Lop-${databaseId}.json`;
+}
+
 export function generateExportFilename(className: string, schoolYear: string): string {
-  return `${generateDatabaseId(className, schoolYear)}.json`;
+  return makeClassroomFileName(generateDatabaseId(className, schoolYear));
 }

@@ -6,20 +6,21 @@
  *   AppData/ClassroomManagement/
  *     index.json                     ← lightweight list of all classrooms
  *     classrooms/
- *       lop-2-7_2026-2027.json       ← full ClassroomDatabase for each classroom
+ *       Lop-2-7_2026-2027.json       ← full ClassroomDatabase for each classroom
  *
  * All writes are safe: Rust backend uses a temp-file rename strategy.
  * A write queue prevents concurrent writes from racing each other.
  */
 
 import type { ClassroomDatabase, DatabaseSummary } from "../types";
-import type { ClassroomDatabaseStorage } from "./storage.interface";
+import { makeClassroomFileName } from "../database.utils";
+import type { ClassroomDatabaseStorage, FileStorageAdapter } from "./storage.interface";
 import { tauriFs } from "../tauri-fs.service";
 import { enqueueWrite } from "./write-queue";
 
 // ─── INDEX FILE TYPES ────────────────────────────────────────────────────────
 
-interface ClassroomIndexEntry {
+export interface ClassroomIndexEntry {
   id: string;
   fileName: string;
   className: string;
@@ -30,10 +31,13 @@ interface ClassroomIndexEntry {
   updatedAt: string;
 }
 
-interface IndexFile {
+export interface IndexFile {
   version: 1;
+  activeClassroomId?: string | null;
   classrooms: ClassroomIndexEntry[];
 }
+
+export const EMPTY_INDEX: IndexFile = { version: 1, activeClassroomId: null, classrooms: [] };
 
 // ─── STORAGE IMPLEMENTATION ──────────────────────────────────────────────────
 
@@ -42,21 +46,26 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
   private classroomsDir = "";
   private indexPath = "";
   private initialized = false;
+  private readonly fs: FileStorageAdapter;
 
   /** Serial write queue — prevents concurrent writes from racing */
   private writeQueue: Promise<void> = Promise.resolve();
+
+  constructor(fs: FileStorageAdapter = tauriFs) {
+    this.fs = fs;
+  }
 
   // ── Initialization ──────────────────────────────────────────────────────────
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    this.dataDir = await tauriFs.getDataDirectory();
-    this.classroomsDir = tauriFs.joinPath(this.dataDir, "classrooms");
-    this.indexPath = tauriFs.joinPath(this.dataDir, "index.json");
+    this.dataDir = await this.fs.getDataDirectory();
+    this.classroomsDir = this.fs.joinPath(this.dataDir, "classrooms");
+    this.indexPath = this.fs.joinPath(this.dataDir, "index.json");
 
-    await tauriFs.ensureDir(this.dataDir);
-    await tauriFs.ensureDir(this.classroomsDir);
+    await this.fs.ensureDir(this.dataDir);
+    await this.fs.ensureDir(this.classroomsDir);
 
     this.initialized = true;
   }
@@ -65,23 +74,29 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
 
   private async readIndex(): Promise<IndexFile> {
     try {
-      const text = await tauriFs.readTextFile(this.indexPath);
-      return JSON.parse(text) as IndexFile;
+      const text = await this.fs.readTextFile(this.indexPath);
+      const parsed = JSON.parse(text) as IndexFile;
+      return {
+        version: 1,
+        activeClassroomId: parsed.activeClassroomId ?? null,
+        classrooms: Array.isArray(parsed.classrooms) ? parsed.classrooms : [],
+      };
     } catch {
-      return { version: 1, classrooms: [] };
+      return { ...EMPTY_INDEX };
     }
   }
 
   private async writeIndex(index: IndexFile): Promise<void> {
-    await tauriFs.writeTextFile(this.indexPath, JSON.stringify(index, null, 2));
+    await this.fs.writeTextFile(this.indexPath, JSON.stringify(index, null, 2));
   }
 
   private classroomFilePath(fileName: string): string {
-    return tauriFs.joinPath(this.classroomsDir, fileName);
+    return this.fs.joinPath(this.classroomsDir, fileName);
   }
 
-  private makeFileName(db: ClassroomDatabase): string {
-    return `${db.metadata.id}.json`;
+  private resolveFileName(db: ClassroomDatabase, existingFileName?: string): string {
+    if (existingFileName) return existingFileName;
+    return makeClassroomFileName(db.metadata.id);
   }
 
   // ── ClassroomDatabaseStorage interface ─────────────────────────────────────
@@ -109,7 +124,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     if (!entry) return null;
 
     try {
-      const text = await tauriFs.readTextFile(this.classroomFilePath(entry.fileName));
+      const text = await this.fs.readTextFile(this.classroomFilePath(entry.fileName));
       return JSON.parse(text) as ClassroomDatabase;
     } catch {
       return null;
@@ -120,13 +135,13 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     await this.initialize();
 
     const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
-      const fileName = this.makeFileName(db);
-      const filePath = this.classroomFilePath(fileName);
-
-      await tauriFs.writeTextFile(filePath, JSON.stringify(db, null, 2));
-
       const index = await this.readIndex();
       const existingIdx = index.classrooms.findIndex((c) => c.id === db.metadata.id);
+      const existingFileName = existingIdx >= 0 ? index.classrooms[existingIdx].fileName : undefined;
+      const fileName = this.resolveFileName(db, existingFileName);
+      const filePath = this.classroomFilePath(fileName);
+
+      await this.fs.writeTextFile(filePath, JSON.stringify(db, null, 2));
 
       const entry: ClassroomIndexEntry = {
         id: db.metadata.id,
@@ -159,8 +174,11 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
       const entry = index.classrooms.find((c) => c.id === id);
 
       if (entry) {
-        await tauriFs.removeFile(this.classroomFilePath(entry.fileName));
+        await this.fs.removeFile(this.classroomFilePath(entry.fileName));
         index.classrooms = index.classrooms.filter((c) => c.id !== id);
+        if (index.activeClassroomId === id) {
+          index.activeClassroomId = index.classrooms[0]?.id ?? null;
+        }
         await this.writeIndex(index);
       }
     });
@@ -168,12 +186,34 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     return result;
   }
 
-  // ── Utility ─────────────────────────────────────────────────────────────────
+  async setActiveClassroomId(id: string | null): Promise<void> {
+    await this.initialize();
+
+    const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
+      const index = await this.readIndex();
+      index.activeClassroomId = id;
+      await this.writeIndex(index);
+    });
+    this.writeQueue = nextQueue;
+    return result;
+  }
+
+  async getActiveClassroomId(): Promise<string | null> {
+    await this.initialize();
+    const index = await this.readIndex();
+    return index.activeClassroomId ?? null;
+  }
+
+  async ensureEmptyIndex(): Promise<void> {
+    await this.initialize();
+    if (await this.fs.fileExists(this.indexPath)) return;
+    await this.writeIndex({ ...EMPTY_INDEX });
+  }
 
   /** Returns whether the index.json file already exists (migration check) */
   async isInitialized(): Promise<boolean> {
     await this.initialize();
-    return tauriFs.fileExists(this.indexPath);
+    return this.fs.fileExists(this.indexPath);
   }
 
   /** Returns the data directory path for the "open folder" feature */

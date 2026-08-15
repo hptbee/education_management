@@ -3,20 +3,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
-import { useClassroomDialog } from './ClassroomDialogProvider'
 import { ClassroomButton } from './ClassroomButton'
-
-function SaveErrorNotifier() {
-  const { saveError, clearSaveError } = useAppData()
-  const { showAlert } = useClassroomDialog()
-
-  useEffect(() => {
-    if (!saveError) return
-    void showAlert(saveError, { variant: 'error' }).finally(clearSaveError)
-  }, [saveError, clearSaveError, showAlert])
-
-  return null
-}
 
 function InitErrorBanner({ onRetry }: { onRetry: () => void }) {
   const { initError } = useAppData()
@@ -59,7 +46,6 @@ export function AppDataShell({ children }: { children: ReactNode }) {
     return (
       <>
         <InitErrorBanner onRetry={retryInit} />
-        <SaveErrorNotifier />
         {children}
       </>
     )
@@ -91,10 +77,5 @@ export function AppDataShell({ children }: { children: ReactNode }) {
     )
   }
 
-  return (
-    <>
-      <SaveErrorNotifier />
-      {children}
-    </>
-  )
+  return <>{children}</>
 }

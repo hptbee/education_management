@@ -1,31 +1,61 @@
 'use client'
 
-import { useState } from 'react'
-import { Medal, Sparkles, Star, Trophy } from 'lucide-react'
+import { Suspense, useCallback, useMemo } from 'react'
+import { LayoutList, Medal, Sparkles, Star, Trophy } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { PageHeader } from '@/src/components/classroom'
+import { BadgeRosterSection } from './components/badge-roster-section'
 import { RecognitionFormSection } from './components/recognition-form-section'
 import { TitleCatalogSection } from './components/title-catalog-section'
 import { WallOfFameSection } from './components/wall-of-fame-section'
 
-type RecognitionTab = 'new' | 'titles' | 'wall'
+export type RecognitionTab = 'new' | 'badges' | 'titles' | 'wall'
+
+const TAB_IDS: RecognitionTab[] = ['new', 'badges', 'titles', 'wall']
 
 const TABS: { id: RecognitionTab; label: string; icon: React.ReactNode }[] = [
   { id: 'new', label: 'Tuyên dương mới', icon: <Sparkles className="size-4" /> },
-  { id: 'titles', label: 'Danh hiệu', icon: <Medal className="size-4" /> },
+  { id: 'badges', label: 'Huy hiệu', icon: <Medal className="size-4" /> },
+  { id: 'titles', label: 'Danh mục', icon: <LayoutList className="size-4" /> },
   { id: 'wall', label: 'Góc tuyên dương', icon: <Star className="size-4" /> },
 ]
 
-export default function RecognitionPage() {
+function parseTab(value: string | null): RecognitionTab {
+  if (value && TAB_IDS.includes(value as RecognitionTab)) {
+    return value as RecognitionTab
+  }
+  return 'new'
+}
+
+function RecognitionPageContent() {
   const { data } = useAppData()
   const { isLoaded } = useActiveClassroom()
-  const [activeTab, setActiveTab] = useState<RecognitionTab>('new')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const activeTab = useMemo(() => parseTab(searchParams?.get('tab') ?? null), [searchParams])
+
+  const setActiveTab = useCallback(
+    (tab: RecognitionTab) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? '')
+      params.set('tab', tab)
+      if (tab !== 'badges') {
+        params.delete('studentId')
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname ?? '/recognition'}?${qs}` : (pathname ?? '/recognition'))
+    },
+    [pathname, router, searchParams],
+  )
 
   const students = data?.students ?? []
   const teams = data?.teams ?? []
   const classroomRoles = data?.classroomRoles ?? []
   const titles = data?.recognitionTitles ?? []
+  const studentIdFromQuery = searchParams?.get('studentId') ?? undefined
 
   if (!isLoaded) {
     return (
@@ -73,6 +103,10 @@ export default function RecognitionPage() {
           />
         ) : null}
 
+        {activeTab === 'badges' ? (
+          <BadgeRosterSection initialStudentId={studentIdFromQuery} />
+        ) : null}
+
         {activeTab === 'titles' ? <TitleCatalogSection /> : null}
 
         {activeTab === 'wall' ? (
@@ -84,5 +118,19 @@ export default function RecognitionPage() {
         ) : null}
       </div>
     </div>
+  )
+}
+
+export default function RecognitionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-xl font-bold text-slate-500">Đang tải dữ liệu...</p>
+        </div>
+      }
+    >
+      <RecognitionPageContent />
+    </Suspense>
   )
 }

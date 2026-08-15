@@ -95,16 +95,19 @@ export interface PointHistory {
   note?: string;
 }
 
-export interface Reward {
+/** Display-only gift in the classroom gift cabinet (persisted as `rewards` in JSON). */
+export interface Gift {
   id: string;
   name: string;
-  image?: string;
+  imagePath?: string;
   description?: string;
-  requiredPoints: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+/** Alias kept for the persisted `rewards` collection name and legacy imports. */
+export type Reward = Gift;
 
 export interface RewardHistory {
   id: string;

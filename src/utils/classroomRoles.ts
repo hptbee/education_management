@@ -1,6 +1,7 @@
 import type { ClassroomRole, Student, Team } from "../types/models";
 import type { ClassroomDatabase } from "../database/types";
 import { normalizeBadgesOnDatabase } from "./badges";
+import { normalizeGiftsOnDatabase } from "./gifts";
 import { normalizeRecognitionTitlesOnDatabase } from "./recognitionTitles";
 import { createId } from "./id";
 import { HOME_BANNER, STUDENT_AVATAR, TEACHER_AVATAR, sanitizeImageDataUrl } from "./images";
@@ -113,20 +114,22 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
   };
 
   return normalizeRecognitionTitlesOnDatabase(
-    normalizeBadgesOnDatabase({
-      ...db,
-      classroomSettings,
-      classroomRoles,
-      students,
-      teams,
-      recognitions: db.recognitions ?? [],
-      luckyWheelHistory: db.luckyWheelHistory ?? [],
-      badgeAwardHistory: db.badgeAwardHistory ?? [],
-      wheelStudentBag: db.wheelStudentBag ?? [],
-      appSettings: db.appSettings ?? {
-        soundEnabled: true,
-        animationsEnabled: true,
-      },
-    }),
+    normalizeBadgesOnDatabase(
+      normalizeGiftsOnDatabase({
+        ...db,
+        classroomSettings,
+        classroomRoles,
+        students,
+        teams,
+        recognitions: db.recognitions ?? [],
+        luckyWheelHistory: db.luckyWheelHistory ?? [],
+        badgeAwardHistory: db.badgeAwardHistory ?? [],
+        wheelStudentBag: db.wheelStudentBag ?? [],
+        appSettings: db.appSettings ?? {
+          soundEnabled: true,
+          animationsEnabled: true,
+        },
+      }),
+    ),
   );
 }

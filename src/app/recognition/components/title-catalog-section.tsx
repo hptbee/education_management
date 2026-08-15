@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { PencilLine, Plus, Trash2 } from 'lucide-react'
-import type { Badge, RecognitionTitle } from '@/src/types/models'
+import type { RecognitionTitle } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { createId } from '@/src/utils/id'
 import { EmojiIconPicker } from '@/src/components/EmojiIconPicker'
@@ -14,18 +14,15 @@ function TitleFormDialog({
   onClose,
   onSave,
   initialData,
-  badges,
 }: {
   isOpen: boolean
   onClose: () => void
   onSave: (title: RecognitionTitle) => void
   initialData?: RecognitionTitle | null
-  badges: Badge[]
 }) {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('🌟')
   const [description, setDescription] = useState('')
-  const [badgeId, setBadgeId] = useState('')
   const [isActive, setIsActive] = useState(true)
 
   useEffect(() => {
@@ -33,7 +30,6 @@ function TitleFormDialog({
       setName(initialData?.name ?? '')
       setIcon(initialData?.icon ?? '🌟')
       setDescription(initialData?.description ?? '')
-      setBadgeId(initialData?.badgeId ?? '')
       setIsActive(initialData?.isActive ?? true)
     }
   }, [isOpen, initialData])
@@ -59,7 +55,6 @@ function TitleFormDialog({
               name: name.trim(),
               icon: icon.trim() || undefined,
               description: description.trim() || undefined,
-              badgeId: badgeId || undefined,
               isActive,
               createdAt: initialData?.createdAt ?? now,
             })
@@ -86,24 +81,9 @@ function TitleFormDialog({
               className="classroom-field px-4"
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-bold text-slate-700">Huy hiệu kèm theo (tuỳ chọn)</label>
-            <select
-              value={badgeId}
-              onChange={(e) => setBadgeId(e.target.value)}
-              className="classroom-field px-4"
-            >
-              <option value="">Không trao huy hiệu / tự khớp theo tên</option>
-              {badges.map((badge) => (
-                <option key={badge.id} value={badge.id}>
-                  {badge.icon ? `${badge.icon} ` : ''}{badge.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              Khi tuyên dương, học sinh sẽ nhận huy hiệu này (nếu chưa có).
-            </p>
-          </div>
+          <p className="text-xs font-semibold text-slate-500">
+            Mỗi danh hiệu tự động tạo một huy hiệu tương ứng trên hồ sơ học sinh.
+          </p>
           <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
             <input
               type="checkbox"
@@ -136,25 +116,20 @@ export function TitleCatalogSection() {
   const [deleteTarget, setDeleteTarget] = useState<RecognitionTitle | null>(null)
 
   const titles = data?.recognitionTitles ?? []
-  const badges = data?.badges ?? []
   const recognitions = data?.recognitions ?? []
 
   const handleDelete = (title: RecognitionTitle) => {
-    const hasHistory = recognitions.some((r) => r.titleId === title.id)
     deleteRecognitionTitle(title.id)
     setDeleteTarget(null)
-    if (hasHistory) {
-      // archived via deleteRecognitionTitle
-    }
   }
 
   return (
     <section className="rounded-3xl border border-sky-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-lg font-black text-slate-800">Quản lý danh hiệu</h2>
+          <h2 className="font-display text-lg font-black text-slate-800">Danh mục tuyên dương</h2>
           <p className="text-sm font-semibold text-slate-500">
-            Thêm, sửa hoặc tắt danh hiệu tuyên dương trong lớp
+            Mỗi danh hiệu tự động có huy hiệu — dùng khi tuyên dương hoặc gán ở tab Huy hiệu
           </p>
         </div>
         <ClassroomButton
@@ -222,7 +197,6 @@ export function TitleCatalogSection() {
         <TitleFormDialog
           isOpen={formOpen}
           initialData={editingTitle}
-          badges={badges}
           onClose={() => setFormOpen(false)}
           onSave={(title) => {
             saveRecognitionTitle(title)
@@ -247,7 +221,7 @@ export function TitleCatalogSection() {
                 </>
               ) : (
                 <>
-                  Danh hiệu <strong>{deleteTarget.name}</strong> sẽ bị xóa vĩnh viễn.
+                  Danh hiệu <strong>{deleteTarget.name}</strong> sẽ bị xóa vĩnh viễn. Huy hiệu liên kết vẫn giữ trên học sinh đã được trao.
                 </>
               )}
             </p>

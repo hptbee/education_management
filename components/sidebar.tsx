@@ -6,7 +6,6 @@ import {
   UsersRound,
   Star,
   Gift,
-  Medal,
   Crown,
   Sparkles,
   Trophy,
@@ -16,6 +15,7 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { SidebarClassContext } from './sidebar-class-context'
+import { SidebarPersistenceStatus } from './sidebar-persistence-status'
 import { cn } from '@/lib/utils'
 
 type NavItem = {
@@ -47,7 +47,6 @@ const navSections: NavSection[] = [
       { label: 'Tích điểm', href: '/points', icon: Star },
       { label: 'Bảng xếp hạng', href: '/ranking', icon: Crown },
       { label: 'Quà tặng', href: '/rewards', icon: Gift },
-      { label: 'Huy hiệu', href: '/badges', icon: Medal },
     ],
   },
   {
@@ -122,6 +121,7 @@ export function Sidebar() {
       </nav>
 
       <div className="shrink-0 border-t border-sky-100/80 px-3 py-3">
+        <SidebarPersistenceStatus />
         <SidebarNavLink
           href="/settings"
           label="Cài đặt"

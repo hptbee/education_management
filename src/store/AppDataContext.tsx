@@ -9,8 +9,7 @@ import type {
   PointHistorySource,
   Recognition,
   RecognitionTitle,
-  Reward,
-  RewardHistory,
+  Gift,
   Student,
   TeacherProfile,
   Team,
@@ -24,25 +23,37 @@ import {
 } from "../utils/classroomRoles";
 import type { ClassroomDatabase } from "../database/types";
 import { databaseService } from "../database/database.service";
-import { buildRecognizeStudentsUpdate, type RecognizeStudentsInput } from "../utils/recognition";
+import { buildRecognizeStudentsUpdate, ensureBadgeForTitle, type RecognizeStudentsInput } from "../utils/recognition";
 import { capHistory } from "../utils/historyLimits";
+import { classroomAssetService } from "../database/assets/classroom-asset.service";
+import { normalizeGift } from "../utils/gifts";
 import {
   clearLastClassroomId,
-  getLastClassroomId,
   setLastClassroomId,
 } from "../utils/lastClassroom";
+import { backupMetadataService } from "../database/backup/backup-metadata.service";
+import {
+  cloudBackupScheduler,
+  isCloudBackupEnabled,
+  type CloudBackupState,
+} from "../database/backup/cloud-backup.service";
 
 export type { RecognizeStudentsInput };
+
+export type LocalSaveStatus = "saved" | "saving" | "error";
 
 interface AppDataContextValue {
   data: ClassroomDatabase | null;
   isLoading: boolean;
   initError: string | null;
   saveError: string | null;
+  localSaveStatus: LocalSaveStatus;
+  cloudBackupState: CloudBackupState;
   clearSaveError: () => void;
+  retrySave: () => Promise<void>;
   retryInit: () => Promise<void>;
   switchDatabase: (id: string) => Promise<void>;
-  closeDatabase: () => void;
+  closeDatabase: () => Promise<void>;
   createDatabase: (settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   importDatabase: (file: File) => Promise<void>;
   renameDatabase: (newClassName: string, newSchoolYear: string) => Promise<void>;
@@ -70,9 +81,8 @@ interface AppDataContextValue {
     note?: string,
     source?: PointHistorySource,
   ) => void;
-  saveReward: (reward: Reward) => void;
-  deleteReward: (rewardId: string) => void;
-  redeemReward: (studentId: string, reward: Reward) => boolean;
+  saveGift: (gift: Gift, options?: { previousImagePath?: string }) => Promise<void>;
+  deleteGift: (giftId: string) => Promise<void>;
   saveRecognitionTitle: (title: RecognitionTitle) => void;
   deleteRecognitionTitle: (titleId: string) => void;
   recognizeStudents: (input: RecognizeStudentsInput) => Recognition[];
@@ -85,16 +95,36 @@ interface AppDataContextValue {
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
+const SAVE_DEBOUNCE_MS = 400;
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [data, setDataState] = useState<ClassroomDatabase | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [localSaveStatus, setLocalSaveStatus] = useState<LocalSaveStatus>("saved");
+  const [cloudBackupState, setCloudBackupState] = useState<CloudBackupState>(
+    isCloudBackupEnabled() ? "idle" : "disabled",
+  );
   const dataRef = useRef<ClassroomDatabase | null>(null);
   const lastPersistedRef = useRef<ClassroomDatabase | null>(null);
   const saveGenerationRef = useRef(0);
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<ClassroomDatabase | null>(null);
+  const saveInFlightRef = useRef(false);
 
   const clearSaveError = () => setSaveError(null);
+
+  useEffect(() => {
+    const unsubscribe = cloudBackupScheduler.subscribe((state) => {
+      setCloudBackupState(state);
+    });
+    cloudBackupScheduler.startPeriodicRetry();
+    return () => {
+      unsubscribe();
+      cloudBackupScheduler.stop();
+    };
+  }, []);
 
   const applyLoadedDatabase = useCallback((db: ClassroomDatabase | null) => {
     setDataState(db);
@@ -114,11 +144,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       await databaseService.initializeAndMigrate();
       const databases = await databaseService.listDatabases();
       if (databases.length > 0) {
-        const lastId = getLastClassroomId();
-        const preferred = lastId ? databases.find((item) => item.id === lastId) : undefined;
+        const preferredId = await databaseService.getPreferredClassroomId();
+        const preferred = preferredId ? databases.find((item) => item.id === preferredId) : undefined;
         const targetId = preferred?.id ?? databases[0].id;
         const db = await databaseService.openDatabase(targetId);
         applyLoadedDatabase(db);
+        if (db) {
+          await cloudBackupScheduler.checkStartupBackup(db);
+        }
       } else {
         applyLoadedDatabase(null);
       }
@@ -136,48 +169,126 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     void loadInitialDatabase();
   }, [loadInitialDatabase]);
 
-  const commitData = useCallback((next: ClassroomDatabase) => {
+  const flushSave = useCallback(async (): Promise<boolean> => {
+    if (saveInFlightRef.current) return false;
+
+    const next = pendingSaveRef.current ?? dataRef.current;
+    if (!next) return true;
+
+    pendingSaveRef.current = null;
+    saveInFlightRef.current = true;
     const generation = ++saveGenerationRef.current;
-    setDataState(next);
-    dataRef.current = next;
+    const payload = next;
+    setLocalSaveStatus("saving");
 
-    void databaseService
-      .saveDatabase(next)
-      .then((saved) => {
-        if (generation !== saveGenerationRef.current) return;
-        lastPersistedRef.current = saved;
-      })
-      .catch(async (error) => {
-        if (generation !== saveGenerationRef.current) {
-          console.warn("[AppDataProvider] ignored stale save failure:", error);
-          return;
-        }
+    try {
+      const saved = await databaseService.saveDatabase(payload);
+      if (generation !== saveGenerationRef.current) return true;
 
-        const message =
-          error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
-        console.error("[AppDataProvider] save failed:", error);
+      lastPersistedRef.current = saved;
+      setLocalSaveStatus("saved");
+      setSaveError(null);
+      await backupMetadataService.recordLocalSave(saved.metadata.id, saved.metadata.updatedAt);
+      cloudBackupScheduler.scheduleAfterLocalSave(saved);
+      return true;
+    } catch (error) {
+      if (generation !== saveGenerationRef.current) {
+        console.warn("[AppDataProvider] ignored stale save failure:", error);
+        return true;
+      }
 
-        const classroomId = next.metadata.id;
-        const rollback = lastPersistedRef.current;
-        if (rollback && rollback.metadata.id === classroomId) {
-          setDataState(rollback);
-          dataRef.current = rollback;
-        } else {
-          try {
-            const reloaded = await databaseService.openDatabase(classroomId);
-            if (reloaded && generation === saveGenerationRef.current) {
-              setDataState(reloaded);
-              dataRef.current = reloaded;
-              lastPersistedRef.current = reloaded;
-            }
-          } catch (reloadError) {
-            console.error("[AppDataProvider] reload after save failure failed:", reloadError);
-          }
-        }
-
-        setSaveError(message);
-      });
+      const message =
+        error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
+      console.error("[AppDataProvider] save failed:", error);
+      setLocalSaveStatus("error");
+      setSaveError(message);
+      if (!pendingSaveRef.current) {
+        pendingSaveRef.current = payload;
+      }
+      return false;
+    } finally {
+      saveInFlightRef.current = false;
+      if (pendingSaveRef.current) {
+        void flushSave();
+      }
+    }
   }, []);
+
+  const persistNow = useCallback(async (): Promise<boolean> => {
+    if (!dataRef.current) return true;
+
+    pendingSaveRef.current = dataRef.current;
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = null;
+    }
+
+    for (;;) {
+      if (saveInFlightRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        continue;
+      }
+      if (!pendingSaveRef.current && !dataRef.current) return true;
+      pendingSaveRef.current = dataRef.current;
+      const ok = await flushSave();
+      if (!ok) return false;
+      if (!pendingSaveRef.current) return true;
+    }
+  }, [flushSave]);
+
+  const scheduleSave = useCallback(() => {
+    pendingSaveRef.current = dataRef.current;
+    setLocalSaveStatus("saving");
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    saveDebounceRef.current = setTimeout(() => {
+      saveDebounceRef.current = null;
+      void flushSave();
+    }, SAVE_DEBOUNCE_MS);
+  }, [flushSave]);
+
+  const retrySave = useCallback(async () => {
+    if (!dataRef.current) return;
+    pendingSaveRef.current = dataRef.current;
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = null;
+    }
+    if (saveInFlightRef.current) return;
+    await flushSave();
+  }, [flushSave]);
+
+  useEffect(() => {
+    const flushOnHide = () => {
+      if (document.visibilityState === "hidden") {
+        void persistNow();
+      }
+    };
+    const flushOnUnload = () => {
+      void persistNow();
+    };
+
+    document.addEventListener("visibilitychange", flushOnHide);
+    window.addEventListener("beforeunload", flushOnUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", flushOnHide);
+      window.removeEventListener("beforeunload", flushOnUnload);
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = null;
+      }
+      void persistNow();
+    };
+  }, [persistNow]);
+
+  const commitData = useCallback(
+    (next: ClassroomDatabase) => {
+      setDataState(next);
+      dataRef.current = next;
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
 
   const setData = useCallback(
     (updater: (current: ClassroomDatabase) => ClassroomDatabase) => {
@@ -196,11 +307,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       isLoading,
       initError,
       saveError,
+      localSaveStatus,
+      cloudBackupState,
       clearSaveError,
+      retrySave,
       retryInit: loadInitialDatabase,
       switchDatabase: async (id: string) => {
         setIsLoading(true);
         try {
+          const persisted = await persistNow();
+          if (!persisted) return;
           const db = await databaseService.openDatabase(id);
           if (!db) {
             setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
@@ -216,7 +332,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
         }
       },
-      closeDatabase: () => {
+      closeDatabase: async () => {
+        const persisted = await persistNow();
+        if (!persisted) return;
         applyLoadedDatabase(null);
       },
       createDatabase: async (settings) => {
@@ -241,6 +359,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (!data) return;
         setIsLoading(true);
         try {
+          const persisted = await persistNow();
+          if (!persisted) return;
           const db = await databaseService.renameClassroomDatabase(
             data.metadata.id,
             newClassName,
@@ -255,6 +375,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (!data) return;
         setIsLoading(true);
         try {
+          const persisted = await persistNow();
+          if (!persisted) return;
           const db = await databaseService.duplicateDatabase(
             data.metadata.id,
             newClassName,
@@ -269,6 +391,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteDatabase: async (id) => {
         setIsLoading(true);
         try {
+          if (data?.metadata.id === id) {
+            const persisted = await persistNow();
+            if (!persisted) return;
+          }
           await databaseService.deleteDatabase(id);
           if (data?.metadata.id === id) {
             applyLoadedDatabase(null);
@@ -604,86 +730,77 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             pointHistory: capHistory([history, ...current.pointHistory]),
           };
         }),
-      saveReward: (reward) =>
-        setData((current) => {
-          const existing = current.rewards.find((item) => item.id === reward.id);
+      saveGift: async (gift, options) => {
+        const current = dataRef.current;
+        if (!current) return;
+        const existing = current.rewards.find((item) => item.id === gift.id);
+        const previousImagePath =
+          options?.previousImagePath ??
+          (existing?.imagePath && existing.imagePath !== gift.imagePath ? existing.imagePath : undefined);
+        const classroomId = current.metadata.id;
+
+        setData((db) => {
+          const prior = db.rewards.find((item) => item.id === gift.id);
           const now = new Date().toISOString();
-          const saved: Reward = {
-            ...reward,
-            name: reward.name.trim(),
-            requiredPoints: Math.max(1, Math.trunc(reward.requiredPoints)),
-            isActive: reward.isActive ?? true,
-            createdAt: existing?.createdAt ?? reward.createdAt ?? now,
+          const saved = normalizeGift({
+            ...gift,
+            createdAt: prior?.createdAt ?? gift.createdAt ?? now,
             updatedAt: now,
-          };
+          });
           return {
-            ...current,
-            rewards: existing
-              ? current.rewards.map((item) => (item.id === reward.id ? saved : item))
-              : [...current.rewards, saved],
-          };
-        }),
-      deleteReward: (rewardId) =>
-        setData((current) => ({ ...current, rewards: current.rewards.filter((reward) => reward.id !== rewardId) })),
-      redeemReward: (studentId, reward) => {
-        let success = false;
-        setData((current) => {
-          const student = current.students.find((item) => item.id === studentId);
-          if (!student || student.points < reward.requiredPoints) {
-            return current;
-          }
-          success = true;
-          const createdAt = new Date().toISOString();
-          const history: RewardHistory = {
-            id: createId("reward-history"),
-            studentId,
-            rewardId: reward.id,
-            rewardName: reward.name,
-            pointsSpent: reward.requiredPoints,
-            createdAt,
-          };
-          const pointHistory: PointHistory = {
-            id: createId("points"),
-            studentId,
-            actionId: reward.id,
-            actionName: `Đổi quà: ${reward.name}`,
-            points: -reward.requiredPoints,
-            source: "reward-redemption",
-            createdAt,
-          };
-          return {
-            ...current,
-            students: current.students.map((item) =>
-              item.id === studentId
-                ? {
-                    ...item,
-                    points: item.points - reward.requiredPoints,
-                    totalRewards: item.totalRewards + 1,
-                    updatedAt: createdAt,
-                  }
-                : item,
-            ),
-            rewardHistory: capHistory([history, ...current.rewardHistory]),
-            pointHistory: capHistory([pointHistory, ...current.pointHistory]),
+            ...db,
+            rewards: prior
+              ? db.rewards.map((item) => (item.id === gift.id ? saved : item))
+              : [...db.rewards, saved],
           };
         });
-        return success;
+
+        const persisted = await persistNow();
+        if (!persisted) {
+          throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
+        }
+        if (previousImagePath && previousImagePath !== gift.imagePath) {
+          try {
+            await classroomAssetService.deleteGiftImage(classroomId, previousImagePath);
+          } catch (error) {
+            console.warn("[saveGift] failed to remove replaced image file", error);
+          }
+        }
+      },
+      deleteGift: async (giftId) => {
+        const current = dataRef.current;
+        if (!current) return;
+        const gift = current.rewards.find((item) => item.id === giftId);
+        const classroomId = current.metadata.id;
+
+        setData((db) => ({ ...db, rewards: db.rewards.filter((item) => item.id !== giftId) }));
+
+        const persisted = await persistNow();
+        if (!persisted || !gift?.imagePath) return;
+
+        try {
+          await classroomAssetService.deleteGiftImage(classroomId, gift.imagePath);
+        } catch (error) {
+          console.warn("[deleteGift] failed to remove image file", error);
+        }
       },
       saveRecognitionTitle: (title) =>
         setData((current) => {
           const existing = current.recognitionTitles.find((item) => item.id === title.id);
           const now = new Date().toISOString();
-          const saved: RecognitionTitle = {
+          const draft: RecognitionTitle = {
             ...title,
             name: title.name.trim(),
             isActive: title.isActive ?? true,
             createdAt: existing?.createdAt ?? title.createdAt ?? now,
           };
+          const { title: linkedTitle, badges } = ensureBadgeForTitle(draft, current.badges);
           return {
             ...current,
+            badges,
             recognitionTitles: existing
-              ? current.recognitionTitles.map((item) => (item.id === title.id ? saved : item))
-              : [...current.recognitionTitles, saved],
+              ? current.recognitionTitles.map((item) => (item.id === title.id ? linkedTitle : item))
+              : [...current.recognitionTitles, linkedTitle],
           };
         }),
       deleteRecognitionTitle: (titleId) =>
@@ -788,7 +905,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [data, isLoading, initError, saveError, loadInitialDatabase, applyLoadedDatabase, setData, commitData],
+    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, persistNow],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

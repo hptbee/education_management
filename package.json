@@ -1,12 +1,14 @@
 {
   "name": "my-project",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
   },
@@ -39,6 +41,7 @@
     "eslint-config-next": "^16.3.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "vitest": "^3.0.5"
   }
 }

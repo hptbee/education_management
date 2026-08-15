@@ -22,44 +22,22 @@ export interface MigrationResult {
 }
 
 export async function migrateIndexedDbToJson(
-  tauriStorage: TauriFsClassroomStorage
+  tauriStorage: TauriFsClassroomStorage,
 ): Promise<MigrationResult> {
-  // Check if already migrated
   const alreadyInitialized = await tauriStorage.isInitialized();
   if (alreadyInitialized) {
     return { status: "skipped" };
   }
 
   try {
-    // Load all databases from IndexedDB
     const indexedDb = new IndexedDbClassroomStorage();
     const summaries = await indexedDb.list();
 
     if (summaries.length === 0) {
-      // No IndexedDB data → just create empty index (valid fresh state)
-      await tauriStorage.save(
-        // We write a dummy-then-delete to trigger index creation; use the
-        // save/delete path only if there are databases. Here we just write
-        // an empty index by calling save on a placeholder and then cleaning up.
-        // Actually, let's just call list() after initialize() — it creates dirs.
-        // We'll mark migration done by the mere absence of a crash (list() returns []).
-        // Since isInitialized() checks for index.json, we need to write it.
-        // Use a workaround: save nothing intentionally by writing the index manually.
-        null as unknown as ClassroomDatabase
-      ).catch(() => {
-        // ignore — we'll write the index below
-      });
-
-      // Directly write the empty index to mark as initialized
-      const { tauriFs } = await import("../tauri-fs.service");
-      const dataDir = await tauriStorage.getDataDirectory();
-      const indexPath = tauriFs.joinPath(dataDir, "index.json");
-      await tauriFs.writeTextFile(indexPath, JSON.stringify({ version: 1, classrooms: [] }, null, 2));
-
+      await tauriStorage.ensureEmptyIndex();
       return { status: "completed", migratedCount: 0 };
     }
 
-    // Migrate each database
     const migrated: ClassroomDatabase[] = [];
     for (const summary of summaries) {
       const db = await indexedDb.load(summary.id);
@@ -68,12 +46,10 @@ export async function migrateIndexedDbToJson(
       }
     }
 
-    // Save all to JSON files
     for (const db of migrated) {
       await tauriStorage.save(db);
     }
 
-    // Verify: re-read each saved database to confirm integrity
     for (const db of migrated) {
       const loaded = await tauriStorage.load(db.metadata.id);
       if (!loaded) {

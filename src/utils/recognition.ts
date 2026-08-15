@@ -1,4 +1,4 @@
-import type { Recognition, BadgeAwardHistory } from '../types/models'
+import type { Recognition, BadgeAwardHistory, Badge, RecognitionTitle } from '../types/models'
 import type { ClassroomDatabase } from '../database/types'
 import { createId } from './id'
 
@@ -72,15 +72,66 @@ export const RECOGNITION_EMOJI_OPTIONS = [
 ]
 
 export function resolveBadgeIdForTitle(
-  title: { name: string; badgeId?: string },
-  badges: { id: string; name: string }[],
+  title: { badgeId?: string },
+  badges: { id: string }[],
 ): string | undefined {
   if (title.badgeId && badges.some((b) => b.id === title.badgeId)) {
     return title.badgeId
   }
-  const normalized = title.name.trim().toLowerCase()
-  const match = badges.find((b) => b.name.trim().toLowerCase() === normalized)
-  return match?.id
+  return undefined
+}
+
+/** Ensure a recognition title has a linked badge; sync or create as needed. */
+export function ensureBadgeForTitle(
+  title: RecognitionTitle,
+  badges: Badge[],
+  options?: { linkByName?: boolean },
+): { title: RecognitionTitle; badges: Badge[] } {
+  const now = new Date().toISOString()
+  const linkByName = options?.linkByName ?? false
+  const linked = title.badgeId ? badges.find((b) => b.id === title.badgeId) : undefined
+
+  if (linked) {
+    const synced: Badge = {
+      ...linked,
+      name: title.name.trim(),
+      icon: title.icon ?? linked.icon,
+      description: title.description ?? linked.description,
+    }
+    return {
+      title,
+      badges: badges.map((b) => (b.id === linked.id ? synced : b)),
+    }
+  }
+
+  if (linkByName) {
+    const normalized = title.name.trim().toLowerCase()
+    const byName = badges.find((b) => b.name.trim().toLowerCase() === normalized)
+    if (byName) {
+      const synced: Badge = {
+        ...byName,
+        name: title.name.trim(),
+        icon: title.icon ?? byName.icon,
+        description: title.description ?? byName.description,
+      }
+      return {
+        title: { ...title, badgeId: byName.id },
+        badges: badges.map((b) => (b.id === byName.id ? synced : b)),
+      }
+    }
+  }
+
+  const newBadge: Badge = {
+    id: createId('badge'),
+    name: title.name.trim(),
+    icon: title.icon,
+    description: title.description,
+    createdAt: now,
+  }
+  return {
+    title: { ...title, badgeId: newBadge.id },
+    badges: [...badges, newBadge],
+  }
 }
 
 function awardBadgeToStudent(

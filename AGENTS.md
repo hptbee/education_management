@@ -37,10 +37,10 @@ Inspect:
 | `/teams` | Team management |
 | `/points` | Point actions & quick scoring |
 | `/rewards` | Rewards |
-| `/badges` | Badge catalog & student awards |
+| `/badges` | Redirects to `/recognition?tab=badges` (legacy route) |
 | `/tools` | Lucky Wheel, Study Timer, Lucky Star |
 | `/games` | Redirects to `/tools` (legacy route) |
-| `/recognition` | Recognition |
+| `/recognition` | Recognition ceremony, badge roster, title catalog, Wall of Fame |
 | `/ranking` | Student & team rankings |
 | `/history` | Activity history |
 | `/settings` | Classroom selector; in-class settings (Hồ sơ, Vai trò, Dữ liệu, Nguy hiểm) |
@@ -59,6 +59,10 @@ Route: `src/app/settings/page.tsx`. When `data` is null, render `ClassroomSelect
 Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.tsx`.
 
 **Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity.
+
+## Recognition (`/recognition`)
+
+Four tabs: **Tuyên dương mới**, **Huy hiệu** (roster toggle), **Danh mục** (title catalog; each title auto-creates a linked badge), **Góc tuyên dương**. Query: `?tab=badges&studentId=` for deep links. Legacy `/badges` redirects here.
 
 ## After coding
 

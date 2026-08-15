@@ -91,7 +91,7 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
                   <Medal className="size-4" /> Huy hiệu
                 </h4>
                 <Link
-                  href={`/badges?studentId=${student.id}`}
+                  href={`/recognition?tab=badges&studentId=${student.id}`}
                   onClick={onClose}
                   className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-200"
                 >

@@ -155,7 +155,7 @@ export function DataSection({
           <div>
             <h2 className="font-display text-lg font-extrabold text-slate-800">Sao lưu & thư mục</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Xuất JSON hoặc mở thư mục dữ liệu (Tauri)
+              Xuất JSON hoặc mở thư mục dữ liệu (Tauri). Ảnh quà tặng lưu riêng trong thư mục lớp — chưa được đưa vào sao lưu đám mây.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

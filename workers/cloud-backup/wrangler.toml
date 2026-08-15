@@ -1,0 +1,12 @@
+name = "classroom-cloud-backup"
+main = "src/index.ts"
+compatibility_date = "2024-08-15"
+
+[[r2_buckets]]
+binding = "BACKUP_BUCKET"
+bucket_name = "education-2302"
+preview_bucket_name = "education-2302"
+
+[vars]
+# Optional shared secret for future auth (not required yet)
+# BACKUP_API_TOKEN = ""

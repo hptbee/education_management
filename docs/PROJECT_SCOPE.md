@@ -1375,31 +1375,29 @@ The Lucky Wheel opens in a full-screen modal from this page.
 
 ## Goal
 
-Allow the teacher to define achievement badges and award them to students.
+Allow the teacher to award achievement badges to students. Badges are persistent marks on `Student.badgeIds` and appear on student cards and profile views.
 
-## Badge Catalog
+## Catalog
 
-Teacher can:
+Badge definitions are managed through **Tuyên dương → Danh mục**: each recognition title automatically creates and syncs a linked badge (`RecognitionTitle.badgeId`). There is no separate badge catalog page.
 
-- View default badge seeds
-- Add, edit, and delete badges
-- Set name, icon (emoji), and optional description
+Orphan badges (no linked title) may still appear on the roster for manual toggle.
 
 ## Awarding Badges
 
-On the Badges page (`/badges`):
+On **Tuyên dương → Huy hiệu** (`/recognition?tab=badges`; legacy `/badges` redirects):
 
 - Select a student
 - Toggle badges on/off for that student
 - View currently awarded badges
 
-Badges appear on student cards and profile views where appropriate.
+Badges are also awarded automatically when recognizing a student with a title that has a linked badge.
 
 ## Data Rules
 
 - `Student.badgeIds` stores awarded badge references
-- Deleting a badge removes it from the catalog; clean up student references
-- Badge awards do not change point balance
+- Deleting a recognition title does not remove badges already on students
+- Badge roster toggles do not change point balance (unless awarded via recognition with points)
 
 ---
 
@@ -1538,15 +1536,18 @@ Allow the teacher to praise one or more students for positive achievements or be
 
 ## Page Structure (`/recognition`)
 
-Three in-page tabs:
+Four in-page tabs:
 
-- **Tuyên dương mới** — recognition form
-- **Danh hiệu** — title catalog CRUD
+- **Tuyên dương mới** — recognition form and celebration overlay
+- **Huy hiệu** — student badge roster (toggle on/off; no separate catalog)
+- **Danh mục** — recognition title catalog CRUD; each title auto-creates/syncs a linked badge
 - **Góc tuyên dương** — Wall of Fame with filters
+
+Legacy route `/badges` redirects to `/recognition?tab=badges`.
 
 ## Recognition Titles
 
-Configurable catalog (`RecognitionTitle`) seeded with defaults (e.g. Ngôi sao chăm chỉ, Học tập tiến bộ, Bạn tốt). Teachers can create, edit, enable/disable titles. Titles used in history are archived (disabled) instead of deleted.
+Configurable catalog (`RecognitionTitle`) seeded with defaults (e.g. Ngôi sao chăm chỉ, Học tập tiến bộ, Bạn tốt). Teachers can create, edit, enable/disable titles. Each title must have a linked `badgeId` (created automatically on save). Titles used in history are archived (disabled) instead of deleted.
 
 ## Recognition Flow
 

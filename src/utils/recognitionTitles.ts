@@ -1,5 +1,6 @@
-import type { RecognitionTitle } from "../types/models";
+import type { Badge, RecognitionTitle } from "../types/models";
 import { createId } from "./id";
+import { ensureBadgeForTitle } from "./recognition";
 
 export const DEFAULT_RECOGNITION_TITLE_SEEDS: Array<Pick<RecognitionTitle, "name" | "icon" | "description">> = [
   { name: "Ngôi sao chăm chỉ", icon: "🌟", description: "Dành cho bạn học tập nghiêm túc và chăm chỉ" },
@@ -24,10 +25,20 @@ export function createDefaultRecognitionTitles(): RecognitionTitle[] {
   }));
 }
 
-export function normalizeRecognitionTitlesOnDatabase<T extends { recognitionTitles?: RecognitionTitle[] }>(db: T): T {
+export function normalizeRecognitionTitlesOnDatabase<
+  T extends { recognitionTitles?: RecognitionTitle[]; badges?: Badge[] },
+>(db: T): T {
   const recognitionTitles =
     db.recognitionTitles && db.recognitionTitles.length > 0
       ? db.recognitionTitles
       : createDefaultRecognitionTitles();
-  return { ...db, recognitionTitles };
+
+  let badges = db.badges ?? [];
+  const linkedTitles = recognitionTitles.map((title) => {
+    const result = ensureBadgeForTitle(title, badges, { linkByName: true });
+    badges = result.badges;
+    return result.title;
+  });
+
+  return { ...db, recognitionTitles: linkedTitles, badges };
 }
