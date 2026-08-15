@@ -14,7 +14,7 @@ The Sidebar, navigation, routing, and AppLayout are shared infrastructure.
 
 Feature implementations must integrate into them.
 
-Never replace App.tsx with a standalone feature page.
+Never replace `src/app/layout.tsx` with a standalone feature page.
 
 Never remove navigation to simplify implementation.
 
@@ -22,10 +22,9 @@ Never remove navigation to simplify implementation.
 
 Inspect:
 
-- src/App.*
-- routing configuration
-- AppLayout
-- Sidebar
+- `src/app/layout.tsx`
+- `src/app/**/page.tsx` routes
+- `components/sidebar.tsx`
 - current feature page
 - active classroom/database state
 
@@ -42,6 +41,8 @@ Inspect:
 | `/tools` | Lucky Wheel, Study Timer, Lucky Star |
 | `/games` | Classroom games |
 | `/recognition` | Recognition |
+| `/ranking` | Student & team rankings |
+| `/history` | Activity history |
 | `/settings` | Classroom settings, roles, backup |
 
 ## After coding

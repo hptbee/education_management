@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 }
 
 import { AppDataProvider } from '@/src/store/AppDataContext'
-import { ClassroomDialogProvider } from '@/src/components/classroom'
+import { ClassroomDialogProvider, AppDataShell } from '@/src/components/classroom'
 import { ClassroomDocumentTitle } from '@/src/components/ClassroomDocumentTitle'
 import { Sidebar } from '@/components/sidebar'
 
@@ -45,7 +45,7 @@ export default function RootLayout({
             <div className="flex h-screen overflow-hidden bg-page">
               <Sidebar />
               <main className="classroom-shell flex flex-1 flex-col overflow-hidden">
-                {children}
+                <AppDataShell>{children}</AppDataShell>
               </main>
             </div>
           </ClassroomDialogProvider>

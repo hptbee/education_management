@@ -18,7 +18,7 @@ import { TeamRankingList } from './components/team-ranking-list'
 import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, useClassroomDialog } from '@/src/components/classroom'
 
 export default function TeamsPage() {
-  const { data, saveTeam, deleteTeam, saveStudent } = useAppData()
+  const { data, saveTeam, deleteTeam, saveStudent, saveStudents } = useAppData()
   const { classroom, isLoaded } = useActiveClassroom()
   const { showAlert } = useClassroomDialog()
 
@@ -114,10 +114,12 @@ export default function TeamsPage() {
 
   const handleAssign = (studentIds: string[]) => {
     if (!selectedTeam) return
-    studentIds.forEach(id => {
-      const s = students.find(st => st.id === id)
-      if (s) saveStudent({ ...s, teamId: selectedTeam.id, updatedAt: new Date().toISOString() })
-    })
+    const now = new Date().toISOString()
+    const updates = studentIds
+      .map((id) => students.find((st) => st.id === id))
+      .filter((student): student is Student => !!student)
+      .map((student) => ({ ...student, teamId: selectedTeam.id, updatedAt: now }))
+    saveStudents(updates)
   }
 
   const handleMove = (studentId: string, newTeamId: string | undefined) => {
@@ -154,23 +156,25 @@ export default function TeamsPage() {
     const teamSizes = teams.map(t => ({ id: t.id, count: getMembers(t.id).length }))
 
     const now = new Date().toISOString()
-
-    shuffled.forEach(student => {
-      // Find the team with the minimum members
+    const updates = shuffled.map((student) => {
       teamSizes.sort((a, b) => a.count - b.count)
       const targetTeamId = teamSizes[0].id
-
-      // Update student
-      saveStudent({ ...student, teamId: targetTeamId, updatedAt: now })
-
-      // Increment size for the next iteration
       teamSizes[0].count++
+      return { ...student, teamId: targetTeamId, updatedAt: now }
     })
+
+    saveStudents(updates)
   }
 
   const unassignedCount = students.filter((s) => !s.teamId).length
 
-  if (!isLoaded || !classroom) return null
+  if (!isLoaded || !classroom) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm font-semibold text-slate-500">Đang chuẩn bị dữ liệu lớp...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-page">

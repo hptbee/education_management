@@ -3,6 +3,7 @@ import type { ClassroomDatabase } from "../database/types";
 import { normalizeBadgesOnDatabase } from "./badges";
 import { normalizeRecognitionTitlesOnDatabase } from "./recognitionTitles";
 import { createId } from "./id";
+import { HOME_BANNER, STUDENT_AVATAR, TEACHER_AVATAR, sanitizeImageDataUrl } from "./images";
 
 export const DEFAULT_CLASSROOM_ROLE_SEEDS: Array<Pick<ClassroomRole, "name" | "icon">> = [
   { name: "Lớp trưởng", icon: "👑" },
@@ -94,13 +95,27 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
   const students = (db.students ?? []).map((student) => ({
     ...student,
     classroomRoleIds: migrateLegacyClassroomRole(student, classroomRoles),
+    avatar: sanitizeImageDataUrl(student.avatar, STUDENT_AVATAR.maxFileBytes),
   }));
 
   const teams = sanitizeAllTeamLeadership(db.teams ?? [], students);
 
+  const classroomSettings = {
+    ...db.classroomSettings,
+    classAvatar: sanitizeImageDataUrl(db.classroomSettings.classAvatar, TEACHER_AVATAR.maxFileBytes),
+    homeBannerImage: sanitizeImageDataUrl(db.classroomSettings.homeBannerImage, HOME_BANNER.maxFileBytes),
+    teacher: db.classroomSettings.teacher
+      ? {
+          ...db.classroomSettings.teacher,
+          avatar: sanitizeImageDataUrl(db.classroomSettings.teacher.avatar, TEACHER_AVATAR.maxFileBytes),
+        }
+      : db.classroomSettings.teacher,
+  };
+
   return normalizeRecognitionTitlesOnDatabase(
     normalizeBadgesOnDatabase({
       ...db,
+      classroomSettings,
       classroomRoles,
       students,
       teams,

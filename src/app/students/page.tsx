@@ -6,6 +6,7 @@ import {
   Search, X, ArrowUpDown, Filter, ChevronDown, Crown, Medal, Star, UserCheck,
 } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
+import { useAppData } from '@/src/store/AppDataContext'
 import type { Student } from '@/src/types/models'
 import { sortStudents, type StudentSortOption } from '@/src/utils/student'
 import * as XLSX from 'xlsx'
@@ -88,6 +89,7 @@ function StudentsEmptyState({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function StudentsPage() {
   const { classroom, database, saveStudent, deleteStudent, isLoaded } = useActiveClassroom()
+  const { saveStudents } = useAppData()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [filterGender, setFilterGender] = useState('all')
@@ -168,7 +170,7 @@ export default function StudentsPage() {
   const handleOpenDelete = (s: Student) => { setSelectedStudent(s); setIsDeleteOpen(true) }
   const handleSaveStudent = (s: Student) => saveStudent(s)
   const handleDeleteConfirm = (id: string) => deleteStudent(id)
-  const handleImportSuccess = (newStudents: Student[]) => newStudents.forEach(saveStudent)
+  const handleImportSuccess = (newStudents: Student[]) => saveStudents(newStudents)
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
@@ -205,7 +207,13 @@ export default function StudentsPage() {
     setSortBy('role-stt')
   }
 
-  if (!isLoaded || !classroom) return null
+  if (!isLoaded || !classroom) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm font-semibold text-slate-500">Đang chuẩn bị dữ liệu lớp...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

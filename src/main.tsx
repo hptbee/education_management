@@ -1,19 +1,4 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import { I18nProvider } from "./i18n";
-import { AppDataProvider } from "./store/AppDataContext";
-import App from "./App";
-import "./index.css";
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <BrowserRouter>
-      <I18nProvider>
-        <AppDataProvider>
-          <App />
-        </AppDataProvider>
-      </I18nProvider>
-    </BrowserRouter>
-  </StrictMode>,
-);
+/**
+ * Legacy Vite/React entry removed. Use `npm run dev` (Next.js) or `npm run tauri:dev`.
+ */
+export {}

@@ -117,7 +117,7 @@ DO:
 
 DO NOT:
 
-- Replace App.tsx with a standalone feature page.
+- Replace `src/app/layout.tsx` with a standalone feature page.
 - Render a feature outside AppLayout.
 - Remove the sidebar for convenience.
 - Create a separate application entry point.

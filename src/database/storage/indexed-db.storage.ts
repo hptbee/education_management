@@ -7,6 +7,8 @@ const STORE_NAME = "databases";
 
 export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
   private dbPromise: Promise<IDBDatabase> | null = null;
+  /** Serial write queue — prevents concurrent puts from racing */
+  private writeQueue: Promise<void> = Promise.resolve();
 
   private async getDB(): Promise<IDBDatabase> {
     if (this.dbPromise) return this.dbPromise;
@@ -45,15 +47,19 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
   }
 
   async save(database: ClassroomDatabase): Promise<void> {
-    const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(database);
+    this.writeQueue = this.writeQueue.then(async () => {
+      const db = await this.getDB();
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(database);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      });
     });
+
+    return this.writeQueue;
   }
 
   async delete(id: string): Promise<void> {

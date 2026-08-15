@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   Badge,
   ClassroomRole,
@@ -31,6 +31,10 @@ export type { RecognizeStudentsInput };
 interface AppDataContextValue {
   data: ClassroomDatabase | null;
   isLoading: boolean;
+  initError: string | null;
+  saveError: string | null;
+  clearSaveError: () => void;
+  retryInit: () => Promise<void>;
   switchDatabase: (id: string) => Promise<void>;
   closeDatabase: () => void;
   createDatabase: (settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">) => Promise<void>;
@@ -46,6 +50,7 @@ interface AppDataContextValue {
   deleteBadge: (badgeId: string) => void;
   toggleStudentBadge: (studentId: string, badgeId: string) => void;
   saveStudent: (student: Student) => void;
+  saveStudents: (students: Student[]) => void;
   deleteStudent: (studentId: string) => void;
   saveTeam: (team: Team) => void;
   deleteTeam: (teamId: string) => void;
@@ -76,26 +81,52 @@ const AppDataContext = createContext<AppDataContextValue | undefined>(undefined)
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [data, setDataState] = useState<ClassroomDatabase | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function init() {
+  const clearSaveError = () => setSaveError(null);
+
+  const loadInitialDatabase = useCallback(async () => {
+    setIsLoading(true);
+    setInitError(null);
+    try {
       await databaseService.initializeAndMigrate();
       const databases = await databaseService.listDatabases();
       if (databases.length > 0) {
-        const latest = databases[0]; // the first one is the most recently updated
+        const latest = databases[0];
         const db = await databaseService.openDatabase(latest.id);
         setDataState(db);
+      } else {
+        setDataState(null);
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể khởi tạo dữ liệu lớp học.";
+      console.error("[AppDataProvider] init failed:", error);
+      setInitError(message);
+      setDataState(null);
+    } finally {
       setIsLoading(false);
     }
-    init();
   }, []);
+
+  useEffect(() => {
+    void loadInitialDatabase();
+  }, [loadInitialDatabase]);
+
+  const persistDatabase = (next: ClassroomDatabase) => {
+    databaseService.saveDatabase(next).catch((error) => {
+      const message =
+        error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
+      console.error("[AppDataProvider] save failed:", error);
+      setSaveError(message);
+    });
+  };
 
   const setData = (updater: (current: ClassroomDatabase) => ClassroomDatabase) => {
     setDataState((current) => {
       if (!current) return current;
       const next = updater(current);
-      databaseService.saveDatabase(next).catch(console.error);
+      persistDatabase(next);
       return next;
     });
   };
@@ -104,26 +135,48 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     () => ({
       data,
       isLoading,
+      initError,
+      saveError,
+      clearSaveError,
+      retryInit: loadInitialDatabase,
       switchDatabase: async (id: string) => {
         setIsLoading(true);
-        const db = await databaseService.openDatabase(id);
-        setDataState(db);
-        setIsLoading(false);
+        try {
+          const db = await databaseService.openDatabase(id);
+          if (!db) {
+            setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
+            return;
+          }
+          setDataState(db);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Không thể chuyển lớp học.";
+          console.error("[AppDataProvider] switchDatabase failed:", error);
+          setSaveError(message);
+        } finally {
+          setIsLoading(false);
+        }
       },
       closeDatabase: () => {
         setDataState(null);
       },
       createDatabase: async (settings) => {
         setIsLoading(true);
-        const db = await databaseService.createDatabase(settings);
-        setDataState(db);
-        setIsLoading(false);
+        try {
+          const db = await databaseService.createDatabase(settings);
+          setDataState(db);
+        } finally {
+          setIsLoading(false);
+        }
       },
       importDatabase: async (file) => {
         setIsLoading(true);
-        const db = await databaseService.importDatabase(file);
-        setDataState(db);
-        setIsLoading(false);
+        try {
+          const db = await databaseService.importDatabase(file);
+          setDataState(db);
+        } finally {
+          setIsLoading(false);
+        }
       },
       renameDatabase: async (newClassName, newSchoolYear) => {
         if (!data) return;
@@ -253,6 +306,61 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
           return { ...current, students, teams };
         }),
+      saveStudents: (studentsToSave) =>
+        setData((current) => {
+          if (studentsToSave.length === 0) return current;
+
+          const now = new Date().toISOString();
+          const byId = new Map(studentsToSave.map((student) => [student.id, student]));
+          let leadershipChanged = false;
+
+          let students = current.students.map((item) => {
+            const incoming = byId.get(item.id);
+            if (!incoming) return item;
+
+            const saved: Student = {
+              ...incoming,
+              name: incoming.name.trim(),
+              classroomRoleIds: incoming.classroomRoleIds ?? item.classroomRoleIds ?? [],
+              badgeIds: incoming.badgeIds ?? item.badgeIds ?? [],
+              points: item.points,
+              totalRewards: item.totalRewards,
+              createdAt: item.createdAt,
+              updatedAt: now,
+            };
+
+            if (item.teamId !== saved.teamId) {
+              leadershipChanged = true;
+            }
+            return saved;
+          });
+
+          for (const student of studentsToSave) {
+            if (!current.students.some((item) => item.id === student.id)) {
+              const saved: Student = {
+                ...student,
+                name: student.name.trim(),
+                classroomRoleIds: student.classroomRoleIds ?? [],
+                badgeIds: student.badgeIds ?? [],
+                points: student.points ?? 0,
+                totalRewards: student.totalRewards ?? 0,
+                createdAt: student.createdAt ?? now,
+                updatedAt: now,
+              };
+              students = [...students, saved];
+            }
+          }
+
+          let teams = current.teams;
+          if (leadershipChanged) {
+            for (const student of studentsToSave) {
+              teams = clearStudentLeadershipFromTeams(teams, student.id);
+            }
+          }
+          teams = sanitizeAllTeamLeadership(teams, students);
+
+          return { ...current, students, teams };
+        }),
       deleteStudent: (studentId) =>
         setData((current) => ({
           ...current,
@@ -291,6 +399,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           students: current.students.map((student) =>
             student.teamId === teamId ? { ...student, teamId: undefined } : student,
           ),
+          teamScoreHistory: current.teamScoreHistory.filter((item) => item.teamId !== teamId),
         })),
       updateTeamScore: (teamId, delta, note) =>
         setData((current) => {
@@ -521,7 +630,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       setWheelStudentBag: (bag) => setData((current) => ({ ...current, wheelStudentBag: bag })),
     }),
-    [data, isLoading]
+    [data, isLoading, initError, saveError, loadInitialDatabase],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

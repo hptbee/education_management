@@ -1,7 +1,7 @@
 "use client";
 
 import { LucideIcon } from "lucide-react";
-import { ClassroomSelectorScreen } from "@/src/App";
+import { ClassroomSelectorScreen } from "@/src/app/settings/components/classroom-selector-screen";
 import { useActiveClassroom } from "@/src/hooks/useActiveClassroom";
 import { EmptyState } from "@/src/components/classroom";
 

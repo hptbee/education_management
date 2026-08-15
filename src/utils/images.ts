@@ -32,6 +32,15 @@ export const TEACHER_AVATAR = {
   outputSize: 400,
 } as const;
 
+/** Student profile photo — smaller than teacher avatar to keep IndexedDB lean. */
+export const STUDENT_AVATAR = {
+  recommendedWidth: 256,
+  recommendedHeight: 256,
+  aspectRatio: "1:1",
+  maxFileBytes: 512 * 1024,
+  outputSize: 256,
+} as const;
+
 export function teacherAvatarSizeHint(): string {
   return `${TEACHER_AVATAR.recommendedWidth} × ${TEACHER_AVATAR.recommendedHeight} px (tỉ lệ ${TEACHER_AVATAR.aspectRatio})`;
 }
@@ -51,10 +60,40 @@ export async function readHomeBannerImage(file: File): Promise<string> {
   return resizeImageToMaxWidth(dataUrl, HOME_BANNER.maxOutputWidth);
 }
 
+export function sanitizeImageDataUrl(value: unknown, maxFileBytes: number): string | undefined {
+  if (typeof value !== "string" || !value.startsWith("data:image/")) {
+    return undefined;
+  }
+
+  const semi = value.indexOf(";");
+  if (semi === -1) {
+    return undefined;
+  }
+
+  const mime = value.slice(5, semi);
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  if (!allowed.has(mime)) {
+    return undefined;
+  }
+
+  const maxLength = Math.ceil(maxFileBytes * 1.37);
+  if (value.length > maxLength) {
+    return undefined;
+  }
+
+  return value;
+}
+
 export async function readTeacherAvatarImage(file: File): Promise<string> {
   assertImageFile(file, TEACHER_AVATAR.maxFileBytes);
   const dataUrl = await readImageFile(file);
   return cropSquareAndResize(dataUrl, TEACHER_AVATAR.outputSize);
+}
+
+export async function readStudentAvatarImage(file: File): Promise<string> {
+  assertImageFile(file, STUDENT_AVATAR.maxFileBytes);
+  const dataUrl = await readImageFile(file);
+  return cropSquareAndResize(dataUrl, STUDENT_AVATAR.outputSize);
 }
 
 function resizeImageToMaxWidth(dataUrl: string, maxWidth: number): Promise<string> {

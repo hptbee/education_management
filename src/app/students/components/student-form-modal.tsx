@@ -5,7 +5,9 @@ import { X, Upload, Trash2 } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
 import { getStudentAvatar } from '@/src/utils/student'
+import { readStudentAvatarImage } from '@/src/utils/images'
 import { useAppData } from '@/src/store/AppDataContext'
+import { useClassroomDialog } from '@/src/components/classroom'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -29,6 +31,7 @@ const defaultStudent = (): Student => ({
 
 export function StudentFormModal({ isOpen, onClose, onSave, initialData }: StudentFormModalProps) {
   const { data } = useAppData()
+  const { showAlert } = useClassroomDialog()
   const [formData, setFormData] = useState<Student>(defaultStudent())
   const fileInputRef = useRef<HTMLInputElement>(null)
   const classroomRoles = data?.classroomRoles ?? []
@@ -60,16 +63,20 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
     onClose()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const base64String = event.target?.result as string
-      setFormData(prev => ({ ...prev, avatar: base64String }))
+    try {
+      const base64String = await readStudentAvatarImage(file)
+      setFormData((prev) => ({ ...prev, avatar: base64String }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể tải ảnh.'
+      await showAlert(message, { variant: 'error' })
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
-    reader.readAsDataURL(file)
   }
 
   const handleRemoveAvatar = () => {

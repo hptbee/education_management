@@ -1,6 +1,7 @@
 "use client";
 
-import { SettingsPage, ClassroomSelectorScreen } from "@/src/App";
+import { SettingsPage } from "./components/settings-page";
+import { ClassroomSelectorScreen } from "./components/classroom-selector-screen";
 import { useAppData } from "@/src/store/AppDataContext";
 
 export default function Settings() {

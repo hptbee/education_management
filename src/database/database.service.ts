@@ -71,11 +71,10 @@ export class DatabaseService {
         newDb.appSettings = parsed.appSettings || newDb.appSettings;
 
         await this.storage.save(normalizeClassroomDatabase(newDb));
+        localStorage.removeItem(legacyKey);
       }
     } catch (e) {
       console.error("Failed to migrate legacy database", e);
-    } finally {
-      localStorage.removeItem(legacyKey);
     }
   }
 
@@ -87,23 +86,38 @@ export class DatabaseService {
     settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">
   ): Promise<ClassroomDatabase> {
     const db = normalizeClassroomDatabase(createEmptyDatabase(settings));
+    const existing = await this.storage.load(db.metadata.id);
+    if (existing) {
+      throw new Error(
+        `Lớp "${settings.className}" năm học "${settings.schoolYear}" đã tồn tại. Hãy chọn tên hoặc năm học khác.`,
+      );
+    }
     await this.storage.save(db);
     return db;
   }
 
   async openDatabase(id: string): Promise<ClassroomDatabase | null> {
-    const db = await this.storage.load(id);
-    if (!db) return null;
+    const loaded = await this.storage.load(id);
+    if (!loaded) return null;
 
+    let db = loaded;
     if (!db.classroomSettings.teacher) {
-      // Backwards compatibility for old databases
-      const legacySettings = db.classroomSettings as any;
-      db.classroomSettings.teacher = {
-        id: "teacher-migrated",
-        name: legacySettings.teacherName || "Teacher",
-        avatar: legacySettings.teacherAvatar,
-        createdAt: db.metadata.createdAt,
-        updatedAt: db.metadata.updatedAt,
+      const legacySettings = db.classroomSettings as ClassroomSettings & {
+        teacherName?: string;
+        teacherAvatar?: string;
+      };
+      db = {
+        ...db,
+        classroomSettings: {
+          ...db.classroomSettings,
+          teacher: {
+            id: "teacher-migrated",
+            name: legacySettings.teacherName || "Teacher",
+            avatar: legacySettings.teacherAvatar,
+            createdAt: db.metadata.createdAt,
+            updatedAt: db.metadata.updatedAt,
+          },
+        },
       };
     }
 
@@ -238,6 +252,12 @@ export class DatabaseService {
           }
 
           const db = normalizeClassroomDatabase(data as ClassroomDatabase);
+          const existing = await this.storage.load(db.metadata.id);
+          if (existing) {
+            throw new Error(
+              `Đã có lớp "${existing.classroomSettings.className}" (${existing.classroomSettings.schoolYear}) với cùng mã dữ liệu. Hãy xóa lớp cũ hoặc chỉnh tên lớp/năm học trong file trước khi nhập.`,
+            );
+          }
           await this.saveDatabase(db);
           resolve(db);
         } catch (err) {
