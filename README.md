@@ -53,6 +53,25 @@ Build the Tauri executable for production:
 npm run tauri:build
 ```
 
+## GitHub Releases
+
+This repo builds desktop installers automatically via [GitHub Actions](.github/workflows/release.yml).
+
+1. Bump the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
+2. Commit and push to the `release` branch, **or** push a version tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+3. GitHub Actions builds Windows, macOS, and Linux bundles and creates a **draft** release.
+4. Review the draft on GitHub, edit release notes if needed, then publish it.
+
+You can also trigger a release manually from the **Actions** tab (`Release` workflow → **Run workflow**).
+
+If the workflow fails with "Resource not accessible by integration", enable **Read and write permissions** for GitHub Actions under repository **Settings → Actions → General → Workflow permissions**.
+
 ## Persistence Migration
 
 The application has been migrated from a web-based `localStorage`/`IndexedDB` setup to a native desktop architecture using **Tauri**. 
