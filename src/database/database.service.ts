@@ -190,6 +190,7 @@ export class DatabaseService {
         className: newClassName,
         schoolYear: newSchoolYear,
         classAvatar: sourceDb.classroomSettings.classAvatar,
+        homeBannerImage: sourceDb.classroomSettings.homeBannerImage,
         teacher: sourceDb.classroomSettings.teacher,
       });
       newDb.pointActions = sourceDb.pointActions;

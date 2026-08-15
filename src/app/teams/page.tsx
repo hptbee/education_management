@@ -15,11 +15,12 @@ import { RandomizeDialog } from './components/randomize-dialog'
 
 import { TeamCard } from './components/team-card'
 import { TeamRankingList } from './components/team-ranking-list'
-import { PageHeader, ClassroomCard, EmptyState, ClassroomButton } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, useClassroomDialog } from '@/src/components/classroom'
 
 export default function TeamsPage() {
   const { data, saveTeam, deleteTeam, saveStudent } = useAppData()
   const { classroom, isLoaded } = useActiveClassroom()
+  const { showAlert } = useClassroomDialog()
 
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -129,14 +130,14 @@ export default function TeamsPage() {
     if (s) saveStudent({ ...s, teamId: undefined, updatedAt: new Date().toISOString() })
   }
 
-  const handleRandomize = () => {
+  const handleRandomize = async () => {
     const unassigned = students.filter(s => !s.teamId)
     if (teams.length === 0) {
-      alert("Vui lòng tạo ít nhất 1 nhóm trước khi chia.")
+      await showAlert('Vui lòng tạo ít nhất 1 nhóm trước khi chia.', { variant: 'warning' })
       return
     }
     if (unassigned.length === 0) {
-      alert("Tất cả học sinh đã có nhóm.")
+      await showAlert('Tất cả học sinh đã có nhóm.', { variant: 'info' })
       return
     }
     setIsRandomizeOpen(true)

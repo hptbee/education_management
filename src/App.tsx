@@ -41,6 +41,10 @@ import type { Recognition, Student, Team } from "./types/models";
 import { createId } from "./utils/id";
 import { pickWithoutRepeat } from "./utils/randomSelection";
 import { ClassroomRolesSection } from "./app/settings/components/classroom-roles-section";
+import { HomeBannerSection } from "./app/settings/components/home-banner-section";
+import { TeacherProfileAvatar } from "./app/settings/components/teacher-profile-avatar";
+import { TeacherAvatar } from "./components/TeacherAvatar";
+import { useClassroomDialog } from "./components/classroom";
 
 const nav = [
   { to: "/", label: "Trang chủ", icon: Home },
@@ -103,8 +107,8 @@ function Sidebar() {
     <aside className="sticky top-3 flex h-[calc(100vh-1.5rem)] flex-col rounded-[2.25rem] bg-gradient-to-b from-brand-purple via-brand-purple-light to-brand-purple-light p-4 text-white shadow-lg shadow-sky-200/40">
       <div className="rounded-[1.7rem] bg-white/14 p-4 text-center shadow-inner backdrop-blur-sm">
         <div className="mx-auto grid h-20 w-20 place-items-center rounded-[34%] bg-white/90 text-4xl shadow-[0_10px_0_rgba(255,255,255,0.18)]">📚</div>
-        <h1 className="mt-3 text-3xl font-black tracking-wide">LÊ THƯ</h1>
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/80">Cô giáo nhỏ 4.0</p>
+        <h1 className="mt-3 text-3xl font-black tracking-wide uppercase">{settings.teacher?.name?.trim() || 'Giáo viên'}</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/80">{settings.className?.trim() || 'Lớp học'}</p>
       </div>
       <nav className="mt-4 grid gap-2">
         {nav.map((item) => (
@@ -580,10 +584,11 @@ export function SettingsPage() {
               </div>
               <div>
                 <h2 className="text-xl font-black text-slate-800">Hồ sơ giáo viên</h2>
-                <p className="text-sm text-slate-500">Tên hiển thị trong lớp học</p>
+                <p className="text-sm text-slate-500">Tên và ảnh đại diện hiển thị trong lớp học</p>
               </div>
             </div>
             <div className="grid gap-4">
+              <TeacherProfileAvatar onSaved={showSaved} onError={setError} />
               <Field label="👩‍🏫 Tên giáo viên">
                 <Input
                   value={teacherDraft.name}
@@ -592,11 +597,11 @@ export function SettingsPage() {
                 />
               </Field>
               <div className="rounded-2xl bg-brand-soft border border-slate-200 p-4 text-sm text-slate-500">
-                <p className="font-bold text-brand-purple mb-1">💡 Hiển thị tên ở đâu?</p>
+                <p className="font-bold text-brand-purple mb-1">💡 Hiển thị ở đâu?</p>
                 <ul className="grid gap-1 list-disc list-inside">
+                  <li>Thanh điều hướng bên trái</li>
                   <li>Trang tổng quan (Dashboard)</li>
                   <li>Thẻ tuyên dương học sinh</li>
-                  <li>Nhật ký hoạt động lớp</li>
                 </ul>
               </div>
               <Button className="w-full justify-center" onClick={handleSaveTeacher}>
@@ -609,7 +614,11 @@ export function SettingsPage() {
           <Card className="bg-gradient-to-br from-[#fff7dc] via-white to-[#fff0f5] border border-[#fff0c7]">
             <p className="text-xs font-black uppercase tracking-widest text-[#ff8a00] mb-4">Xem trước</p>
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="grid h-20 w-20 place-items-center rounded-[38%] bg-white/70 text-5xl shadow-lg">👩‍🏫</div>
+              <TeacherAvatar
+                src={data!.classroomSettings.teacher.avatar}
+                name={teacherDraft.name || "Giáo viên"}
+                className="h-20 w-20 rounded-[38%] text-5xl shadow-lg"
+              />
               <div>
                 <p className="text-xl font-black text-slate-800">{teacherDraft.name || "Tên giáo viên"}</p>
                 <p className="text-sm text-slate-500 mt-1">Giáo viên chủ nhiệm</p>
@@ -624,61 +633,65 @@ export function SettingsPage() {
 
       {/* ── CLASSROOM TAB ── */}
       {activeTab === "classroom" && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-white/90">
-            <div className="mb-6 flex items-center gap-4">
-              <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-[#ff7f96] to-[#ffb400] text-white shadow-lg text-3xl">
-                🏫
+        <div className="grid gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="bg-white/90">
+              <div className="mb-6 flex items-center gap-4">
+                <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-[#ff7f96] to-[#ffb400] text-white shadow-lg text-3xl">
+                  🏫
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-800">Thông tin lớp học</h2>
+                  <p className="text-sm text-slate-500">Tên hiển thị của lớp học</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-black text-slate-800">Thông tin lớp học</h2>
-                <p className="text-sm text-slate-500">Tên hiển thị của lớp học</p>
+              <div className="grid gap-4">
+                <Field label="🏫 Tên lớp">
+                  <Input
+                    value={classroomDraft.className}
+                    onChange={(e) => setClassroomDraft({ className: e.target.value })}
+                    placeholder="Ví dụ: Lớp 2C, 3A1..."
+                  />
+                </Field>
+                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+                  <p className="font-bold mb-1">⚠️ Lưu ý</p>
+                  <p>Đổi tên lớp sẽ <strong>không</strong> tạo database mới. Để chuyển sang năm học mới, dùng tab <strong>Năm học</strong>.</p>
+                </div>
+                <Button className="w-full justify-center" onClick={handleSaveClassroom}>
+                  <Sparkles size={18} /> Lưu tên lớp
+                </Button>
               </div>
-            </div>
-            <div className="grid gap-4">
-              <Field label="🏫 Tên lớp">
-                <Input
-                  value={classroomDraft.className}
-                  onChange={(e) => setClassroomDraft({ className: e.target.value })}
-                  placeholder="Ví dụ: Lớp 2C, 3A1..."
-                />
-              </Field>
-              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
-                <p className="font-bold mb-1">⚠️ Lưu ý</p>
-                <p>Đổi tên lớp sẽ <strong>không</strong> tạo database mới. Để chuyển sang năm học mới, dùng tab <strong>Năm học</strong>.</p>
-              </div>
-              <Button className="w-full justify-center" onClick={handleSaveClassroom}>
-                <Sparkles size={18} /> Lưu tên lớp
-              </Button>
-            </div>
-          </Card>
+            </Card>
 
-          {/* Stats */}
-          <div className="grid gap-4">
-            <Card className="bg-white/90">
-              <p className="text-xs font-black uppercase tracking-widest text-brand-purple mb-3">Thống kê lớp</p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Học sinh", value: data!.students.length, emoji: "🧑‍🎓" },
-                  { label: "Tổ nhóm", value: data!.teams.length, emoji: "👥" },
-                  { label: "Hành động điểm", value: data!.pointActions.length, emoji: "⭐" },
-                  { label: "Phần thưởng", value: data!.rewards.length, emoji: "🎁" },
-                ].map(({ label, value, emoji }) => (
-                  <div key={label} className="rounded-2xl bg-brand-soft p-3 text-center">
-                    <p className="text-2xl">{emoji}</p>
-                    <p className="text-2xl font-black text-brand-purple">{value}</p>
-                    <p className="text-xs font-bold text-slate-500">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-            <Card className="bg-white/90">
-              <p className="text-xs font-black uppercase tracking-widest text-brand-purple mb-3">Xuất / Nhập dữ liệu</p>
-              <Button variant="ghost" className="w-full justify-center" onClick={handleExport}>
-                <Download size={18} /> Xuất JSON
-              </Button>
-            </Card>
+            {/* Stats */}
+            <div className="grid gap-4">
+              <Card className="bg-white/90">
+                <p className="text-xs font-black uppercase tracking-widest text-brand-purple mb-3">Thống kê lớp</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Học sinh", value: data!.students.length, emoji: "🧑‍🎓" },
+                    { label: "Tổ nhóm", value: data!.teams.length, emoji: "👥" },
+                    { label: "Hành động điểm", value: data!.pointActions.length, emoji: "⭐" },
+                    { label: "Phần thưởng", value: data!.rewards.length, emoji: "🎁" },
+                  ].map(({ label, value, emoji }) => (
+                    <div key={label} className="rounded-2xl bg-brand-soft p-3 text-center">
+                      <p className="text-2xl">{emoji}</p>
+                      <p className="text-2xl font-black text-brand-purple">{value}</p>
+                      <p className="text-xs font-bold text-slate-500">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card className="bg-white/90">
+                <p className="text-xs font-black uppercase tracking-widest text-brand-purple mb-3">Xuất / Nhập dữ liệu</p>
+                <Button variant="ghost" className="w-full justify-center" onClick={handleExport}>
+                  <Download size={18} /> Xuất JSON
+                </Button>
+              </Card>
+            </div>
           </div>
+
+          <HomeBannerSection onSaved={showSaved} onError={setError} />
         </div>
       )}
 
@@ -844,6 +857,7 @@ export function SettingsPage() {
 
 export function ClassroomSelectorScreen() {
   const { switchDatabase, createDatabase, importDatabase } = useAppData();
+  const { showAlert } = useClassroomDialog();
   const [draft, setDraft] = useState({ className: "", teacherName: "", schoolYear: "" });
   const [databases, setDatabases] = useState<any[]>([]);
 
@@ -857,7 +871,9 @@ export function ClassroomSelectorScreen() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      importDatabase(file).catch((err) => alert(err.message));
+      importDatabase(file).catch((err) => {
+        void showAlert(err instanceof Error ? err.message : 'Không thể nhập dữ liệu.', { variant: 'error' });
+      });
     }
   };
 

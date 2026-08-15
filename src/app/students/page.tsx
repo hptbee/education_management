@@ -175,7 +175,7 @@ export default function StudentsPage() {
       ['Stt', 'Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Số điện thoại di động', 'Địa chỉ'],
       ['1', 'Nguyễn Minh Anh', '10/03/2018', 'Nữ', 'TP. Hồ Chí Minh', 'Nguyễn Thị Lan', '0901234567', 'Phú Nhuận, TP. Hồ Chí Minh']
     ])
-    
+
     ws['!cols'] = [
       { wch: 5 },  // Stt
       { wch: 25 }, // Họ và tên
@@ -186,7 +186,7 @@ export default function StudentsPage() {
       { wch: 20 }, // Số điện thoại di động
       { wch: 40 }, // Địa chỉ
     ]
-    
+
     ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' }
 
     const wb = XLSX.utils.book_new()
@@ -300,16 +300,15 @@ export default function StudentsPage() {
               </select>
             </div>
 
-            {hasActiveFilter ? (
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className="flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-              >
-                <X className="size-3.5" />
-                Xóa lọc
-              </button>
-            ) : null}
+            <ClassroomButton
+              variant="danger"
+              size="sm"
+              onClick={handleClearFilters}
+              className="shrink-0 rounded-xl"
+            >
+              <X className="size-3.5" />
+              Xóa lọc
+            </ClassroomButton>
           </div>
 
           <button

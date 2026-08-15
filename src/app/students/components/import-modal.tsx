@@ -5,6 +5,7 @@ import { X, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle } 
 import * as XLSX from 'xlsx'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
+import { useClassroomDialog } from '@/src/components/classroom'
 
 interface ImportModalProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ interface PreviewRow {
 }
 
 export function ImportModal({ isOpen, onClose, onImport, existingStudents }: ImportModalProps) {
+  const { showAlert } = useClassroomDialog()
   const [step, setStep] = useState<1 | 2>(1)
   const [previewData, setPreviewData] = useState<PreviewRow[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -120,7 +122,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
         const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]
 
         if (rawData.length <= 1) {
-          alert('File trống hoặc không có dữ liệu.')
+          void showAlert('File trống hoặc không có dữ liệu.', { variant: 'warning' })
           return
         }
 
@@ -191,7 +193,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
         setStep(2)
 
       } catch (err) {
-        alert('Lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng.')
+        void showAlert('Lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng.', { variant: 'error' })
       }
     }
     reader.readAsBinaryString(file)

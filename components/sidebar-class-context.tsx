@@ -1,86 +1,65 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GraduationCap, Settings } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { ChevronRight } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
-
-function formatClassLabel(className?: string) {
-  const name = className?.trim()
-  if (!name) return 'Lớp'
-  if (/^lớp\b/i.test(name)) return name
-  return `Lớp ${name}`
-}
+import { TeacherAvatar } from '@/src/components/TeacherAvatar'
+import { formatClassLabel } from '@/src/utils/classroom'
+import { cn } from '@/lib/utils'
 
 function formatSchoolYear(schoolYear?: string) {
   const year = schoolYear?.trim()
-  if (!year) return 'Năm học'
+  if (!year) return ''
   if (/^năm học\b/i.test(year)) return year
   return `Năm học ${year}`
 }
 
-function ClassAvatar({ src, label }: { src?: string; label: string }) {
-  const [broken, setBroken] = useState(false)
-  const resolved = src?.trim() || '/class-photo.png'
-
-  useEffect(() => {
-    setBroken(false)
-  }, [resolved])
-
-  if (broken) {
-    return (
-      <div
-        className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-pastel-sky to-pastel-pink text-brand shadow-sm ring-2 ring-white"
-        aria-hidden
-      >
-        <GraduationCap className="size-6" />
-      </div>
-    )
-  }
-
-  return (
-    <img
-      src={resolved}
-      alt={label}
-      onError={() => setBroken(true)}
-      className="size-12 shrink-0 rounded-2xl object-cover shadow-sm ring-2 ring-white"
-    />
-  )
-}
-
 export function SidebarClassContext() {
+  const pathname = usePathname()
   const { classroom, teacher } = useActiveClassroom()
 
-  const classLabel = formatClassLabel(classroom?.className)
   const teacherName = teacher?.name?.trim() || 'Giáo viên'
-  const schoolYearLabel = formatSchoolYear(classroom?.schoolYear)
-  const avatarSrc = classroom?.classAvatar?.trim() || undefined
+  const classLabel = classroom ? formatClassLabel(classroom.className) : ''
+  const schoolYearLabel = classroom ? formatSchoolYear(classroom.schoolYear) : ''
+  const isSettings = pathname === '/settings' || pathname.startsWith('/settings/')
 
   return (
-    <div className="px-4 pb-4">
-      <div className="rounded-2xl border border-sky-100 bg-white/80 px-3 py-3 shadow-sm">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <ClassAvatar src={avatarSrc} label={classLabel} />
-          <div className="min-w-0">
-            <p className="font-display truncate text-sm font-extrabold leading-tight text-slate-800" title={classLabel}>
+    <div className="shrink-0 px-3 pt-4 pb-2">
+      <Link
+        href="/settings"
+        aria-current={isSettings ? 'page' : undefined}
+        className={cn(
+          'flex items-center gap-2.5 rounded-2xl border px-2.5 py-2.5 shadow-sm transition',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
+          isSettings
+            ? 'border-brand/25 bg-white'
+            : 'border-sky-100 bg-white/80 hover:border-brand/20 hover:bg-white',
+        )}
+      >
+        <TeacherAvatar
+          src={teacher?.avatar}
+          name={teacherName}
+          className="size-16 shrink-0 rounded-2xl text-3xl shadow-sm"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-display truncate text-sm font-extrabold leading-tight text-slate-800" title={teacherName}>
+            {teacherName}
+          </p>
+          {classLabel ? (
+            <p className="mt-0.5 truncate text-[11px] font-bold text-slate-600" title={classLabel}>
               {classLabel}
             </p>
-            <p className="mt-0.5 truncate text-[11px] font-bold text-slate-500" title={teacherName}>
-              {teacherName}
-            </p>
-            <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400" title={schoolYearLabel}>
+          ) : null}
+          {schoolYearLabel ? (
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-400" title={schoolYearLabel}>
               {schoolYearLabel}
             </p>
-          </div>
+          ) : null}
         </div>
-        <Link
-          href="/settings"
-          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-pastel-sky/80 px-2 py-1.5 text-[11px] font-bold text-brand-dark transition hover:bg-brand/15"
-        >
-          <Settings className="size-3" />
-          Quản lý lớp
-        </Link>
-      </div>
+        <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+        <span className="sr-only">Quản lý lớp</span>
+      </Link>
     </div>
   )
 }

@@ -23,6 +23,7 @@ import {
 } from '@/src/utils/pickerSession'
 import { NamedWheel } from './named-wheel'
 import { PickerConfigPanel } from './picker-config-panel'
+import { useClassroomDialog } from '@/src/components/classroom'
 
 const LIST_REVEAL_DELAY_MS = 3000
 const LIST_HIDE_DURATION_MS = 450
@@ -37,6 +38,7 @@ interface LuckyWheelDialogProps {
 
 export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWheelDialogProps) {
   const { data, setWheelStudentBag } = useAppData()
+  const { showConfirm } = useClassroomDialog()
   const bagRef = useRef<string[]>([])
   bagRef.current = data?.wheelStudentBag ?? []
 
@@ -95,12 +97,15 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
     }))
   }, [clearTimers])
 
-  const confirmResetIfNeeded = useCallback((): boolean => {
+  const confirmResetIfNeeded = useCallback(async (): Promise<boolean> => {
     if (session.selectedStudentIds.length > 0 || session.pendingRevealIds.length > 0 || isBatchActive) {
-      return window.confirm('Bắt đầu lượt mới sẽ xóa danh sách đã chọn. Tiếp tục?')
+      return showConfirm('Bắt đầu lượt mới sẽ xóa danh sách đã chọn. Tiếp tục?', {
+        variant: 'warning',
+        confirmLabel: 'Tiếp tục',
+      })
     }
     return true
-  }, [session.selectedStudentIds.length, session.pendingRevealIds.length, isBatchActive])
+  }, [session.selectedStudentIds.length, session.pendingRevealIds.length, isBatchActive, showConfirm])
 
   useEffect(() => {
     if (isOpen && !initialized && students.length > 0) {
@@ -183,33 +188,33 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
     setSelectedIds(new Set(scoped.map((s) => s.id)))
   }
 
-  const handleModeChange = (mode: PickerMode) => {
+  const handleModeChange = async (mode: PickerMode) => {
     if (mode === session.mode) return
-    if (!confirmResetIfNeeded()) return
+    if (!(await confirmResetIfNeeded())) return
     resetRoundState()
     setSession((prev) => ({ ...prev, mode, quantity: clampQuantity(prev.quantity, eligibleStudents.length) }))
   }
 
-  const handleScopeChange = (scopeType: PickerScope) => {
+  const handleScopeChange = async (scopeType: PickerScope) => {
     if (scopeType === session.scopeType) return
-    if (!confirmResetIfNeeded()) return
+    if (!(await confirmResetIfNeeded())) return
     resetRoundState()
     const teamId = scopeType === 'team' ? teams[0]?.id : undefined
     setSession((prev) => ({ ...prev, scopeType, teamId }))
     applyScopeSelection(scopeType, teamId)
   }
 
-  const handleTeamChange = (teamId: string) => {
+  const handleTeamChange = async (teamId: string) => {
     if (!teamId || teamId === session.teamId) return
-    if (!confirmResetIfNeeded()) return
+    if (!(await confirmResetIfNeeded())) return
     resetRoundState()
     setSession((prev) => ({ ...prev, teamId }))
     applyScopeSelection('team', teamId)
   }
 
-  const handlePreventRepeatChange = (preventRepeat: boolean) => {
+  const handlePreventRepeatChange = async (preventRepeat: boolean) => {
     if (preventRepeat === session.preventRepeat) return
-    if (!confirmResetIfNeeded()) return
+    if (!(await confirmResetIfNeeded())) return
     resetRoundState()
     setSession((prev) => ({ ...prev, preventRepeat }))
   }
@@ -222,8 +227,8 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
     }))
   }
 
-  const handleResetRound = () => {
-    if (!confirmResetIfNeeded()) return
+  const handleResetRound = async () => {
+    if (!(await confirmResetIfNeeded())) return
     resetRoundState()
   }
 

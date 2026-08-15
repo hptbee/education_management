@@ -2,6 +2,7 @@
 
 import { MonitorPlay, Bell } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
+import { TeacherAvatar } from '@/src/components/TeacherAvatar'
 
 export function TopHeader() {
   const { teacher } = useActiveClassroom()
@@ -31,10 +32,10 @@ export function TopHeader() {
         className="flex items-center rounded-xl border border-sky-100 bg-white p-1 shadow-sm transition hover:bg-brand-soft"
         title={teacherNameStr}
       >
-        <img
-          src="/avatar-teacher.png"
-          alt={teacherNameStr}
-          className="size-8 rounded-lg object-cover"
+        <TeacherAvatar
+          src={teacher?.avatar}
+          name={teacherNameStr}
+          className="size-8 rounded-lg text-lg"
         />
       </button>
     </div>

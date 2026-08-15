@@ -17,7 +17,7 @@ const baloo = Baloo_2({
 })
 
 export const metadata: Metadata = {
-  title: 'Lê Thư – Cô Giáo Nhỏ 4.0',
+  title: 'Quản lý lớp học',
   description: 'Hệ thống quản lý lớp học và tích điểm học sinh',
   generator: 'v0.app',
 }
@@ -27,6 +27,8 @@ export const viewport: Viewport = {
 }
 
 import { AppDataProvider } from '@/src/store/AppDataContext'
+import { ClassroomDialogProvider } from '@/src/components/classroom'
+import { ClassroomDocumentTitle } from '@/src/components/ClassroomDocumentTitle'
 import { Sidebar } from '@/components/sidebar'
 
 export default function RootLayout({
@@ -38,12 +40,15 @@ export default function RootLayout({
     <html lang="vi" className={`light ${nunito.variable} ${baloo.variable} bg-page`}>
       <body className="antialiased font-sans">
         <AppDataProvider>
-          <div className="flex h-screen overflow-hidden bg-page">
-            <Sidebar />
-            <main className="classroom-shell flex flex-1 flex-col overflow-hidden">
-              {children}
-            </main>
-          </div>
+          <ClassroomDialogProvider>
+            <ClassroomDocumentTitle />
+            <div className="flex h-screen overflow-hidden bg-page">
+              <Sidebar />
+              <main className="classroom-shell flex flex-1 flex-col overflow-hidden">
+                {children}
+              </main>
+            </div>
+          </ClassroomDialogProvider>
         </AppDataProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

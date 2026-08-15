@@ -26,6 +26,8 @@ export interface ClassroomSettings {
   id: string;
   className: string;
   classAvatar?: string;
+  /** Custom home-page banner image (data URL). Falls back to the default hero when empty. */
+  homeBannerImage?: string;
   teacher: TeacherProfile;
   schoolYear: string;
   createdAt: string;
