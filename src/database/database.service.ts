@@ -104,6 +104,7 @@ export class DatabaseService {
         newDb.rewardHistory = parsed.rewardHistory || [];
         newDb.recognitions = parsed.recognitions || [];
         newDb.luckyWheelHistory = parsed.luckyWheelHistory || [];
+        newDb.badgeAwardHistory = parsed.badgeAwardHistory || [];
         newDb.wheelStudentBag = parsed.wheelStudentBag || [];
         newDb.teamScoreHistory = parsed.teamScoreHistory || [];
         newDb.appSettings = parsed.appSettings || newDb.appSettings;

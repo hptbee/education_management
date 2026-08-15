@@ -37,7 +37,7 @@ interface LuckyWheelDialogProps {
 }
 
 export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWheelDialogProps) {
-  const { data, setWheelStudentBag } = useAppData()
+  const { data, setWheelStudentBag, recordLuckyWheelSelection } = useAppData()
   const { showConfirm } = useClassroomDialog()
   const bagRef = useRef<string[]>([])
   bagRef.current = data?.wheelStudentBag ?? []
@@ -305,6 +305,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
         if (index + 1 >= pendingIds.length) {
           setMultipleComplete(true)
           setIsBatchActive(false)
+          recordLuckyWheelSelection(updated.map((student) => student.id))
           revealTimeoutRef.current = setTimeout(() => setShowStudentList(true), LIST_REVEAL_DELAY_MS)
           confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 } })
           return
@@ -315,7 +316,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
         }, MULTIPLE_AUTO_ADVANCE_MS)
       })
     },
-    [recordSessionPick, runSpinToStudent, students, updateBagForStudent],
+    [recordSessionPick, runSpinToStudent, students, updateBagForStudent, recordLuckyWheelSelection],
   )
 
   const startMultipleBatch = () => {
@@ -348,6 +349,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
     runSpinToStudent(result.selected, () => {
       setWheelStudentBag(result.nextBag)
       recordSessionPick(result.selected!.id)
+      recordLuckyWheelSelection([result.selected!.id])
       revealTimeoutRef.current = setTimeout(() => setShowStudentList(true), LIST_REVEAL_DELAY_MS)
     })
   }

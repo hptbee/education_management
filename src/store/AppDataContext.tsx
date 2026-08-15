@@ -80,6 +80,7 @@ interface AppDataContextValue {
   deleteRecognition: (recognitionId: string) => void;
   addRecognition: (recognition: Omit<Recognition, "id" | "createdAt">) => Recognition;
   setWheelStudentBag: (bag: string[]) => void;
+  recordLuckyWheelSelection: (studentIds: string[]) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
@@ -343,18 +344,49 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           })),
         })),
       toggleStudentBadge: (studentId, badgeId) =>
-        setData((current) => ({
-          ...current,
-          students: current.students.map((student) => {
-            if (student.id !== studentId) return student;
-            const currentIds = student.badgeIds ?? [];
-            const hasBadge = currentIds.includes(badgeId);
-            const badgeIds = hasBadge
-              ? currentIds.filter((id) => id !== badgeId)
-              : [...currentIds, badgeId];
-            return { ...student, badgeIds, updatedAt: new Date().toISOString() };
-          }),
-        })),
+        setData((current) => {
+          const student = current.students.find((item) => item.id === studentId);
+          if (!student) return current;
+
+          const currentIds = student.badgeIds ?? [];
+          const hasBadge = currentIds.includes(badgeId);
+          const now = new Date().toISOString();
+
+          if (hasBadge) {
+            return {
+              ...current,
+              students: current.students.map((item) =>
+                item.id === studentId
+                  ? {
+                      ...item,
+                      badgeIds: currentIds.filter((id) => id !== badgeId),
+                      updatedAt: now,
+                    }
+                  : item,
+              ),
+            };
+          }
+
+          const badge = current.badges.find((item) => item.id === badgeId);
+          const historyEntry = {
+            id: createId("badge-award"),
+            badgeId,
+            badgeName: badge?.name ?? "Huy hiệu",
+            badgeIcon: badge?.icon,
+            studentIds: [studentId],
+            createdAt: now,
+          };
+
+          return {
+            ...current,
+            students: current.students.map((item) =>
+              item.id === studentId
+                ? { ...item, badgeIds: [...currentIds, badgeId], updatedAt: now }
+                : item,
+            ),
+            badgeAwardHistory: capHistory([historyEntry, ...(current.badgeAwardHistory ?? [])]),
+          };
+        }),
       saveStudent: (student) =>
         setData((current) => {
           const existing = current.students.find((item) => item.id === student.id);
@@ -438,15 +470,40 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return { ...current, students, teams };
         }),
       deleteStudent: (studentId) =>
-        setData((current) => ({
-          ...current,
-          students: current.students.filter((student) => student.id !== studentId),
-          teams: clearStudentLeadershipFromTeams(current.teams, studentId),
-          pointHistory: current.pointHistory.filter((item) => item.studentId !== studentId),
-          rewardHistory: current.rewardHistory.filter((item) => item.studentId !== studentId),
-          recognitions: current.recognitions.filter((item) => item.studentId !== studentId),
-          wheelStudentBag: current.wheelStudentBag.filter((id) => id !== studentId),
-        })),
+        setData((current) => {
+          const luckyWheelHistory = (current.luckyWheelHistory ?? [])
+            .map((entry) => {
+              const ids = entry.studentIds?.length ? entry.studentIds : [entry.studentId];
+              const remainingIds = ids.filter((id) => id !== studentId);
+              if (remainingIds.length === 0) return null;
+              return {
+                ...entry,
+                studentId: remainingIds[0],
+                studentIds: remainingIds,
+              };
+            })
+            .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+          const badgeAwardHistory = (current.badgeAwardHistory ?? [])
+            .map((entry) => {
+              const remainingIds = entry.studentIds.filter((id) => id !== studentId);
+              if (remainingIds.length === 0) return null;
+              return { ...entry, studentIds: remainingIds };
+            })
+            .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+          return {
+            ...current,
+            students: current.students.filter((student) => student.id !== studentId),
+            teams: clearStudentLeadershipFromTeams(current.teams, studentId),
+            pointHistory: current.pointHistory.filter((item) => item.studentId !== studentId),
+            rewardHistory: current.rewardHistory.filter((item) => item.studentId !== studentId),
+            recognitions: current.recognitions.filter((item) => item.studentId !== studentId),
+            luckyWheelHistory,
+            badgeAwardHistory,
+            wheelStudentBag: current.wheelStudentBag.filter((id) => id !== studentId),
+          };
+        }),
       saveTeam: (team) =>
         setData((current) => {
           const existing = current.teams.find((item) => item.id === team.id);
@@ -655,6 +712,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             ...result.next,
             pointHistory: capHistory(result.next.pointHistory),
             recognitions: capHistory(result.next.recognitions),
+            badgeAwardHistory: capHistory(result.next.badgeAwardHistory ?? []),
           };
         });
         return created;
@@ -712,6 +770,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return saved;
       },
       setWheelStudentBag: (bag) => setData((current) => ({ ...current, wheelStudentBag: bag })),
+      recordLuckyWheelSelection: (studentIds) => {
+        const uniqueIds = [...new Set(studentIds)].filter(Boolean);
+        if (uniqueIds.length === 0) return;
+        setData((current) => {
+          const now = new Date().toISOString();
+          const entry = {
+            id: createId("wheel"),
+            studentId: uniqueIds[0],
+            studentIds: uniqueIds,
+            createdAt: now,
+          };
+          return {
+            ...current,
+            luckyWheelHistory: capHistory([entry, ...(current.luckyWheelHistory ?? [])]),
+          };
+        });
+      },
     }),
     [data, isLoading, initError, saveError, loadInitialDatabase, applyLoadedDatabase, setData, commitData],
   );

@@ -20,6 +20,8 @@ const FILTER_OPTIONS: { id: ActivityFilter; label: string }[] = [
   { id: 'reward', label: 'Đổi quà' },
   { id: 'recognition', label: 'Tuyên dương' },
   { id: 'team-score', label: 'Điểm tổ' },
+  { id: 'lucky-wheel', label: 'Vòng quay' },
+  { id: 'badge', label: 'Huy hiệu' },
 ]
 
 export default function HistoryPage() {
@@ -63,7 +65,7 @@ export default function HistoryPage() {
         <PageHeader
           icon={History}
           title="Lịch sử hoạt động"
-          subtitle="Nhật ký tích điểm, đổi quà, tuyên dương và điểm tổ"
+          subtitle="Nhật ký tích điểm, đổi quà, tuyên dương, điểm tổ, vòng quay và huy hiệu"
         />
 
         <ClassroomCard className="space-y-4">
@@ -128,7 +130,7 @@ export default function HistoryPage() {
             title={allActivity.length === 0 ? 'Chưa có hoạt động nào' : 'Không tìm thấy hoạt động'}
             description={
               allActivity.length === 0
-                ? 'Các lần tích điểm, đổi quà và tuyên dương sẽ hiển thị tại đây.'
+                ? 'Các lần tích điểm, đổi quà, tuyên dương, vòng quay và huy hiệu sẽ hiển thị tại đây.'
                 : 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.'
             }
           />
@@ -149,6 +151,9 @@ export default function HistoryPage() {
                     </p>
                     {entry.subtitle ? (
                       <p className="mt-1 text-xs font-medium text-slate-400">{entry.subtitle}</p>
+                    ) : null}
+                    {entry.detail ? (
+                      <p className="mt-1 text-xs font-semibold text-slate-500">{entry.detail}</p>
                     ) : null}
                     <p className="mt-1 text-[11px] font-semibold text-slate-400">
                       {formatActivityDate(entry.createdAt)}

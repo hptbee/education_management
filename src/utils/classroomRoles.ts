@@ -121,6 +121,7 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
       teams,
       recognitions: db.recognitions ?? [],
       luckyWheelHistory: db.luckyWheelHistory ?? [],
+      badgeAwardHistory: db.badgeAwardHistory ?? [],
       wheelStudentBag: db.wheelStudentBag ?? [],
       appSettings: db.appSettings ?? {
         soundEnabled: true,

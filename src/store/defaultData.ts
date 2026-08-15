@@ -153,6 +153,7 @@ export const defaultData: AppData = {
   recognitionTitles: [],
   recognitions: [],
   luckyWheelHistory: [],
+  badgeAwardHistory: [],
   wheelStudentBag: [],
   appSettings: {
     soundEnabled: true,

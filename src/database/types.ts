@@ -1,6 +1,7 @@
 import type {
   AppSettings,
   Badge,
+  BadgeAwardHistory,
   ClassroomRole,
   ClassroomSettings,
   LuckyWheelSelection,
@@ -36,6 +37,7 @@ export interface ClassroomDatabase {
   recognitionTitles: RecognitionTitle[];
   recognitions: Recognition[];
   luckyWheelHistory: LuckyWheelSelection[];
+  badgeAwardHistory: BadgeAwardHistory[];
   wheelStudentBag: string[];
   teamScoreHistory: TeamScoreHistory[];
   appSettings: AppSettings;

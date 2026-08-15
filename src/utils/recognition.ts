@@ -1,4 +1,4 @@
-import type { Recognition } from '../types/models'
+import type { Recognition, BadgeAwardHistory } from '../types/models'
 import type { ClassroomDatabase } from '../database/types'
 import { createId } from './id'
 
@@ -119,6 +119,7 @@ export function buildRecognizeStudentsUpdate(
   const badgeIdToAward = resolveBadgeIdForTitle(title, current.badges)
   const newRecognitions: Recognition[] = []
   const newPointHistory: typeof current.pointHistory = []
+  const newlyAwardedStudentIds: string[] = []
   let students = [...current.students]
 
   for (const student of validStudents) {
@@ -141,7 +142,11 @@ export function buildRecognizeStudentsUpdate(
     }
 
     if (badgeIdToAward) {
+      const hadBadge = (student.badgeIds ?? []).includes(badgeIdToAward)
       students = awardBadgeToStudent(students, student.id, badgeIdToAward, now)
+      if (!hadBadge) {
+        newlyAwardedStudentIds.push(student.id)
+      }
     }
 
     newRecognitions.push({
@@ -161,6 +166,21 @@ export function buildRecognizeStudentsUpdate(
     })
   }
 
+  let badgeAwardHistory = current.badgeAwardHistory ?? []
+  if (badgeIdToAward && newlyAwardedStudentIds.length > 0) {
+    const badge = current.badges.find((item) => item.id === badgeIdToAward)
+    const historyEntry: BadgeAwardHistory = {
+      id: createId('badge-award'),
+      badgeId: badgeIdToAward,
+      badgeName: badge?.name ?? title.name,
+      badgeIcon: badge?.icon ?? title.icon,
+      studentIds: newlyAwardedStudentIds,
+      note: input.message?.trim() || undefined,
+      createdAt: now,
+    }
+    badgeAwardHistory = [historyEntry, ...badgeAwardHistory]
+  }
+
   return {
     created: newRecognitions,
     next: {
@@ -168,6 +188,7 @@ export function buildRecognizeStudentsUpdate(
       students,
       recognitions: [...newRecognitions, ...current.recognitions],
       pointHistory: [...newPointHistory, ...current.pointHistory],
+      badgeAwardHistory,
     },
   }
 }

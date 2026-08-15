@@ -42,6 +42,7 @@ export function createEmptyDatabase(
     recognitionTitles: createDefaultRecognitionTitles(),
     recognitions: [],
     luckyWheelHistory: [],
+    badgeAwardHistory: [],
     wheelStudentBag: [],
     teamScoreHistory: [],
     appSettings: {

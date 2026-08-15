@@ -154,6 +154,18 @@ export interface Recognition {
 export interface LuckyWheelSelection {
   id: string;
   studentId: string;
+  /** All students picked in this spin (multi-select). Legacy rows may omit this. */
+  studentIds?: string[];
+  createdAt: string;
+}
+
+export interface BadgeAwardHistory {
+  id: string;
+  badgeId: string;
+  badgeName: string;
+  badgeIcon?: string;
+  studentIds: string[];
+  note?: string;
   createdAt: string;
 }
 
@@ -178,6 +190,7 @@ export interface AppData {
   recognitionTitles: RecognitionTitle[];
   recognitions: Recognition[];
   luckyWheelHistory: LuckyWheelSelection[];
+  badgeAwardHistory: BadgeAwardHistory[];
   wheelStudentBag: string[];
   appSettings: AppSettings;
 }
