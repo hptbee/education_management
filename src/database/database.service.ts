@@ -3,6 +3,7 @@ import type { ClassroomDatabaseStorage } from "./storage/storage.interface";
 import { IndexedDbClassroomStorage } from "./storage/indexed-db.storage";
 import { createEmptyDatabase } from "./database.factory";
 import { generateDatabaseId, generateExportFilename } from "./database.utils";
+import { normalizeClassroomDatabase } from "../utils/classroomRoles";
 import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
 
@@ -69,7 +70,7 @@ export class DatabaseService {
         newDb.teamScoreHistory = parsed.teamScoreHistory || [];
         newDb.appSettings = parsed.appSettings || newDb.appSettings;
 
-        await this.storage.save(newDb);
+        await this.storage.save(normalizeClassroomDatabase(newDb));
       }
     } catch (e) {
       console.error("Failed to migrate legacy database", e);
@@ -85,14 +86,16 @@ export class DatabaseService {
   async createDatabase(
     settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">
   ): Promise<ClassroomDatabase> {
-    const db = createEmptyDatabase(settings);
+    const db = normalizeClassroomDatabase(createEmptyDatabase(settings));
     await this.storage.save(db);
     return db;
   }
 
   async openDatabase(id: string): Promise<ClassroomDatabase | null> {
     const db = await this.storage.load(id);
-    if (db && !db.classroomSettings.teacher) {
+    if (!db) return null;
+
+    if (!db.classroomSettings.teacher) {
       // Backwards compatibility for old databases
       const legacySettings = db.classroomSettings as any;
       db.classroomSettings.teacher = {
@@ -103,7 +106,8 @@ export class DatabaseService {
         updatedAt: db.metadata.updatedAt,
       };
     }
-    return db;
+
+    return normalizeClassroomDatabase(db);
   }
 
   async loadDatabase(id: string): Promise<ClassroomDatabase | null> {
@@ -111,10 +115,11 @@ export class DatabaseService {
   }
 
   async saveDatabase(db: ClassroomDatabase): Promise<ClassroomDatabase> {
+    const normalized = normalizeClassroomDatabase(db);
     const updatedDb: ClassroomDatabase = {
-      ...db,
+      ...normalized,
       metadata: {
-        ...db.metadata,
+        ...normalized.metadata,
         updatedAt: new Date().toISOString(),
       },
     };
@@ -189,6 +194,8 @@ export class DatabaseService {
       });
       newDb.pointActions = sourceDb.pointActions;
       newDb.rewards = sourceDb.rewards;
+      newDb.classroomRoles = sourceDb.classroomRoles ?? newDb.classroomRoles;
+      newDb.badges = sourceDb.badges ?? newDb.badges;
       newDb.appSettings = sourceDb.appSettings;
     } else {
       newDb = {
@@ -228,7 +235,7 @@ export class DatabaseService {
             throw new Error("Invalid database format: Missing metadata or classroom information");
           }
 
-          const db = data as ClassroomDatabase;
+          const db = normalizeClassroomDatabase(data as ClassroomDatabase);
           await this.saveDatabase(db);
           resolve(db);
         } catch (err) {

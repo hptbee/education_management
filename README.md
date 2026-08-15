@@ -81,18 +81,34 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 
 ## Current Features
 
+### Classroom & Students
 - Classroom dashboard
 - Classroom settings with avatar upload
-- Student management
-- Detailed student profile pages
-- Configurable point actions
+- Configurable classroom roles (e.g. class president, vice president)
+- Student management with search, import, and detailed profiles
+- Student badges (award/toggle per student from a configurable catalog)
+- Classroom role badges shown on student cards and team views
+
+### Points & Rewards
+- Configurable point actions (positive and negative)
+- Quick point assignment from the points page
 - Point history
-- Team creation and scoring
-- Projector-friendly leaderboard
 - Reward creation and redemption
+
+### Teams
+- Team creation and scoring
+- Team leader and vice-leader assignment
+- Projector-friendly team ranking
+
+### Activities & Tools (`/tools`)
+- **Lucky Wheel** — fair random student selection with animated wheel, student checklist, randomized spin duration, and confetti
+- **Study Timer** — preset (1/2/5/10 min) or custom duration (1–180 min), start/pause/reset; state persists across page refresh via `localStorage`
+- **Lucky Star** — pick-a-star surprise student reveal
+- **Points Challenge** — top-students strip with shortcut to the points page
+
+### Other
 - Recognition ceremony screen
-- Lucky Wheel random student selector
-- Random student classroom games
+- Random student classroom games (`/games`)
 - Local image uploads (stored as base64 strings in the JSON database)
 - Export / Import JSON database backups
 - Duplicate databases for new school years

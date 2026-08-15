@@ -2,6 +2,12 @@ import type { AppData } from "../types/models";
 
 const seedTimestamp = "2026-08-13T00:00:00.000Z";
 
+const seedClassroomRoles = [
+  { id: "role-lop-truong", name: "Lớp trưởng", icon: "👑", createdAt: seedTimestamp },
+  { id: "role-lop-pho-hoc-tap", name: "Lớp phó học tập", icon: "📚", createdAt: seedTimestamp },
+  { id: "role-lop-pho-lao-dong", name: "Lớp phó lao động", icon: "🧹", createdAt: seedTimestamp },
+];
+
 export const defaultData: AppData = {
   classroomSettings: {
     id: "classroom-settings",
@@ -16,6 +22,8 @@ export const defaultData: AppData = {
     createdAt: seedTimestamp,
     updatedAt: seedTimestamp,
   },
+  classroomRoles: seedClassroomRoles,
+  badges: [],
   students: [
     {
       id: "student-nhi",
@@ -24,6 +32,8 @@ export const defaultData: AppData = {
       dateOfBirth: "2016-03-15",
       previousClass: "1/7",
       classroomRole: "Lớp trưởng",
+      classroomRoleIds: ["role-lop-truong"],
+      badgeIds: [],
       potentialNote: "Tích cực, chủ động và luôn sẵn sàng giúp đỡ bạn bè.",
       teamId: "team-1",
       points: 15,
@@ -38,6 +48,8 @@ export const defaultData: AppData = {
       dateOfBirth: "2016-01-20",
       previousClass: "1/7",
       classroomRole: "Tổ phó",
+      classroomRoleIds: [],
+      badgeIds: [],
       potentialNote: "Nhanh nhẹn, hợp tác tốt và học đều các môn.",
       teamId: "team-2",
       points: 14,
@@ -52,6 +64,8 @@ export const defaultData: AppData = {
       dateOfBirth: "2016-06-11",
       previousClass: "1/8",
       classroomRole: "Nhóm trưởng",
+      classroomRoleIds: [],
+      badgeIds: [],
       potentialNote: "Chăm chỉ, khéo léo và luôn hoàn thành bài tập.",
       teamId: "team-1",
       points: 11,
@@ -66,6 +80,8 @@ export const defaultData: AppData = {
       dateOfBirth: "2016-09-02",
       previousClass: "1/8",
       classroomRole: "Phó ban",
+      classroomRoleIds: [],
+      badgeIds: [],
       potentialNote: "Có khả năng quan sát tốt, tinh thần trách nhiệm cao.",
       teamId: "team-3",
       points: 10,
@@ -82,13 +98,17 @@ export const defaultData: AppData = {
   ],
   teamScoreHistory: [],
   pointActions: [
-    { id: "action-answer", name: "Trả lời đúng", points: 1, type: "reward", icon: "star", isActive: true },
     { id: "action-participation", name: "Tích cực phát biểu", points: 1, type: "reward", icon: "hand", isActive: true },
-    { id: "action-help", name: "Giúp đỡ bạn", points: 2, type: "reward", icon: "heart", isActive: true },
-    { id: "action-excellent", name: "Hoàn thành xuất sắc", points: 5, type: "reward", icon: "trophy", isActive: true },
+    { id: "action-good-speech", name: "Phát biểu hay", points: 1, type: "reward", icon: "star", isActive: true },
+    { id: "action-good-work", name: "Làm bài tốt", points: 2, type: "reward", icon: "check", isActive: true },
+    { id: "action-homework", name: "Hoàn thành bài tập", points: 2, type: "reward", icon: "book", isActive: true },
+    { id: "action-help", name: "Giúp đỡ bạn", points: 1, type: "reward", icon: "heart", isActive: true },
+    { id: "action-progress", name: "Có tiến bộ", points: 1, type: "reward", icon: "trending", isActive: true },
+    { id: "action-clean", name: "Giữ gìn vệ sinh", points: 1, type: "reward", icon: "sparkles", isActive: true },
+    { id: "action-attitude", name: "Có thái độ tốt", points: 1, type: "reward", icon: "smile", isActive: true },
+    { id: "action-attention", name: "Học không tập trung", points: -3, type: "penalty", icon: "eye-off", isActive: true },
     { id: "action-swearing", name: "Chửi thề", points: -5, type: "penalty", icon: "alert", isActive: true },
     { id: "action-fighting", name: "Đánh nhau", points: -10, type: "penalty", icon: "shield", isActive: true },
-    { id: "action-attention", name: "Học không tập trung", points: -3, type: "penalty", icon: "eye-off", isActive: true },
   ],
   pointHistory: [],
   rewards: [

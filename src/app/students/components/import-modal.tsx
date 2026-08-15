@@ -209,6 +209,8 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
       hometown: r.data.hometown,
       address: r.data.address,
       parent: r.data.parent || {},
+      classroomRoleIds: [],
+      badgeIds: [],
       points: 0,
       totalRewards: 0,
       createdAt: now,

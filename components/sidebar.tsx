@@ -6,7 +6,8 @@ import {
   UsersRound,
   Star,
   Gift,
-  Disc3,
+  Medal,
+  Sparkles,
   Gamepad2,
   Trophy,
   History,
@@ -21,6 +22,7 @@ type NavItem = {
   href: string
   icon: React.ComponentType<{ className?: string }>
   color: string
+  wrapLabel?: boolean
 }
 
 const navItems: NavItem[] = [
@@ -29,7 +31,8 @@ const navItems: NavItem[] = [
   { label: 'Tổ / Nhóm', href: '/teams', icon: UsersRound, color: 'text-pink-500' },
   { label: 'Tích điểm', href: '/points', icon: Star, color: 'text-amber-400' },
   { label: 'Quà tặng', href: '/rewards', icon: Gift, color: 'text-rose-400' },
-  { label: 'Vòng quay', href: '/lucky-wheel', icon: Disc3, color: 'text-violet-400' },
+  { label: 'Huy hiệu', href: '/badges', icon: Medal, color: 'text-amber-500' },
+  { label: 'Thử thách & Công cụ', href: '/tools', icon: Sparkles, color: 'text-violet-400', wrapLabel: true },
   { label: 'Trò chơi', href: '/games', icon: Gamepad2, color: 'text-indigo-400' },
   { label: 'Tuyên dương', href: '/recognition', icon: Trophy, color: 'text-yellow-400' },
   { label: 'Lịch sử', href: '/history', icon: History, color: 'text-teal-400' },
@@ -72,7 +75,7 @@ export function Sidebar() {
               }`}
             >
               <Icon className={`size-5 shrink-0 ${isActive ? item.color : 'text-white'}`} />
-              <span className="truncate">{item.label}</span>
+              <span className={item.wrapLabel ? 'leading-tight' : 'truncate'}>{item.label}</span>
             </Link>
           )
         })}

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { Team } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
+import { EmojiIconPicker } from '@/src/components/EmojiIconPicker'
+import { TEAM_EMOJI_OPTIONS } from '@/src/utils/emojiIcons'
 
 const PRESET_THEMES = [
   { icon: '🌞', name: 'Tổ Mặt Trời' },
@@ -50,6 +52,8 @@ export function TeamFormDialog({ isOpen, onClose, onSave, initialData }: TeamFor
       name: name.trim(),
       avatar: icon,
       score: initialData?.score ?? 0,
+      leaderStudentId: initialData?.leaderStudentId,
+      viceLeaderStudentId: initialData?.viceLeaderStudentId,
       createdAt: initialData?.createdAt ?? now,
       updatedAt: now,
     })
@@ -88,19 +92,7 @@ export function TeamFormDialog({ isOpen, onClose, onSave, initialData }: TeamFor
           </div>
 
           {/* Icon picker */}
-          <div>
-            <label className="mb-1.5 block text-sm font-bold text-slate-700">Biểu tượng</label>
-            <div className="flex items-center gap-3">
-              <span className="flex size-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-3xl">{icon}</span>
-              <input
-                value={icon}
-                onChange={e => setIcon(e.target.value)}
-                maxLength={4}
-                placeholder="Emoji..."
-                className="w-24 rounded-xl border border-slate-200 px-3 py-2.5 text-center text-2xl outline-none focus:border-brand-purple/50"
-              />
-            </div>
-          </div>
+          <EmojiIconPicker value={icon} onChange={setIcon} options={TEAM_EMOJI_OPTIONS} />
 
           {/* Team name */}
           <div>

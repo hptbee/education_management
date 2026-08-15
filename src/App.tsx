@@ -40,6 +40,7 @@ import { useAppData } from "./store/AppDataContext";
 import type { Recognition, Student, Team } from "./types/models";
 import { createId } from "./utils/id";
 import { pickWithoutRepeat } from "./utils/randomSelection";
+import { ClassroomRolesSection } from "./app/settings/components/classroom-roles-section";
 
 const nav = [
   { to: "/", label: "Trang chủ", icon: Home },
@@ -431,7 +432,7 @@ function GamesPage() {
   return <Page><PageHeading title="TRÒ CHƠI" description="Không gian mini game cho lớp học." /><div className="grid gap-4 md:grid-cols-3"><GameCard title="Chọn học sinh" icon={BookOpen} /><GameCard title="Nhanh tay giơ tay" icon={Heart} /><GameCard title="Đố vui" icon={Sparkles} /></div></Page>;
 }
 
-type SettingsTab = "teacher" | "classroom" | "database" | "danger";
+type SettingsTab = "teacher" | "classroom" | "roles" | "database" | "danger";
 
 export function SettingsPage() {
   const { data, updateClassroomSettings, updateTeacherProfile, renameDatabase, duplicateDatabase, deleteDatabase, closeDatabase } = useAppData();
@@ -526,6 +527,7 @@ export function SettingsPage() {
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: "teacher", label: "Giáo viên", icon: <UserCircle size={18} /> },
     { id: "classroom", label: "Lớp học", icon: <MonitorPlay size={18} /> },
+    { id: "roles", label: "Vai trò", icon: <Crown size={18} /> },
     { id: "database", label: "Năm học", icon: <Settings size={18} /> },
     { id: "danger", label: "Nguy hiểm", icon: <AlertTriangle size={18} /> },
   ];
@@ -678,6 +680,11 @@ export function SettingsPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {/* ── ROLES TAB ── */}
+      {activeTab === "roles" && (
+        <ClassroomRolesSection />
       )}
 
       {/* ── DATABASE/SCHOOL-YEAR TAB ── */}
@@ -1060,7 +1067,7 @@ function formatClassroomTitle(settings: { className: string; teacher: { name: st
 }
 
 function newStudent(): Student {
-  return { id: createId("student"), name: "", points: 0, totalRewards: 0 };
+  return { id: createId("student"), name: "", points: 0, totalRewards: 0, classroomRoleIds: [], badgeIds: [] };
 }
 
 export default function App() {

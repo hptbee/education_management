@@ -180,19 +180,21 @@ Prioritize:
 Use:
 
 - React
-- Vite
+- Next.js
 - TypeScript
-- React Router
+- React Router (legacy routes in `src/App.tsx`)
 - Tailwind CSS
 - shadcn/ui
 - Lucide React
 - Framer Motion
 - canvas-confetti
+- Tauri 2 (desktop builds)
 
 Use:
 
-- localStorage for structured application data
-- IndexedDB for uploaded images only if localStorage becomes impractical
+- Tauri JSON filesystem for structured application data (desktop)
+- IndexedDB / localStorage fallback in web dev mode
+- `localStorage` for lightweight UI-only state (e.g. study timer, language preference)
 
 Do not use:
 
@@ -400,6 +402,10 @@ interface Student {
   previousAchievements?: string;
 
   classroomRole?: string;
+  /** Preferred: references to `ClassroomRole.id` */
+  classroomRoleIds: string[];
+  /** References to `Badge.id` */
+  badgeIds: string[];
 
   potentialNote?: string;
 
@@ -509,12 +515,45 @@ interface Team {
 
   score: number;
 
+  leaderStudentId?: string;
+  viceLeaderStudentId?: string;
+
   createdAt: string;
   updatedAt: string;
 }
 ```
 
 Team membership is stored on `Student.teamId`.
+
+## 6.7a Classroom Role
+
+```ts
+interface ClassroomRole {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  createdAt: string;
+}
+```
+
+Default seeds include class president and vice-president roles.
+Students reference roles via `classroomRoleIds`.
+
+## 6.7b Badge
+
+```ts
+interface Badge {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  createdAt: string;
+}
+```
+
+Badges are awarded to students via `Student.badgeIds`.
+The badge catalog is configurable; default seeds are provided on first run.
 
 ## 6.8 Team Score History
 
@@ -1194,12 +1233,13 @@ Do not implement future modes unless requested.
 
 ## Requirements
 
-- Large colorful wheel
-- Student names and/or avatars
-- Clear pointer
-- Spin animation
-- Clear selected student
-- Celebration effect
+- Large colorful wheel with student names (last two name words on segments)
+- Student checklist with search, select all/none
+- Clear pointer at 3 o'clock
+- Spin animation with randomized duration (6.5–12 s), turn count, and easing curve
+- Student list hides before spin; wheel expands; list reappears after result
+- Clear selected student with celebration/confetti
+- Fair selection cycle (bag-based, no repeat until cycle completes)
 - Reset selection history
 
 ## Fair Selection Cycle
@@ -1239,6 +1279,102 @@ After selection show:
 - Celebration/confetti
 
 Do not show private student information.
+
+---
+
+# FR-010a — Classroom Tools Page
+
+## Goal
+
+Provide a single page (`/tools`) with lightweight classroom utilities the teacher can use during lessons.
+
+## Tools
+
+### Study Timer
+
+- Preset durations: 1, 2, 5, 10 minutes
+- Custom duration input: 1–180 minutes
+- Start, pause, reset
+- Visual finish state when timer reaches zero
+- Persist timer state in `localStorage` so refresh does not reset duration, running state, or remaining time
+
+### Lucky Star
+
+- Grid of hidden stars; teacher picks one to reveal a random student
+- Requires at least one student
+
+### Points Challenge Strip
+
+- Shows top students by points
+- Shortcut link to `/points`
+
+## Presentation
+
+Tools render inside the normal application shell (sidebar visible).
+The Lucky Wheel opens in a full-screen modal from this page.
+
+---
+
+# FR-010b — Badges
+
+## Goal
+
+Allow the teacher to define achievement badges and award them to students.
+
+## Badge Catalog
+
+Teacher can:
+
+- View default badge seeds
+- Add, edit, and delete badges
+- Set name, icon (emoji), and optional description
+
+## Awarding Badges
+
+On the Badges page (`/badges`):
+
+- Select a student
+- Toggle badges on/off for that student
+- View currently awarded badges
+
+Badges appear on student cards and profile views where appropriate.
+
+## Data Rules
+
+- `Student.badgeIds` stores awarded badge references
+- Deleting a badge removes it from the catalog; clean up student references
+- Badge awards do not change point balance
+
+---
+
+# FR-010c — Classroom Roles
+
+## Goal
+
+Allow the teacher to define classroom leadership/role titles and assign them to students.
+
+## Role Catalog
+
+Configurable in Settings (`/settings`):
+
+- Default seeds: class president, academic vice president, labor vice president
+- Add, edit, delete roles with name, icon, and optional description
+
+## Assignment
+
+- Students reference roles via `classroomRoleIds` (multi-select)
+- Role badges display on student cards and team views
+- Legacy `classroomRole` string field is deprecated
+
+## Team Leadership
+
+Teams may additionally assign:
+
+- `leaderStudentId`
+- `viceLeaderStudentId`
+
+Leadership badges display on team cards and team detail views.
+Leadership is cleared automatically when a student leaves the team.
 
 ---
 
@@ -1498,16 +1634,17 @@ Dashboard
 Classroom
 ├── Students
 ├── Teams
-└── Classroom Settings
+└── Classroom Settings (roles, backup)
 
 Activities
-├── Lucky Wheel
+├── Tools (Lucky Wheel, Study Timer, Lucky Star)
 ├── Games
 └── Recognition
 
 Gamification
 ├── Points
 ├── Rewards
+├── Badges
 └── Leaderboard
 ```
 
@@ -1558,6 +1695,8 @@ classroom-backup-YYYY-MM-DD.json
 Include:
 
 - Classroom settings
+- Classroom roles
+- Badges
 - Students
 - Teams
 - Team score history
@@ -1721,6 +1860,8 @@ Use a consistent prefix.
 
 ```text
 classroom.settings
+classroom.classroom-roles
+classroom.badges
 classroom.students
 classroom.teams
 classroom.team-score-history
@@ -1731,7 +1872,10 @@ classroom.reward-history
 classroom.recognitions
 classroom.lucky-wheel-history
 classroom.app-settings
+education-management:study-timer
 ```
+
+The study timer key stores UI-only timer state (duration, remaining time, running/finished) and is not part of the classroom database export.
 
 ## 10.3 Persistence Requirement
 
@@ -2125,6 +2269,8 @@ The Version 1 product is considered functionally complete when the teacher can:
 - [ ] Search students
 - [ ] View detailed student profile
 - [ ] Store private teacher notes
+- [ ] Assign classroom roles
+- [ ] Award badges
 
 ## Points
 
@@ -2150,16 +2296,25 @@ The Version 1 product is considered functionally complete when the teacher can:
 - [ ] Edit team
 - [ ] Delete team
 - [ ] Assign students
+- [ ] Assign team leader and vice-leader
 - [ ] Change team score
 - [ ] View team ranking
 
 ## Activities
 
-- [ ] Use Lucky Wheel
+- [ ] Use Lucky Wheel (fair cycle, modal UI)
+- [ ] Use Study Timer with custom duration and refresh persistence
+- [ ] Use Lucky Star
 - [ ] Randomly select students fairly
 - [ ] Play Random Student
 - [ ] Play Quick Answer
 - [ ] Play Who Is Next
+
+## Badges
+
+- [ ] Configure badge catalog
+- [ ] Award/remove badges per student
+- [ ] Display badges on student views
 
 ## Recognition
 
@@ -2222,11 +2377,19 @@ Implementation should proceed incrementally.
 ## Phase 4 — Interactive Activities
 
 1. Reusable random selection utility
-2. Lucky Wheel
-3. Random Student
-4. Quick Answer
-5. Who Is Next
-6. Presentation mode improvements
+2. Lucky Wheel (modal, fair bag, randomized spin)
+3. Tools page (Study Timer, Lucky Star, Points Challenge)
+4. Random Student
+5. Quick Answer
+6. Who Is Next
+7. Presentation mode improvements
+
+## Phase 4a — Badges & Classroom Roles
+
+1. Classroom role catalog and assignment
+2. Team leader / vice-leader
+3. Badge catalog
+4. Badge awarding UI
 
 ## Phase 5 — Data Safety and Polish
 

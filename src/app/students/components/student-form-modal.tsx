@@ -5,6 +5,7 @@ import { X, Upload, Trash2 } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
 import { getStudentAvatar } from '@/src/utils/student'
+import { useAppData } from '@/src/store/AppDataContext'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -18,6 +19,8 @@ const defaultStudent = (): Student => ({
   name: '',
   points: 0,
   totalRewards: 0,
+  classroomRoleIds: [],
+  badgeIds: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   gender: 'unknown',
@@ -25,14 +28,17 @@ const defaultStudent = (): Student => ({
 })
 
 export function StudentFormModal({ isOpen, onClose, onSave, initialData }: StudentFormModalProps) {
+  const { data } = useAppData()
   const [formData, setFormData] = useState<Student>(defaultStudent())
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const classroomRoles = data?.classroomRoles ?? []
 
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
         setFormData({
           ...initialData,
+          classroomRoleIds: initialData.classroomRoleIds ?? [],
           parent: initialData.parent || { fullName: '', phoneNumber: '' }
         })
       } else {
@@ -71,6 +77,16 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+  }
+
+  const toggleRole = (roleId: string) => {
+    setFormData((prev) => {
+      const current = prev.classroomRoleIds ?? []
+      const next = current.includes(roleId)
+        ? current.filter((id) => id !== roleId)
+        : [...current, roleId]
+      return { ...prev, classroomRoleIds: next }
+    })
   }
 
   return (
@@ -166,9 +182,37 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Lớp cũ</label>
                   <input value={formData.previousClass || ''} onChange={e => setFormData({...formData, previousClass: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Vai trò (Lớp trưởng, vv)</label>
-                  <input value={formData.classroomRole || ''} onChange={e => setFormData({...formData, classroomRole: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                <div className="col-span-2">
+                  <label className="mb-2 block text-sm font-bold text-slate-700">Vai trò trong lớp</label>
+                  {classroomRoles.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+                      Chưa có vai trò nào. Thêm vai trò trong Cài đặt → Vai trò.
+                    </p>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {classroomRoles.map((role) => {
+                        const checked = (formData.classroomRoleIds ?? []).includes(role.id)
+                        return (
+                          <label
+                            key={role.id}
+                            className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                              checked
+                                ? 'border-brand-purple bg-brand-purple/5 text-brand-purple'
+                                : 'border-slate-200 bg-white text-slate-600 hover:border-brand-purple/30'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleRole(role.id)}
+                              className="size-4 rounded border-slate-300 text-brand-purple focus:ring-brand-purple"
+                            />
+                            <span>{role.icon ? `${role.icon} ` : ''}{role.name}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Thành tích / Ghi chú</label>

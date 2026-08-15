@@ -1,15 +1,21 @@
 import { useState } from 'react'
 import { Trophy, MoreVertical, Medal } from 'lucide-react'
 import type { Team, Student } from '@/src/types/models'
-import { getStudentAvatar } from '@/src/utils/student'
+import { getStudentAvatar, getStudentRosterOrder } from '@/src/utils/student'
 import { timeAgo } from '@/src/utils/teams'
+import {
+  getTeamLeadershipRole,
+  TeamLeadershipAvatarOverlay,
+  TeamLeadershipBadge,
+} from './team-leadership-badge'
 
 interface TeamRankingListProps {
   teams: Team[]
+  roster: Student[]
   getMembers: (teamId: string) => Student[]
 }
 
-export function TeamRankingList({ teams, getMembers }: TeamRankingListProps) {
+export function TeamRankingList({ teams, roster, getMembers }: TeamRankingListProps) {
   // Store expanded team IDs
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set([teams[0]?.id]))
 
@@ -29,12 +35,13 @@ export function TeamRankingList({ teams, getMembers }: TeamRankingListProps) {
         const members = getMembers(team.id)
         const isExpanded = expandedTeams.has(team.id)
 
-        // Sort members by points descending
-        const sortedMembers = [...members].sort((a, b) => (b.points || 0) - (a.points || 0))
-        
-        // Count "quán quân" (people with the max points in this team, assuming > 0)
-        const maxPoints = sortedMembers.length > 0 ? sortedMembers[0].points || 0 : 0
-        const championsCount = sortedMembers.filter(m => (m.points || 0) === maxPoints && maxPoints > 0).length
+        const sortedMembers = members
+
+        // Point-based achievement labels (independent of display order)
+        const byPoints = [...members].sort((a, b) => (b.points || 0) - (a.points || 0))
+        const maxPoints = byPoints.length > 0 ? byPoints[0].points || 0 : 0
+        const championsCount = byPoints.filter(m => (m.points || 0) === maxPoints && maxPoints > 0).length
+        const pointRankById = new Map(byPoints.map((student, index) => [student.id, index]))
 
         return (
           <div key={team.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all">
@@ -92,8 +99,10 @@ export function TeamRankingList({ teams, getMembers }: TeamRankingListProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {sortedMembers.map((student, sIdx) => {
+                    {sortedMembers.map((student) => {
                       const pts = student.points || 0
+                      const sIdx = pointRankById.get(student.id) ?? 0
+                      const leadershipRole = getTeamLeadershipRole(team, student.id)
                       
                       let rankLabel = '—'
                       let rankIcon = ''
@@ -116,16 +125,28 @@ export function TeamRankingList({ teams, getMembers }: TeamRankingListProps) {
                       }
 
                       return (
-                        <tr key={student.id} className="transition-colors hover:bg-slate-50/50">
-                          <td className="px-6 py-4 font-semibold text-slate-500">{sIdx + 1}</td>
+                        <tr key={student.id} className={`transition-colors hover:bg-slate-50/50 ${leadershipRole === 'leader' ? 'bg-amber-50/40' : leadershipRole === 'vice' ? 'bg-sky-50/40' : ''}`}>
+                          <td className="px-6 py-4 font-semibold text-slate-500">{getStudentRosterOrder(student, roster) + 1}</td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <img 
-                                src={getStudentAvatar(student)} 
-                                alt={student.name}
-                                className="size-8 rounded-full border border-slate-200 object-cover"
-                              />
-                              <span className="font-bold text-slate-700">{student.name}</span>
+                              <div className="relative shrink-0">
+                                <img 
+                                  src={getStudentAvatar(student)} 
+                                  alt={student.name}
+                                  className={`size-8 rounded-full border-2 object-cover ${
+                                    leadershipRole === 'leader'
+                                      ? 'border-amber-300 ring-2 ring-amber-100'
+                                      : leadershipRole === 'vice'
+                                        ? 'border-sky-300 ring-2 ring-sky-100'
+                                        : 'border-slate-200'
+                                  }`}
+                                />
+                                {leadershipRole ? <TeamLeadershipAvatarOverlay role={leadershipRole} /> : null}
+                              </div>
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <span className="font-bold text-slate-700">{student.name}</span>
+                                {leadershipRole ? <TeamLeadershipBadge role={leadershipRole} /> : null}
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 font-bold text-brand-purple">

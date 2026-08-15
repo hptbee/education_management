@@ -1,6 +1,8 @@
 import { createId } from "../utils/id";
 import { defaultData } from "../store/defaultData";
 import { generateDatabaseId } from "./database.utils";
+import { createDefaultBadges } from "../utils/badges";
+import { createDefaultClassroomRoles } from "../utils/classroomRoles";
 import type { ClassroomDatabase } from "./types";
 import type { ClassroomSettings } from "../types/models";
 
@@ -28,6 +30,8 @@ export function createEmptyDatabase(
       updatedAt: now,
     },
     classroomSettings: classroom,
+    classroomRoles: createDefaultClassroomRoles(),
+    badges: createDefaultBadges(),
     students: [],
     teams: [],
     pointActions: defaultData.pointActions,

@@ -1,9 +1,10 @@
 'use client'
 
-import { Users, Search, Plus, Star, ArrowRight } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Users, Search, Star, ArrowRight, X } from 'lucide-react'
 import Link from 'next/link'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar } from '@/src/utils/student'
+import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import type { Student, Team } from '@/src/types/models'
 
 // Temporary colors mapping to use teamId instead of 'tot'
@@ -48,8 +49,18 @@ function StudentCard({ student, team, index }: { student: Student, team?: Team, 
 
 export function StudentList() {
   const { data } = useAppData()
+  const [searchQuery, setSearchQuery] = useState('')
   const students = data?.students || []
   const teams = data?.teams || []
+
+  const filteredStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    const sorted = sortStudentsByClassroomRoleThenStt(students, students)
+    if (!q) return sorted
+    return sorted.filter((student) => student.name.toLowerCase().includes(q))
+  }, [students, searchQuery])
+
+  const displayedStudents = filteredStudents.slice(0, 8)
   
   return (
     <section className="flex flex-col rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
@@ -67,18 +78,30 @@ export function StudentList() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm kiếm học sinh..."
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400 focus:border-brand-purple/40"
           />
         </div>
-        <Link href="/students" className="flex items-center gap-1.5 rounded-xl bg-brand-purple px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-purple-dark">
-          <Plus className="size-4" />
-          Thêm học sinh
-        </Link>
+        <button
+          type="button"
+          onClick={() => setSearchQuery('')}
+          disabled={!searchQuery}
+          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <X className="size-4" />
+          Xóa
+        </button>
       </div>
 
+      {displayedStudents.length === 0 ? (
+        <p className="py-8 text-center text-sm font-semibold text-slate-400">
+          {searchQuery ? 'Không tìm thấy học sinh' : 'Chưa có học sinh'}
+        </p>
+      ) : (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {students.slice(0, 8).map((student, i) => (
+        {displayedStudents.map((student, i) => (
           <StudentCard 
             key={student.id} 
             student={student} 
@@ -87,6 +110,7 @@ export function StudentList() {
           />
         ))}
       </div>
+      )}
 
       <Link href="/students" className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-sm font-bold text-brand-purple transition hover:text-brand-purple-dark">
         Xem tất cả học sinh

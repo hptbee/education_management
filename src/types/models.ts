@@ -1,3 +1,19 @@
+export interface ClassroomRole {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  createdAt: string;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  createdAt: string;
+}
+
 export interface TeacherProfile {
   id: string;
   name: string;
@@ -31,7 +47,10 @@ export interface Student {
   address?: string;
   previousClass?: string;
   previousAchievements?: string;
+  /** @deprecated Use classroomRoleIds instead */
   classroomRole?: string;
+  classroomRoleIds: string[];
+  badgeIds: string[];
   potentialNote?: string;
   teamId?: string;
   parent?: ParentInfo;
@@ -46,6 +65,8 @@ export interface Team {
   name: string;
   avatar?: string;
   score: number;
+  leaderStudentId?: string;
+  viceLeaderStudentId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -125,6 +146,8 @@ export type LuckyWheelMode = "student" | "team" | "reward" | "activity";
 
 export interface AppData {
   classroomSettings: ClassroomSettings;
+  classroomRoles: ClassroomRole[];
+  badges: Badge[];
   students: Student[];
   teams: Team[];
   teamScoreHistory: TeamScoreHistory[];

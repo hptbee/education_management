@@ -1,5 +1,7 @@
 import type {
   AppSettings,
+  Badge,
+  ClassroomRole,
   ClassroomSettings,
   LuckyWheelSelection,
   PointAction,
@@ -22,6 +24,8 @@ export interface DatabaseMetadata {
 export interface ClassroomDatabase {
   metadata: DatabaseMetadata;
   classroomSettings: ClassroomSettings;
+  classroomRoles: ClassroomRole[];
+  badges: Badge[];
   students: Student[];
   teams: Team[];
   pointActions: PointAction[];

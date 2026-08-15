@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import type { Student } from '@/src/types/models'
+import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import * as XLSX from 'xlsx'
 
 import { StudentCard } from './components/student-card'
@@ -111,6 +112,8 @@ export default function StudentsPage() {
 
   const students = database?.students || []
   const teams = database?.teams || []
+  const classroomRoles = database?.classroomRoles || []
+  const badges = database?.badges || []
 
   // ── Summary stats
   const totalMale = students.filter(s => s.gender === 'male').length
@@ -119,25 +122,25 @@ export default function StudentsPage() {
 
   // ── Filtered list
   const filteredStudents = useMemo(() => {
-    return students
-      .filter(s => {
-        const q = searchQuery.toLowerCase()
-        const matchesSearch =
-          !q ||
-          s.name.toLowerCase().includes(q) ||
-          s.hometown?.toLowerCase().includes(q) ||
-          s.address?.toLowerCase().includes(q) ||
-          s.parent?.fullName?.toLowerCase().includes(q) ||
-          s.parent?.phoneNumber?.toLowerCase().includes(q)
+    const filtered = students.filter(s => {
+      const q = searchQuery.toLowerCase()
+      const matchesSearch =
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.hometown?.toLowerCase().includes(q) ||
+        s.address?.toLowerCase().includes(q) ||
+        s.parent?.fullName?.toLowerCase().includes(q) ||
+        s.parent?.phoneNumber?.toLowerCase().includes(q)
 
-        const matchesGender = filterGender === 'all' || s.gender === filterGender
-        const matchesTeam =
-          filterTeam === 'all' ||
-          (filterTeam === 'none' ? !s.teamId : s.teamId === filterTeam)
+      const matchesGender = filterGender === 'all' || s.gender === filterGender
+      const matchesTeam =
+        filterTeam === 'all' ||
+        (filterTeam === 'none' ? !s.teamId : s.teamId === filterTeam)
 
-        return matchesSearch && matchesGender && matchesTeam
-      })
-      .sort((a, b) => a.name.localeCompare(b.name))
+      return matchesSearch && matchesGender && matchesTeam
+    })
+
+    return sortStudentsByClassroomRoleThenStt(filtered, students)
   }, [students, searchQuery, filterGender, filterTeam])
 
   const hasActiveFilter =
@@ -388,6 +391,8 @@ export default function StudentsPage() {
                   key={student.id}
                   student={student}
                   teams={teams}
+                  classroomRoles={classroomRoles}
+                  badges={badges}
                   onView={handleOpenDetails}
                   onEdit={handleOpenEdit}
                   onDelete={handleOpenDelete}

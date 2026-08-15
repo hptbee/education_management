@@ -1,8 +1,13 @@
 'use client'
 
-import { X, Star, Trophy, Target } from 'lucide-react'
+import { X, Star, Trophy, Target, Medal } from 'lucide-react'
+import Link from 'next/link'
 import type { Student } from '@/src/types/models'
+import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
+import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
+import { getStudentBadges } from '@/src/utils/badges'
+import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
 
 interface StudentDetailsModalProps {
   isOpen: boolean
@@ -11,7 +16,15 @@ interface StudentDetailsModalProps {
 }
 
 export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetailsModalProps) {
+  const { data } = useAppData()
+
   if (!isOpen || !student) return null
+
+  const teamName = student.teamId
+    ? data?.teams.find((t) => t.id === student.teamId)?.name ?? 'Chưa có nhóm'
+    : 'Chưa có nhóm'
+  const assignedRoles = getStudentClassroomRoles(student, data?.classroomRoles ?? [])
+  const awardedBadges = getStudentBadges(student, data?.badges ?? [])
 
   let genderDisplay = ''
   if (student.gender === 'female') genderDisplay = 'Nữ'
@@ -45,6 +58,7 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
               />
               <div>
                 <h3 className="font-display text-2xl font-black text-slate-800">{student.name}</h3>
+                <ClassroomRoleBadges roles={assignedRoles} className="mt-2 justify-start" size="md" />
                 <p className="mt-1 text-sm font-semibold text-slate-500">
                   {genderDisplay} {student.dateOfBirth ? `• Sinh ngày: ${student.dateOfBirth}` : ''}
                 </p>
@@ -61,6 +75,39 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
               </div>
             </div>
 
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="flex items-center gap-2 text-sm font-bold text-brand-purple">
+                  <Medal className="size-4" /> Huy hiệu
+                </h4>
+                <Link
+                  href={`/badges?studentId=${student.id}`}
+                  onClick={onClose}
+                  className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-200"
+                >
+                  Quản lý huy hiệu
+                </Link>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-white p-4">
+                {awardedBadges.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {awardedBadges.map((badge) => (
+                      <span
+                        key={badge.id}
+                        title={badge.description}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200"
+                      >
+                        <span>{badge.icon ?? '🏅'}</span>
+                        {badge.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold text-slate-400">Chưa có huy hiệu nào</p>
+                )}
+              </div>
+            </section>
+
             {/* Private Details */}
             <div className="grid gap-6 md:grid-cols-2">
               <section className="flex flex-col gap-3">
@@ -68,8 +115,21 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
                   <Target className="size-4" /> Thông tin Lớp học
                 </h4>
                 <div className="rounded-xl border border-slate-100 bg-white p-4 text-sm">
-                  <p className="mb-2"><span className="font-semibold text-slate-500">Vai trò: </span> {student.classroomRole || 'Học sinh'}</p>
-                  <p className="mb-2"><span className="font-semibold text-slate-500">Tổ/Nhóm: </span> {student.teamId ? `Team ${student.teamId}` : 'Chưa có nhóm'}</p>
+                  <p className="mb-2">
+                    <span className="font-semibold text-slate-500">Vai trò trong lớp: </span>
+                    {assignedRoles.length > 0 ? (
+                      <span className="inline-flex flex-wrap gap-1">
+                        {assignedRoles.map((role) => (
+                          <span key={role.id} className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">
+                            {role.icon ? `${role.icon} ` : ''}{role.name}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      'Học sinh'
+                    )}
+                  </p>
+                  <p className="mb-2"><span className="font-semibold text-slate-500">Tổ/Nhóm: </span> {teamName}</p>
                   <p className="mb-2"><span className="font-semibold text-slate-500">Lớp cũ: </span> {student.previousClass || 'Trống'}</p>
                   <p className="mb-2"><span className="font-semibold text-slate-500">Thành tích cũ: </span> {student.previousAchievements || 'Trống'}</p>
                   <p><span className="font-semibold text-slate-500">Ghi chú: </span> {student.potentialNote || 'Trống'}</p>

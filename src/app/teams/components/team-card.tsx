@@ -2,6 +2,7 @@ import { Users, Edit2, Trash2 } from 'lucide-react'
 import type { Team, Student } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
 import { getTeamMotivationMessage } from '@/src/utils/teams'
+import { getTeamLeadershipRole, TeamLeadershipAvatarOverlay } from './team-leadership-badge'
 
 interface TeamCardProps {
   team: Team
@@ -104,15 +105,25 @@ export function TeamCard({
         ) : (
           <div className="flex items-center gap-1.5">
             <div className="flex -space-x-2">
-              {previewAvatars.map((s, i) => (
-                <img 
-                  key={s.id} 
-                  src={getStudentAvatar(s)} 
-                  alt={s.name}
-                  className="size-8 rounded-full border-2 border-white object-cover shadow-sm ring-1 ring-black/5" 
-                  style={{ zIndex: 10 - i }}
-                />
-              ))}
+              {previewAvatars.map((s, i) => {
+                const leadershipRole = getTeamLeadershipRole(team, s.id)
+                return (
+                <div key={s.id} className="relative" style={{ zIndex: 10 - i }}>
+                  <img 
+                    src={getStudentAvatar(s)} 
+                    alt={s.name}
+                    className={`size-8 rounded-full border-2 border-white object-cover shadow-sm ring-1 ${
+                      leadershipRole === 'leader'
+                        ? 'ring-amber-300'
+                        : leadershipRole === 'vice'
+                          ? 'ring-sky-300'
+                          : 'ring-black/5'
+                    }`}
+                  />
+                  {leadershipRole ? <TeamLeadershipAvatarOverlay role={leadershipRole} /> : null}
+                </div>
+                )
+              })}
             </div>
             {extra > 0 && (
               <span className="flex h-6 items-center justify-center rounded-full bg-slate-100 px-2 text-[10px] font-bold text-slate-500">

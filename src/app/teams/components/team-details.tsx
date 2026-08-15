@@ -1,11 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Plus, Star, ArrowLeftRight, UserMinus, History } from 'lucide-react'
+import { X, Plus, Star, ArrowLeftRight, UserMinus, History, Crown, Shield } from 'lucide-react'
 import type { Student, Team, TeamScoreHistory } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
 import { AssignStudentsDialog } from './assign-students-dialog'
 import { MoveStudentDialog } from './move-student-dialog'
+import {
+  getTeamLeadershipRole,
+  TeamLeadershipAvatarOverlay,
+  TeamLeadershipBadge,
+} from './team-leadership-badge'
 
 interface TeamDetailsProps {
   team: Team | null
@@ -20,6 +25,7 @@ interface TeamDetailsProps {
   onRemove: (studentId: string) => void
   onEditTeam: () => void
   onOpenPoints: () => void
+  onUpdateLeadership: (leaderStudentId?: string, viceLeaderStudentId?: string) => void
 }
 
 function formatDate(iso: string) {
@@ -29,7 +35,7 @@ function formatDate(iso: string) {
 
 export function TeamDetails({
   team, isOpen, onClose, members, allStudents, allTeams, pointHistory,
-  onAssign, onMove, onRemove, onEditTeam, onOpenPoints,
+  onAssign, onMove, onRemove, onEditTeam, onOpenPoints, onUpdateLeadership,
 }: TeamDetailsProps) {
   const [activeTab, setActiveTab] = useState<'members' | 'history'>('members')
   const [isAssignOpen, setIsAssignOpen] = useState(false)
@@ -85,6 +91,61 @@ export function TeamDetails({
           </button>
         </div>
 
+        {/* Leadership */}
+        <div className="border-b border-slate-100 px-5 py-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Ban chỉ huy tổ</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-700">
+                <Crown className="size-4 fill-amber-500 text-amber-500" />
+                Tổ trưởng
+              </label>
+              <select
+                value={team.leaderStudentId ?? ''}
+                onChange={(e) => {
+                  const leaderStudentId = e.target.value || undefined
+                  const viceLeaderStudentId =
+                    leaderStudentId && team.viceLeaderStudentId === leaderStudentId
+                      ? undefined
+                      : team.viceLeaderStudentId
+                  onUpdateLeadership(leaderStudentId, viceLeaderStudentId)
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+              >
+                <option value="">Chưa chọn</option>
+                {members.map((student) => (
+                  <option key={student.id} value={student.id}>{student.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-700">
+                <Shield className="size-4 fill-sky-400 text-sky-500" />
+                Tổ phó
+              </label>
+              <select
+                value={team.viceLeaderStudentId ?? ''}
+                onChange={(e) => {
+                  const viceLeaderStudentId = e.target.value || undefined
+                  const leaderStudentId =
+                    viceLeaderStudentId && team.leaderStudentId === viceLeaderStudentId
+                      ? undefined
+                      : team.leaderStudentId
+                  onUpdateLeadership(leaderStudentId, viceLeaderStudentId)
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+              >
+                <option value="">Chưa chọn</option>
+                {members
+                  .filter((student) => student.id !== team.leaderStudentId)
+                  .map((student) => (
+                    <option key={student.id} value={student.id}>{student.name}</option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="flex border-b border-slate-100">
           {(['members', 'history'] as const).map(tab => (
@@ -118,16 +179,39 @@ export function TeamDetails({
                   </button>
                 </div>
               ) : (
-                members.map(student => (
-                  <div key={student.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3">
-                    <img
-                      src={getStudentAvatar(student)}
-                      alt={student.name}
-                      className="size-10 rounded-full object-cover ring-2 ring-slate-100"
-                    />
+                members.map(student => {
+                  const leadershipRole = getTeamLeadershipRole(team, student.id)
+                  return (
+                  <div
+                    key={student.id}
+                    className={`flex items-center gap-3 rounded-xl border p-3 ${
+                      leadershipRole === 'leader'
+                        ? 'border-amber-200 bg-amber-50/50'
+                        : leadershipRole === 'vice'
+                          ? 'border-sky-200 bg-sky-50/50'
+                          : 'border-slate-100 bg-white'
+                    }`}
+                  >
+                    <div className="relative shrink-0">
+                      <img
+                        src={getStudentAvatar(student)}
+                        alt={student.name}
+                        className={`size-10 rounded-full object-cover ring-2 ${
+                          leadershipRole === 'leader'
+                            ? 'ring-amber-200'
+                            : leadershipRole === 'vice'
+                              ? 'ring-sky-200'
+                              : 'ring-slate-100'
+                        }`}
+                      />
+                      {leadershipRole ? <TeamLeadershipAvatarOverlay role={leadershipRole} /> : null}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{student.name}</p>
-                      <p className="text-xs font-semibold text-amber-500">⭐ {student.points} điểm cá nhân</p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                        {leadershipRole ? <TeamLeadershipBadge role={leadershipRole} /> : null}
+                        <p className="text-xs font-semibold text-amber-500">⭐ {student.points} điểm cá nhân</p>
+                      </div>
                     </div>
                     <div className="flex gap-1">
                       <button
@@ -146,7 +230,8 @@ export function TeamDetails({
                       </button>
                     </div>
                   </div>
-                ))
+                  )
+                })
               )}
             </div>
           ) : (

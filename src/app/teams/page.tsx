@@ -5,6 +5,7 @@ import { Plus, Users, Search, Shuffle, FilterX } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import type { Team, Student } from '@/src/types/models'
+import { sortTeamMembersByLeadershipThenStt } from '@/src/utils/student'
 
 import { TeamFormDialog } from './components/team-form-dialog'
 import { DeleteTeamDialog } from './components/delete-team-dialog'
@@ -57,12 +58,32 @@ export default function TeamsPage() {
     [filteredTeams]
   )
 
-  const getMembers = (teamId: string) => students.filter(s => s.teamId === teamId)
-  
+  const getMembers = (teamId: string) => {
+    const team = teams.find((t) => t.id === teamId)
+    const members = students.filter((s) => s.teamId === teamId)
+    if (!team) return members
+    return sortTeamMembersByLeadershipThenStt(members, team, students)
+  }
+
   const highestScore = teams.length > 0 ? Math.max(...teams.map(t => t.score || 0)) : 0
 
   // Handlers
   const handleSaveTeam = (team: Team) => saveTeam(team)
+
+  const handleUpdateLeadership = (leaderStudentId?: string, viceLeaderStudentId?: string) => {
+    if (!selectedTeam) return
+    saveTeam({
+      ...selectedTeam,
+      leaderStudentId,
+      viceLeaderStudentId,
+      updatedAt: new Date().toISOString(),
+    })
+    setSelectedTeam((current) =>
+      current
+        ? { ...current, leaderStudentId, viceLeaderStudentId, updatedAt: new Date().toISOString() }
+        : current,
+    )
+  }
 
   const handleOpenEdit = (team: Team) => {
     setSelectedTeam(team)
@@ -139,7 +160,7 @@ export default function TeamsPage() {
 
       // Update student
       saveStudent({ ...student, teamId: targetTeamId, updatedAt: now })
-      
+
       // Increment size for the next iteration
       teamSizes[0].count++
     })
@@ -150,7 +171,7 @@ export default function TeamsPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#fafafa]">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6 pb-10 scrollbar-thin">
-        
+
         {/* ── HEADER ── */}
         <header className="flex flex-col gap-1">
           <div className="flex items-center gap-3">
@@ -190,12 +211,6 @@ export default function TeamsPage() {
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
               <Shuffle className="size-4" /> Chia ngẫu nhiên
-            </button>
-            <button
-              onClick={() => setSearchQuery('')}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              <FilterX className="size-4" /> Xóa tìm kiếm
             </button>
           </div>
         </div>
@@ -237,9 +252,10 @@ export default function TeamsPage() {
                 <h2 className="font-display text-xl font-black uppercase text-slate-800">BXH Nhóm</h2>
               </div>
             </div>
-            
+
             <TeamRankingList 
               teams={sortedTeams}
+              roster={students}
               getMembers={getMembers}
             />
           </section>
@@ -279,7 +295,7 @@ export default function TeamsPage() {
       <TeamDetails
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
-        team={selectedTeam}
+        team={selectedTeam ? teams.find((t) => t.id === selectedTeam.id) ?? selectedTeam : null}
         members={selectedTeam ? getMembers(selectedTeam.id) : []}
         allStudents={students}
         allTeams={teams}
@@ -289,6 +305,7 @@ export default function TeamsPage() {
         onRemove={handleRemove}
         onEditTeam={() => { setIsDetailsOpen(false); selectedTeam && handleOpenEdit(selectedTeam) }}
         onOpenPoints={() => { setIsDetailsOpen(false); selectedTeam && handleOpenPoints(selectedTeam) }}
+        onUpdateLeadership={handleUpdateLeadership}
       />
     </div>
   )

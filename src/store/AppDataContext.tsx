@@ -1,9 +1,12 @@
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
+  Badge,
+  ClassroomRole,
   ClassroomSettings,
   PointAction,
   PointHistory,
+  PointHistorySource,
   Recognition,
   Reward,
   RewardHistory,
@@ -13,6 +16,11 @@ import type {
   TeamScoreHistory,
 } from "../types/models";
 import { createId } from "../utils/id";
+import {
+  clearStudentLeadershipFromTeams,
+  sanitizeAllTeamLeadership,
+  sanitizeTeamLeadership,
+} from "../utils/classroomRoles";
 import type { ClassroomDatabase } from "../database/types";
 import { databaseService } from "../database/database.service";
 
@@ -28,6 +36,11 @@ interface AppDataContextValue {
   deleteDatabase: (id: string) => Promise<void>;
   updateClassroomSettings: (settings: ClassroomSettings) => void;
   updateTeacherProfile: (teacher: Partial<Omit<TeacherProfile, "id" | "createdAt" | "updatedAt">>) => void;
+  saveClassroomRole: (role: ClassroomRole) => void;
+  deleteClassroomRole: (roleId: string) => void;
+  saveBadge: (badge: Badge) => void;
+  deleteBadge: (badgeId: string) => void;
+  toggleStudentBadge: (studentId: string, badgeId: string) => void;
   saveStudent: (student: Student) => void;
   deleteStudent: (studentId: string) => void;
   saveTeam: (team: Team) => void;
@@ -36,7 +49,12 @@ interface AppDataContextValue {
   resetTeamScore: (teamId: string) => void;
   savePointAction: (action: PointAction) => void;
   deletePointAction: (actionId: string) => void;
-  applyPoints: (studentId: string, action: PointAction, note?: string) => void;
+  applyPoints: (
+    studentId: string,
+    action: PointAction,
+    note?: string,
+    source?: PointHistorySource,
+  ) => void;
   saveReward: (reward: Reward) => void;
   deleteReward: (rewardId: string) => void;
   redeemReward: (studentId: string, reward: Reward) => boolean;
@@ -138,6 +156,67 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             updatedAt: new Date().toISOString(),
           },
         })),
+      saveClassroomRole: (role) =>
+        setData((current) => {
+          const existing = current.classroomRoles.find((item) => item.id === role.id);
+          const saved: ClassroomRole = {
+            ...role,
+            name: role.name.trim(),
+            createdAt: existing?.createdAt ?? role.createdAt ?? new Date().toISOString(),
+          };
+          return {
+            ...current,
+            classroomRoles: existing
+              ? current.classroomRoles.map((item) => (item.id === role.id ? saved : item))
+              : [...current.classroomRoles, saved],
+          };
+        }),
+      deleteClassroomRole: (roleId) =>
+        setData((current) => ({
+          ...current,
+          classroomRoles: current.classroomRoles.filter((role) => role.id !== roleId),
+          students: current.students.map((student) => ({
+            ...student,
+            classroomRoleIds: (student.classroomRoleIds ?? []).filter((id) => id !== roleId),
+          })),
+        })),
+      saveBadge: (badge) =>
+        setData((current) => {
+          const existing = current.badges.find((item) => item.id === badge.id);
+          const saved: Badge = {
+            ...badge,
+            name: badge.name.trim(),
+            createdAt: existing?.createdAt ?? badge.createdAt ?? new Date().toISOString(),
+          };
+          return {
+            ...current,
+            badges: existing
+              ? current.badges.map((item) => (item.id === badge.id ? saved : item))
+              : [...current.badges, saved],
+          };
+        }),
+      deleteBadge: (badgeId) =>
+        setData((current) => ({
+          ...current,
+          badges: current.badges.filter((badge) => badge.id !== badgeId),
+          students: current.students.map((student) => ({
+            ...student,
+            badgeIds: (student.badgeIds ?? []).filter((id) => id !== badgeId),
+          })),
+        })),
+      toggleStudentBadge: (studentId, badgeId) =>
+        setData((current) => ({
+          ...current,
+          students: current.students.map((student) => {
+            if (student.id !== studentId) return student;
+            const currentIds = student.badgeIds ?? [];
+            const hasBadge = currentIds.includes(badgeId);
+            const badgeIds = hasBadge
+              ? currentIds.filter((id) => id !== badgeId)
+              : [...currentIds, badgeId];
+            return { ...student, badgeIds, updatedAt: new Date().toISOString() };
+          }),
+        })),
       saveStudent: (student) =>
         setData((current) => {
           const existing = current.students.find((item) => item.id === student.id);
@@ -145,22 +224,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const saved: Student = {
             ...student,
             name: student.name.trim(),
+            classroomRoleIds: student.classroomRoleIds ?? existing?.classroomRoleIds ?? [],
+            badgeIds: student.badgeIds ?? existing?.badgeIds ?? [],
             points: existing?.points ?? student.points,
             totalRewards: existing?.totalRewards ?? student.totalRewards,
             createdAt: existing?.createdAt ?? student.createdAt ?? now,
             updatedAt: now,
           };
-          return {
-            ...current,
-            students: existing
-              ? current.students.map((item) => (item.id === student.id ? saved : item))
-              : [...current.students, saved],
-          };
+
+          let students = existing
+            ? current.students.map((item) => (item.id === student.id ? saved : item))
+            : [...current.students, saved];
+
+          let teams = current.teams;
+          if (existing?.teamId !== saved.teamId) {
+            teams = clearStudentLeadershipFromTeams(teams, saved.id);
+          }
+          teams = sanitizeAllTeamLeadership(teams, students);
+
+          return { ...current, students, teams };
         }),
       deleteStudent: (studentId) =>
         setData((current) => ({
           ...current,
           students: current.students.filter((student) => student.id !== studentId),
+          teams: clearStudentLeadershipFromTeams(current.teams, studentId),
           pointHistory: current.pointHistory.filter((item) => item.studentId !== studentId),
           rewardHistory: current.rewardHistory.filter((item) => item.studentId !== studentId),
           recognitions: current.recognitions.filter((item) => item.studentId !== studentId),
@@ -170,12 +258,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setData((current) => {
           const existing = current.teams.find((item) => item.id === team.id);
           const now = new Date().toISOString();
-          const saved: Team = {
-            ...team,
-            name: team.name.trim(),
-            createdAt: existing?.createdAt ?? team.createdAt ?? now,
-            updatedAt: now,
-          };
+          const memberIds = new Set(
+            current.students.filter((student) => student.teamId === team.id).map((student) => student.id),
+          );
+          const saved = sanitizeTeamLeadership(
+            {
+              ...team,
+              name: team.name.trim(),
+              createdAt: existing?.createdAt ?? team.createdAt ?? now,
+              updatedAt: now,
+            },
+            memberIds,
+          );
           return {
             ...current,
             teams: existing ? current.teams.map((item) => (item.id === team.id ? saved : item)) : [...current.teams, saved],
@@ -236,22 +330,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ...current,
           pointActions: current.pointActions.filter((action) => action.id !== actionId),
         })),
-      applyPoints: (studentId, action, note) =>
+      applyPoints: (studentId, action, note, source = "action") =>
         setData((current) => {
+          const now = new Date().toISOString();
           const history: PointHistory = {
             id: createId("points"),
             studentId,
             actionId: action.id,
             actionName: action.name,
             points: action.points,
-            source: "action",
-            createdAt: new Date().toISOString(),
+            source,
+            createdAt: now,
             note,
           };
           return {
             ...current,
             students: current.students.map((student) =>
-              student.id === studentId ? { ...student, points: student.points + action.points } : student,
+              student.id === studentId
+                ? { ...student, points: student.points + action.points, updatedAt: now }
+                : student,
             ),
             pointHistory: [history, ...current.pointHistory],
           };

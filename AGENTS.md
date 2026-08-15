@@ -29,6 +29,21 @@ Inspect:
 - current feature page
 - active classroom/database state
 
+## Key routes
+
+| Route | Feature |
+|---|---|
+| `/` | Dashboard |
+| `/students` | Student management |
+| `/teams` | Team management |
+| `/points` | Point actions & quick scoring |
+| `/rewards` | Rewards |
+| `/badges` | Badge catalog & student awards |
+| `/tools` | Lucky Wheel, Study Timer, Lucky Star |
+| `/games` | Classroom games |
+| `/recognition` | Recognition |
+| `/settings` | Classroom settings, roles, backup |
+
 ## After coding
 
 Verify:

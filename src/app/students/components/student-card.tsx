@@ -1,8 +1,12 @@
 'use client'
 
 import { Star, Eye, Edit2, Trash2 } from 'lucide-react'
-import type { Student, Team } from '@/src/types/models'
+import type { Badge, ClassroomRole, Student, Team } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
+import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
+import { getStudentBadges } from '@/src/utils/badges'
+import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
+import { StudentBadgeIcons } from '@/src/components/StudentBadgeIcons'
 
 const TEAM_COLORS = [
   { ring: 'ring-tot-1/30', badge: 'bg-pink-100 text-pink-700', dot: 'bg-pink-400' },
@@ -22,17 +26,21 @@ const GENDER_META: Record<string, { emoji: string; label: string; ring: string }
 interface StudentCardProps {
   student: Student
   teams: Team[]
+  classroomRoles: ClassroomRole[]
+  badges: Badge[]
   onView: (student: Student) => void
   onEdit: (student: Student) => void
   onDelete: (student: Student) => void
 }
 
-export function StudentCard({ student, teams, onView, onEdit, onDelete }: StudentCardProps) {
+export function StudentCard({ student, teams, classroomRoles, badges, onView, onEdit, onDelete }: StudentCardProps) {
   const gender = GENDER_META[student.gender ?? 'unknown'] ?? GENDER_META.unknown
 
   const team = teams.find(t => t.id === student.teamId)
   const teamIdx = team ? teams.findIndex(t => t.id === student.teamId) : -1
   const teamColor = teamIdx >= 0 ? TEAM_COLORS[teamIdx % TEAM_COLORS.length] : null
+  const assignedRoles = getStudentClassroomRoles(student, classroomRoles)
+  const awardedBadges = getStudentBadges(student, badges)
 
   const dobFormatted = student.dateOfBirth
     ? (() => {
@@ -83,6 +91,9 @@ export function StudentCard({ student, teams, onView, onEdit, onDelete }: Studen
       <h3 className="mt-3 w-full text-sm font-extrabold leading-tight text-slate-800 line-clamp-2" title={student.name}>
         {student.name}
       </h3>
+
+      <ClassroomRoleBadges roles={assignedRoles} className="mt-2" />
+      <StudentBadgeIcons badges={awardedBadges} className="mt-2" />
 
       {/* DOB */}
       {dobFormatted && (
