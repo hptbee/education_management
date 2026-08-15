@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { ImagePlus, RotateCcw } from 'lucide-react'
-import { Button, Card } from '@/src/components/ui'
+import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
 import { HeroBanner } from '@/components/dashboard/hero-banner'
 import { useAppData } from '@/src/store/AppDataContext'
 import { HOME_BANNER, homeBannerSizeHint, readHomeBannerImage } from '@/src/utils/images'
@@ -10,9 +10,11 @@ import { HOME_BANNER, homeBannerSizeHint, readHomeBannerImage } from '@/src/util
 export function HomeBannerSection({
   onSaved,
   onError,
+  embedded = false,
 }: {
   onSaved: () => void
   onError: (message: string | null) => void
+  embedded?: boolean
 }) {
   const { data, updateClassroomSettings } = useAppData()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -52,38 +54,54 @@ export function HomeBannerSection({
     onSaved()
   }
 
-  return (
-    <Card className="bg-white/90">
-      <div className="mb-5 flex items-center gap-4">
-        <div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-gradient-to-br from-pastel-sky to-brand text-white shadow-lg">
-          <ImagePlus size={28} />
+  const content = (
+    <div className="min-w-0">
+      {!embedded ? (
+        <div className="mb-5 flex items-center gap-4">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-pastel-sky to-brand text-white shadow-sm">
+            <ImagePlus className="size-6" />
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-extrabold text-slate-800">Ảnh banner trang chủ</h2>
+            <p className="text-sm font-semibold text-slate-500">Ảnh hiển thị ở đầu trang tổng quan</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-black text-slate-800">Ảnh banner trang chủ</h2>
-          <p className="text-sm text-slate-500">Ảnh hiển thị ở đầu trang tổng quan</p>
+      ) : (
+        <div className="mb-4">
+          <h3 className="font-display text-base font-extrabold text-slate-800">Banner trang chủ</h3>
+          <p className="mt-0.5 text-xs font-semibold text-slate-500">Hiển thị ở đầu trang tổng quan</p>
         </div>
-      </div>
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-br from-pastel-sky via-white to-pastel-pink/50">
         {customImage ? (
           <img
             src={customImage}
             alt="Xem trước banner lớp học"
-            className="block h-auto w-full"
+            className="block h-auto max-h-48 w-full object-cover object-center xl:max-h-56"
           />
         ) : (
-          <div className="p-4 xl:p-5">
+          <div className="p-3 xl:p-4">
             <HeroBanner />
           </div>
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-brand-soft p-4 text-sm text-slate-600">
-        <p className="font-bold text-brand-purple">Kích thước tạo ảnh (GPT / Grok)</p>
-        <p className="mt-1 font-extrabold text-slate-800">{homeBannerSizeHint()}</p>
-        <p className="mt-1 text-xs font-semibold text-slate-500">
-          Grok: 3:1. GPT: Landscape (1792 × 1024). Ảnh sẽ hiện đủ, không bị cắt. PNG, JPG, WEBP · tối đa {HOME_BANNER.maxFileBytes / (1024 * 1024)} MB.
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold text-slate-400">
+          {homeBannerSizeHint()} · tối đa {HOME_BANNER.maxFileBytes / (1024 * 1024)} MB · lưu tự động
         </p>
+        <div className="flex flex-wrap gap-2">
+          <ClassroomButton size="sm" onClick={() => fileInputRef.current?.click()} disabled={busy}>
+            <ImagePlus className="size-4" />
+            {busy ? 'Đang tải...' : customImage ? 'Đổi ảnh' : 'Tải ảnh'}
+          </ClassroomButton>
+          {customImage ? (
+            <ClassroomButton size="sm" variant="outline" onClick={handleReset} disabled={busy}>
+              <RotateCcw className="size-4" /> Mặc định
+            </ClassroomButton>
+          ) : null}
+        </div>
       </div>
 
       <input
@@ -93,22 +111,10 @@ export function HomeBannerSection({
         className="hidden"
         onChange={handleFileChange}
       />
-
-      <div className="mt-4 flex flex-wrap gap-3">
-        <Button
-          className="justify-center"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={busy}
-        >
-          <ImagePlus size={18} />
-          {busy ? 'Đang tải ảnh...' : customImage ? 'Đổi ảnh banner' : 'Tải ảnh banner'}
-        </Button>
-        {customImage ? (
-          <Button variant="ghost" className="justify-center" onClick={handleReset} disabled={busy}>
-            <RotateCcw size={18} /> Khôi phục mặc định
-          </Button>
-        ) : null}
-      </div>
-    </Card>
+    </div>
   )
+
+  if (embedded) return content
+
+  return <ClassroomCard>{content}</ClassroomCard>
 }

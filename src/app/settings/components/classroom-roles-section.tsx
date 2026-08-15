@@ -5,6 +5,8 @@ import { Crown, PencilLine, Plus, Trash2 } from 'lucide-react'
 import type { ClassroomRole } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { createId } from '@/src/utils/id'
+import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
+import { cn } from '@/lib/utils'
 
 function RoleFormDialog({
   isOpen,
@@ -34,7 +36,7 @@ function RoleFormDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
-        <header className="flex items-center justify-between border-b border-slate-100 p-5">
+        <header className="border-b border-slate-100 p-5">
           <h2 className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
           </h2>
@@ -61,7 +63,7 @@ function RoleFormDialog({
               value={icon}
               onChange={(e) => setIcon(e.target.value)}
               maxLength={4}
-              className="w-20 rounded-xl border border-slate-200 px-3 py-2.5 text-center text-2xl outline-none focus:border-brand-purple"
+              className="w-20 rounded-xl border border-slate-200 px-3 py-2.5 text-center text-2xl outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             />
           </div>
           <div>
@@ -71,7 +73,7 @@ function RoleFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ví dụ: Thủ quỹ"
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             />
           </div>
           <div>
@@ -80,16 +82,14 @@ function RoleFormDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             />
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">
+            <ClassroomButton type="button" variant="ghost" onClick={onClose}>
               Hủy
-            </button>
-            <button type="submit" className="rounded-xl bg-brand-purple px-5 py-2 text-sm font-bold text-white hover:bg-brand-purple-dark">
-              Lưu
-            </button>
+            </ClassroomButton>
+            <ClassroomButton type="submit">Lưu</ClassroomButton>
           </div>
         </form>
       </div>
@@ -97,7 +97,7 @@ function RoleFormDialog({
   )
 }
 
-export function ClassroomRolesSection() {
+export function ClassroomRolesSection({ embedded = false }: { embedded?: boolean }) {
   const { data, saveClassroomRole, deleteClassroomRole } = useAppData()
   const [formOpen, setFormOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<ClassroomRole | null>(null)
@@ -115,50 +115,63 @@ export function ClassroomRolesSection() {
     setFormOpen(true)
   }
 
-  return (
-    <div className="grid gap-4">
-      <CardHeader />
-
-      <div className="grid gap-3">
-        {roles.map((role) => (
-          <div
-            key={role.id}
-            className="flex items-center gap-4 rounded-2xl border border-[#e8e3ff] bg-white/90 p-4"
-          >
-            <div className="grid size-12 place-items-center rounded-2xl bg-brand-soft text-2xl">
-              {role.icon ?? '⭐'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-black text-slate-800">{role.name}</p>
-              {role.description ? (
-                <p className="mt-0.5 text-sm font-semibold text-[#6a6f91]">{role.description}</p>
-              ) : null}
-            </div>
-            <button
-              onClick={() => openEdit(role)}
-              className="flex size-9 items-center justify-center rounded-xl text-brand-purple transition hover:bg-brand-soft"
-              title="Chỉnh sửa"
-            >
-              <PencilLine size={18} />
-            </button>
-            <button
-              onClick={() => setDeleteTarget(role)}
-              className="flex size-9 items-center justify-center rounded-xl text-rose-500 transition hover:bg-rose-50"
-              title="Xóa"
-            >
-              <Trash2 size={18} />
-            </button>
+  const roleList = (
+    <div className="grid gap-2">
+      {roles.map((role) => (
+        <div
+          key={role.id}
+          className={cn(
+            'flex items-center gap-3 rounded-2xl border border-slate-100 bg-surface-soft px-3 py-2.5',
+            embedded && 'bg-white',
+          )}
+        >
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-xl">
+            {role.icon ?? '⭐'}
           </div>
-        ))}
-      </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-bold text-slate-800">{role.name}</p>
+            {role.description ? (
+              <p className="truncate text-xs font-semibold text-slate-500">{role.description}</p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 gap-0.5">
+            <ClassroomButton
+              variant="ghost"
+              size="sm"
+              onClick={() => openEdit(role)}
+              title="Chỉnh sửa"
+              aria-label={`Chỉnh sửa vai trò ${role.name}`}
+            >
+              <PencilLine className="size-4" />
+            </ClassroomButton>
+            <ClassroomButton
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteTarget(role)}
+              title="Xóa"
+              aria-label={`Xóa vai trò ${role.name}`}
+              className="text-rose-500 hover:bg-rose-50"
+            >
+              <Trash2 className="size-4" />
+            </ClassroomButton>
+          </div>
+        </div>
+      ))}
 
-      <button
+      <ClassroomButton
+        variant="outline"
+        size="sm"
+        className="w-full border-dashed"
         onClick={openCreate}
-        className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-surface-soft px-5 py-4 text-sm font-extrabold text-brand-purple transition hover:border-brand-purple hover:bg-brand-soft"
       >
-        <Plus size={18} /> Thêm vai trò
-      </button>
+        <Plus className="size-4" />
+        Thêm vai trò
+      </ClassroomButton>
+    </div>
+  )
 
+  const dialogs = (
+    <>
       {formOpen ? (
         <RoleFormDialog
           isOpen={formOpen}
@@ -174,44 +187,61 @@ export function ClassroomRolesSection() {
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-black text-rose-600">Xóa vai trò?</h3>
+            <h3 className="font-display text-lg font-extrabold text-rose-600">Xóa vai trò?</h3>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               Vai trò <strong>{deleteTarget.name}</strong> sẽ bị xóa khỏi lớp và gỡ khỏi tất cả học sinh đang được gán.
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100"
-              >
+              <ClassroomButton variant="ghost" onClick={() => setDeleteTarget(null)}>
                 Hủy
-              </button>
-              <button
+              </ClassroomButton>
+              <ClassroomButton
+                className="bg-rose-500 text-white hover:bg-rose-600"
                 onClick={() => {
                   deleteClassroomRole(deleteTarget.id)
                   setDeleteTarget(null)
                 }}
-                className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white hover:bg-rose-600"
               >
                 Xóa vai trò
-              </button>
+              </ClassroomButton>
             </div>
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   )
-}
 
-function CardHeader() {
+  if (embedded) {
+    return (
+      <div className="flex min-w-0 flex-col">
+        <div className="mb-4 flex items-center gap-2">
+          <Crown className="size-4 text-brand" aria-hidden />
+          <div>
+            <h3 className="font-display text-base font-extrabold text-slate-800">Vai trò trong lớp</h3>
+            <p className="text-xs font-semibold text-slate-500">Gán cho học sinh ở trang Học sinh</p>
+          </div>
+        </div>
+        {roleList}
+        {dialogs}
+      </div>
+    )
+  }
+
   return (
-    <div className="flex items-center gap-4 rounded-2xl bg-white/90 p-5 border border-[#e8e3ff]">
-      <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-purple to-brand-purple-light text-white text-3xl shadow-lg">
-        <Crown size={28} />
-      </div>
-      <div>
-        <h2 className="text-xl font-black text-slate-800">Vai trò trong lớp</h2>
-        <p className="text-sm text-[#6a6f91]">Tùy chỉnh các vai trò cán bộ lớp cho học sinh</p>
-      </div>
+    <div className="grid gap-4">
+      <ClassroomCard>
+        <div className="flex items-center gap-4">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-light text-white shadow-sm">
+            <Crown className="size-6" />
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-extrabold text-slate-800">Vai trò trong lớp</h2>
+            <p className="text-sm font-semibold text-slate-500">Tùy chỉnh các vai trò cán bộ lớp cho học sinh</p>
+          </div>
+        </div>
+      </ClassroomCard>
+      {roleList}
+      {dialogs}
     </div>
   )
 }

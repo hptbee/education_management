@@ -696,11 +696,33 @@ Allow the teacher to update classroom identity after initial setup.
 
 ## Editable Fields
 
-- Class name
+- Class name (display label on sidebar and dashboard)
 - Class avatar
 - Teacher name
 - Teacher avatar
-- School year
+- School year (database identity — change in **Dữ liệu** tab, not **Hồ sơ**)
+- Home banner image (dashboard hero)
+
+## Settings Page UI (`/settings`)
+
+When no classroom database is open, show the classroom selector:
+
+- Recent classes list (`ClassroomList`)
+- Create new class form
+- Import JSON backup
+
+When a classroom is active, show four pill tabs:
+
+| Tab | Label | Contents |
+|---|---|---|
+| Profile | Hồ sơ | Combined teacher + display class name; avatar auto-saves on file pick; home banner with preview; one **Lưu thay đổi** when text fields are dirty |
+| Roles | Vai trò | Classroom role catalog (FR-010c) |
+| Data | Dữ liệu | Switch class, create/import another, rename database + school year, duplicate, export JSON, open data folder (Tauri) |
+| Danger | Nguy hiểm | Delete classroom with typed name confirmation |
+
+**Display name vs database rename:** Changing **Tên lớp (hiển thị)** on **Hồ sơ** updates UI labels only. **Đổi tên database** on **Dữ liệu** changes the stored database identity (file/folder name and school year metadata).
+
+Use shared primitives: `PageHeader`, `ClassroomCard`, `ClassroomButton`, `SettingsTabs`. Max content width ~1100px.
 
 ## Behavior
 
@@ -1667,7 +1689,11 @@ Dashboard
 Classroom
 ├── Students
 ├── Teams
-└── Classroom Settings (roles, backup)
+└── Settings (`/settings`)
+    ├── Hồ sơ — identity & banner
+    ├── Vai trò — role catalog
+    ├── Dữ liệu — backup, switch class, rename DB
+    └── Nguy hiểm — delete class
 
 Activities
 ├── Tools (Lucky Wheel, Study Timer, Lucky Star)

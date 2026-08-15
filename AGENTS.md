@@ -43,7 +43,22 @@ Inspect:
 | `/recognition` | Recognition |
 | `/ranking` | Student & team rankings |
 | `/history` | Activity history |
-| `/settings` | Classroom settings, roles, backup |
+| `/settings` | Classroom selector; in-class settings (Hồ sơ, Vai trò, Dữ liệu, Nguy hiểm) |
+
+## Settings (`/settings`)
+
+Route: `src/app/settings/page.tsx`. When `data` is null, render `ClassroomSelectorScreen`; otherwise `SettingsPage` (max width 1100px).
+
+| Tab | Component | Purpose |
+|---|---|---|
+| Hồ sơ | `profile-section.tsx` | Teacher name, display class name, avatar, home banner |
+| Vai trò | `classroom-roles-section.tsx` | Role catalog CRUD |
+| Dữ liệu | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder |
+| Nguy hiểm | inline in `settings-page.tsx` | Delete classroom |
+
+Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.tsx`.
+
+**Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity.
 
 ## After coding
 

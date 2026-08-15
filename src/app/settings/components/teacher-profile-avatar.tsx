@@ -5,13 +5,16 @@ import { ImagePlus, Trash2 } from 'lucide-react'
 import { TeacherAvatar } from '@/src/components/TeacherAvatar'
 import { useAppData } from '@/src/store/AppDataContext'
 import { TEACHER_AVATAR, readTeacherAvatarImage, teacherAvatarSizeHint } from '@/src/utils/images'
+import { cn } from '@/lib/utils'
 
 export function TeacherProfileAvatar({
   onSaved,
   onError,
+  layout = 'stacked',
 }: {
   onSaved: () => void
   onError: (message: string | null) => void
+  layout?: 'stacked' | 'inline'
 }) {
   const { data, updateTeacherProfile } = useAppData()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -21,6 +24,7 @@ export function TeacherProfileAvatar({
 
   const teacher = data.classroomSettings.teacher
   const hasCustomAvatar = Boolean(teacher.avatar?.trim())
+  const inline = layout === 'inline'
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -47,8 +51,13 @@ export function TeacherProfileAvatar({
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative">
+    <div
+      className={cn(
+        'flex gap-4',
+        inline ? 'flex-col items-center sm:flex-row sm:items-start' : 'flex-col items-center',
+      )}
+    >
+      <div className="relative shrink-0">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -59,7 +68,10 @@ export function TeacherProfileAvatar({
           <TeacherAvatar
             src={teacher.avatar}
             name={teacher.name}
-            className="size-24 rounded-[35%] text-5xl shadow-sm ring-4 ring-white"
+            className={cn(
+              'rounded-[35%] shadow-sm ring-4 ring-white',
+              inline ? 'size-28 text-5xl' : 'size-24 text-5xl',
+            )}
           />
           <span className="absolute inset-0 flex items-center justify-center rounded-[35%] bg-slate-900/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
             <ImagePlus className="size-6 text-white" />
@@ -86,12 +98,15 @@ export function TeacherProfileAvatar({
         onChange={handleFileChange}
       />
 
-      <p className="mt-3 text-xs font-bold text-slate-600">
-        {busy ? 'Đang tải ảnh...' : 'Click vào ảnh để đổi ảnh đại diện'}
-      </p>
-      <p className="mt-1 text-center text-[11px] font-semibold text-slate-400">
-        Tốt nhất: {teacherAvatarSizeHint()} · PNG, JPG, WEBP · tối đa {TEACHER_AVATAR.maxFileBytes / (1024 * 1024)} MB
-      </p>
+      <div className={cn(inline ? 'text-left sm:pt-1' : 'text-center')}>
+        <p className="text-sm font-bold text-slate-700">
+          {busy ? 'Đang tải...' : 'Ảnh đại diện'}
+        </p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">Bấm ảnh để đổi · lưu tự động</p>
+        <p className="mt-1.5 text-[11px] font-semibold text-slate-400">
+          {teacherAvatarSizeHint()} · tối đa {TEACHER_AVATAR.maxFileBytes / (1024 * 1024)} MB
+        </p>
+      </div>
     </div>
   )
 }

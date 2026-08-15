@@ -76,14 +76,18 @@ If the workflow fails with "Resource not accessible by integration", enable **Re
 
 The application has been migrated from a web-based `localStorage`/`IndexedDB` setup to a native desktop architecture using **Tauri**. 
 - The source of truth for your data is now local JSON files located in your operating system's `AppData` directory. 
-- You can access these files directly through the **Cài đặt** (Settings) -> **Năm học** (School Year) tab by clicking the **Mở thư mục dữ liệu** (Open Data Folder) button.
+- You can access these files directly through **Cài đặt** (Settings) → **Dữ liệu** tab → **Mở thư mục** (Open Data Folder). Tauri desktop only.
 - On first launch of the Tauri app, it will automatically migrate any existing data from IndexedDB into the new JSON filesystem format safely.
 
 ## Current Features
 
 ### Classroom & Students
 - Classroom dashboard
-- Classroom settings with avatar upload
+- **Settings** (`/settings`) — classroom selector when no class is open; four in-class tabs when a class is active:
+  - **Hồ sơ** — teacher name, display class name, avatar (auto-save on pick), home banner; single **Lưu thay đổi** for text fields
+  - **Vai trò** — classroom role catalog
+  - **Dữ liệu** — switch class, rename database / school year, duplicate, export JSON, open data folder (Tauri)
+  - **Nguy hiểm** — delete classroom (name confirmation)
 - Configurable classroom roles (e.g. class president, vice president)
 - Student management with search, import, and detailed profiles
 - Student badges (award/toggle per student from a configurable catalog)
@@ -108,6 +112,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 
 ### Other
 - Recognition ceremony screen
+- Activity history (`/history`) — points, rewards, recognition, lucky wheel, badges
 - Classroom tools (`/tools`; `/games` redirects here)
 - Local image uploads (stored as base64 strings in the JSON database)
 - Export / Import JSON database backups
