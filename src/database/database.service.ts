@@ -4,15 +4,50 @@ import { IndexedDbClassroomStorage } from "./storage/indexed-db.storage";
 import { createEmptyDatabase } from "./database.factory";
 import { generateDatabaseId, generateExportFilename } from "./database.utils";
 import type { ClassroomSettings } from "../types/models";
+import { isTauri } from "./tauri-fs.service";
+
+function createStorage(): ClassroomDatabaseStorage {
+  if (isTauri()) {
+    // Dynamic import — keeps Tauri code out of the browser bundle
+    // We return a lazy proxy that will initialize on first use.
+    // Since all storage methods are async, this is safe.
+    const { TauriFsClassroomStorage } = require("./storage/tauri-fs.storage") as typeof import("./storage/tauri-fs.storage");
+    return new TauriFsClassroomStorage();
+  }
+  return new IndexedDbClassroomStorage();
+}
 
 export class DatabaseService {
   private storage: ClassroomDatabaseStorage;
 
   constructor(storage?: ClassroomDatabaseStorage) {
-    this.storage = storage || new IndexedDbClassroomStorage();
+    this.storage = storage || createStorage();
   }
 
+  /**
+   * Called once at app startup.
+   * If running inside Tauri: run the one-time migration from IndexedDB → JSON.
+   * If running in browser: run the legacy localStorage migration.
+   */
   async initializeAndMigrate(): Promise<void> {
+    if (isTauri()) {
+      const { TauriFsClassroomStorage } = await import("./storage/tauri-fs.storage");
+      const { migrateIndexedDbToJson } = await import("./storage/migration.service");
+
+      const tauriStorage = this.storage as InstanceType<typeof TauriFsClassroomStorage>;
+      const result = await migrateIndexedDbToJson(tauriStorage);
+
+      if (result.status === "completed") {
+        console.log(`[DatabaseService] Migration complete. ${result.migratedCount} classroom(s) migrated.`);
+      } else if (result.status === "failed") {
+        console.error("[DatabaseService] Migration failed:", result.error);
+        // Rethrow so the UI can show an error
+        throw new Error(`Data migration failed: ${result.error}`);
+      }
+      return;
+    }
+
+    // Legacy browser migration: localStorage → IndexedDB
     const legacyKey = "chibi-classroom-data";
     const raw = localStorage.getItem(legacyKey);
     if (!raw) return;
@@ -20,10 +55,8 @@ export class DatabaseService {
     try {
       const parsed = JSON.parse(raw);
       if (parsed.classroomSettings && parsed.classroomSettings.className) {
-        // Create new database based on legacy settings
         const newDb = createEmptyDatabase(parsed.classroomSettings);
-        
-        // Merge legacy data
+
         newDb.students = parsed.students || [];
         newDb.teams = parsed.teams || [];
         newDb.pointActions = parsed.pointActions || newDb.pointActions;
@@ -41,7 +74,7 @@ export class DatabaseService {
     } catch (e) {
       console.error("Failed to migrate legacy database", e);
     } finally {
-      localStorage.removeItem(legacyKey); // Prevent double migration
+      localStorage.removeItem(legacyKey);
     }
   }
 
@@ -89,13 +122,16 @@ export class DatabaseService {
     return updatedDb;
   }
 
-  async renameClassroomDatabase(currentId: string, newClassName: string, newSchoolYear: string): Promise<ClassroomDatabase> {
+  async renameClassroomDatabase(
+    currentId: string,
+    newClassName: string,
+    newSchoolYear: string
+  ): Promise<ClassroomDatabase> {
     const currentDb = await this.openDatabase(currentId);
     if (!currentDb) throw new Error("Database not found");
 
     const newId = generateDatabaseId(newClassName, newSchoolYear);
     if (newId === currentId) {
-      // Nothing to rename, maybe just updating other settings
       return currentDb;
     }
 
@@ -142,9 +178,8 @@ export class DatabaseService {
     }
 
     const now = new Date().toISOString();
-    
     let newDb: ClassroomDatabase;
-    
+
     if (mode === "settings-only") {
       newDb = createEmptyDatabase({
         className: newClassName,
@@ -188,11 +223,11 @@ export class DatabaseService {
         try {
           const text = e.target?.result as string;
           const data = JSON.parse(text);
-          
+
           if (!data.metadata || !data.metadata.id || !data.classroomSettings) {
             throw new Error("Invalid database format: Missing metadata or classroom information");
           }
-          
+
           const db = data as ClassroomDatabase;
           await this.saveDatabase(db);
           resolve(db);
@@ -210,7 +245,7 @@ export class DatabaseService {
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const filename = generateExportFilename(db.classroomSettings.className, db.classroomSettings.schoolYear);
-    
+
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
@@ -220,8 +255,21 @@ export class DatabaseService {
     URL.revokeObjectURL(url);
   }
 
+  /**
+   * Returns the Tauri data directory path (only available in Tauri mode).
+   * Used by the Settings page "Open Data Folder" button.
+   */
+  async getDataDirectory(): Promise<string | null> {
+    if (!isTauri()) return null;
+    const { TauriFsClassroomStorage } = await import("./storage/tauri-fs.storage");
+    if (this.storage instanceof TauriFsClassroomStorage) {
+      return (this.storage as InstanceType<typeof TauriFsClassroomStorage>).getDataDirectory();
+    }
+    return null;
+  }
+
   async closeDatabase(): Promise<void> {
-    // Could clean up current active state if managed internally
+    // Cleanup if needed
   }
 }
 

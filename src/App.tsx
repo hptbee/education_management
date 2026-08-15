@@ -8,6 +8,7 @@ import {
   Copy,
   Crown,
   Download,
+  FolderOpen,
   Gift,
   GraduationCap,
   Heart,
@@ -507,6 +508,21 @@ export function SettingsPage() {
     databaseService.exportDatabase(data!).catch(console.error);
   };
 
+  const handleOpenDataFolder = async () => {
+    try {
+      const { databaseService } = await import("./database/database.service");
+      const dir = await databaseService.getDataDirectory();
+      if (!dir) {
+        setError("Chức năng này chỉ khả dụng khi chạy ứng dụng Tauri.");
+        return;
+      }
+      const { tauriFs } = await import("./database/tauri-fs.service");
+      await tauriFs.openPath(dir);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: "teacher", label: "Giáo viên", icon: <UserCircle size={18} /> },
     { id: "classroom", label: "Lớp học", icon: <MonitorPlay size={18} /> },
@@ -723,6 +739,24 @@ export function SettingsPage() {
               </div>
               <Button className="w-full justify-center bg-emerald-500 hover:bg-emerald-600" onClick={handleDuplicate} disabled={duplicating || !dupDraft.className.trim()}>
                 {duplicating ? "Đang nhân bản..." : <><Copy size={18} /> Nhân bản</>}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Open Data Folder — Tauri only */}
+          <Card className="bg-white/90 lg:col-span-2">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-sky-50 text-sky-600">
+                  <FolderOpen size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-[#273055]">📂 Mở thư mục dữ liệu</h2>
+                  <p className="text-xs text-[#6a6f91]">Xem file JSON của tất cả lớp học trong File Explorer</p>
+                </div>
+              </div>
+              <Button variant="ghost" onClick={handleOpenDataFolder}>
+                <FolderOpen size={18} /> Mở thư mục
               </Button>
             </div>
           </Card>
