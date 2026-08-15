@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Check, Info, Medal } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
@@ -9,7 +9,7 @@ import { getStudentBadges, studentHasBadge } from '@/src/utils/badges'
 import { BadgeCatalogSection } from './components/badge-catalog-section'
 import { StudentSearchPicker } from './components/student-search-picker'
 
-export default function BadgesPage() {
+function BadgesPageContent() {
   const { data, toggleStudentBadge } = useAppData()
   const { isLoaded } = useActiveClassroom()
   const searchParams = useSearchParams()
@@ -127,5 +127,19 @@ export default function BadgesPage() {
         <BadgeCatalogSection />
       </div>
     </div>
+  )
+}
+
+export default function BadgesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-xl font-bold text-gray-500">Đang tải dữ liệu...</p>
+        </div>
+      }
+    >
+      <BadgesPageContent />
+    </Suspense>
   )
 }
