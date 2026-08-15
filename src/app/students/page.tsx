@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Users, Search, Plus, FileSpreadsheet, Download,
-  Filter, X, GraduationCap, UserCheck,
+  Plus, FileSpreadsheet, Download, GraduationCap,
+  Search, X, ArrowUpDown, Filter, ChevronDown, Crown, Medal, Star, UserCheck,
 } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import type { Student } from '@/src/types/models'
-import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { sortStudents, type StudentSortOption } from '@/src/utils/student'
 import * as XLSX from 'xlsx'
 
 import { StudentCard } from './components/student-card'
@@ -15,23 +15,27 @@ import { StudentFormModal } from './components/student-form-modal'
 import { StudentDetailsModal } from './components/student-details-modal'
 import { DeleteConfirmModal } from './components/delete-confirm-modal'
 import { ImportModal } from './components/import-modal'
+import { PageHeader, EmptyState, ClassroomButton, ClassroomCard } from '@/src/components/classroom'
 
 // ─── Summary Card ────────────────────────────────────────────────────────────
 function SummaryCard({
   emoji, label, value, sub, color,
 }: { emoji: string; label: string; value: number | string; sub?: string; color: string }) {
   return (
-    <div className={`relative flex flex-1 min-w-[120px] flex-col items-center justify-center overflow-hidden rounded-2xl p-4 text-center ${color}`}>
+    <div className={`flex min-w-[140px] flex-1 items-center gap-3 rounded-2xl px-4 py-3 ${color}`}>
       <span className="text-2xl leading-none">{emoji}</span>
-      <p className="mt-1.5 text-2xl font-black leading-none text-slate-800">{value}</p>
-      {sub && <p className="text-[11px] font-bold text-slate-500">{sub}</p>}
-      <p className="mt-1 text-[11px] font-semibold text-slate-500 leading-tight">{label}</p>
+      <div className="min-w-0">
+        <p className="font-display text-2xl font-black leading-none text-slate-800">{value}</p>
+        <p className="mt-1 text-[11px] font-semibold text-slate-500">
+          {sub ? `${sub} · ` : ''}{label}
+        </p>
+      </div>
     </div>
   )
 }
 
 // ─── Empty State ─────────────────────────────────────────────────────────────
-function EmptyState({
+function StudentsEmptyState({
   filtered,
   onAdd,
   onImport,
@@ -44,54 +48,40 @@ function EmptyState({
 }) {
   if (filtered) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 py-16 text-center">
-        <div className="mb-4 text-5xl leading-none select-none">🔍</div>
-        <p className="text-base font-bold text-slate-700">Không tìm thấy học sinh nào</p>
-        <p className="mt-1 text-sm font-semibold text-slate-400">Thử thay đổi từ khóa hoặc bỏ bộ lọc</p>
-      </div>
+      <EmptyState
+        emoji="🔍"
+        title="Không tìm thấy học sinh nào"
+        description="Thử thay đổi từ khóa hoặc bỏ bộ lọc"
+      />
     )
   }
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-brand-purple/20 bg-gradient-to-b from-brand-purple/5 to-transparent px-8 py-16 text-center">
-      {/* Decorative illustration */}
-      <div className="mb-5 flex items-end justify-center gap-1 leading-none select-none">
-        <span className="text-5xl animate-[bounce_2s_ease-in-out_infinite]">🧒</span>
-        <span className="text-4xl animate-[bounce_2s_ease-in-out_0.3s_infinite]">👧</span>
-        <span className="text-5xl animate-[bounce_2s_ease-in-out_0.6s_infinite]">👦</span>
-      </div>
-
-      <h3 className="font-display text-xl font-black text-slate-700">
-        Lớp mình chưa có học sinh nào!
-      </h3>
-      <p className="mt-2 max-w-xs text-sm font-semibold leading-relaxed text-slate-500">
-        Hãy thêm học sinh đầu tiên hoặc nhập danh sách từ file Excel nhé 📋
-      </p>
-
-      <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-        <button
-          onClick={onAdd}
-          className="flex items-center gap-2 rounded-2xl bg-brand-purple px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-brand-purple-dark hover:shadow-brand-purple/30"
-        >
-          <Plus className="size-4" />
-          Thêm học sinh
-        </button>
-        <button
-          onClick={onImport}
-          className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
-        >
-          <FileSpreadsheet className="size-4 text-green-600" />
-          Nhập Excel
-        </button>
-        <button
-          onClick={onDownloadTemplate}
-          className="flex items-center gap-1.5 text-sm font-semibold text-brand-purple/70 underline underline-offset-2 transition hover:text-brand-purple"
-        >
-          <Download className="size-3.5" />
-          Tải file mẫu
-        </button>
-      </div>
-    </div>
+    <EmptyState
+      imageSrc="/banner-boy.png"
+      imageAlt="Học sinh"
+      title="Lớp mình chưa có học sinh nào!"
+      description="Hãy thêm học sinh đầu tiên hoặc nhập danh sách từ file Excel nhé."
+      action={
+        <>
+          <ClassroomButton onClick={onAdd}>
+            <Plus className="size-4" />
+            Thêm học sinh
+          </ClassroomButton>
+          <ClassroomButton variant="outline" onClick={onImport}>
+            <FileSpreadsheet className="size-4 text-green-600" />
+            Nhập Excel
+          </ClassroomButton>
+          <button
+            onClick={onDownloadTemplate}
+            className="flex items-center gap-1.5 text-sm font-semibold text-brand-purple/70 underline underline-offset-2 transition hover:text-brand-purple"
+          >
+            <Download className="size-3.5" />
+            Tải file mẫu
+          </button>
+        </>
+      }
+    />
   )
 }
 
@@ -102,6 +92,11 @@ export default function StudentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterGender, setFilterGender] = useState('all')
   const [filterTeam, setFilterTeam] = useState('all')
+  const [filterRole, setFilterRole] = useState('all')
+  const [filterBadge, setFilterBadge] = useState('all')
+  const [filterPoints, setFilterPoints] = useState('all')
+  const [sortBy, setSortBy] = useState<StudentSortOption>('role-stt')
+  const [filtersOpen, setFiltersOpen] = useState(true)
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -137,14 +132,34 @@ export default function StudentsPage() {
         filterTeam === 'all' ||
         (filterTeam === 'none' ? !s.teamId : s.teamId === filterTeam)
 
-      return matchesSearch && matchesGender && matchesTeam
+      const roleIds = s.classroomRoleIds ?? []
+      const matchesRole =
+        filterRole === 'all' ||
+        (filterRole === 'none' ? roleIds.length === 0 : roleIds.includes(filterRole))
+
+      const badgeIds = s.badgeIds ?? []
+      const matchesBadge =
+        filterBadge === 'all' ||
+        (filterBadge === 'none' ? badgeIds.length === 0 : badgeIds.includes(filterBadge))
+
+      const matchesPoints =
+        filterPoints === 'all' ||
+        (filterPoints === 'has' ? s.points > 0 : filterPoints === 'none' ? s.points === 0 : true)
+
+      return matchesSearch && matchesGender && matchesTeam && matchesRole && matchesBadge && matchesPoints
     })
 
-    return sortStudentsByClassroomRoleThenStt(filtered, students)
-  }, [students, searchQuery, filterGender, filterTeam])
+    return sortStudents(filtered, students, sortBy, teams)
+  }, [students, teams, searchQuery, filterGender, filterTeam, filterRole, filterBadge, filterPoints, sortBy])
 
   const hasActiveFilter =
-    searchQuery !== '' || filterGender !== 'all' || filterTeam !== 'all'
+    searchQuery !== '' ||
+    filterGender !== 'all' ||
+    filterTeam !== 'all' ||
+    filterRole !== 'all' ||
+    filterBadge !== 'all' ||
+    filterPoints !== 'all' ||
+    sortBy !== 'role-stt'
 
   // ── Handlers
   const handleOpenAdd = () => { setSelectedStudent(null); setIsFormOpen(true) }
@@ -184,6 +199,10 @@ export default function StudentsPage() {
     setSearchQuery('')
     setFilterGender('all')
     setFilterTeam('all')
+    setFilterRole('all')
+    setFilterBadge('all')
+    setFilterPoints('all')
+    setSortBy('role-stt')
   }
 
   if (!isLoaded || !classroom) return null
@@ -192,184 +211,209 @@ export default function StudentsPage() {
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6 pb-10 scrollbar-thin">
 
-        {/* ── HEADER ── */}
-        <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-start">
-          {/* Left: title + identity */}
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-purple/10">
-                <GraduationCap className="size-5 text-brand-purple" />
-              </div>
-              <div>
-                <h1 className="font-display text-2xl font-black leading-tight text-slate-800">
-                  Quản lý Học sinh
-                </h1>
-                <p className="text-xs font-semibold text-slate-400">
-                  Quản lý danh sách học sinh của lớp
-                </p>
-              </div>
+        <PageHeader
+          icon={GraduationCap}
+          title="Quản lý học sinh"
+          subtitle={`${classroom.className} · Năm học ${classroom.schoolYear}`}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <ClassroomButton variant="outline" onClick={handleDownloadTemplate}>
+                <Download className="size-4" /> Tải file mẫu
+              </ClassroomButton>
+              <ClassroomButton variant="outline" onClick={() => setIsImportOpen(true)}>
+                <FileSpreadsheet className="size-4 text-emerald-600" /> Nhập Excel
+              </ClassroomButton>
+              <ClassroomButton onClick={handleOpenAdd}>
+                <Plus className="size-4" /> Thêm học sinh
+              </ClassroomButton>
             </div>
+          }
+        />
 
-            {/* Classroom identity badge */}
-            <div className="ml-12 mt-1 flex items-center gap-2">
-              {classroom.classAvatar ? (
-                <img
-                  src={classroom.classAvatar}
-                  alt={classroom.className}
-                  className="size-6 rounded-full object-cover ring-1 ring-brand-purple/20"
-                />
-              ) : (
-                <span className="flex size-6 items-center justify-center rounded-full bg-brand-purple/10 text-xs">
-                  🏫
-                </span>
-              )}
-              <span className="text-sm font-bold text-slate-700">
-                {classroom.className}
-              </span>
-              <span className="text-slate-300">·</span>
-              <span className="text-sm font-semibold text-slate-500">
-                Năm học {classroom.schoolYear}
-              </span>
-            </div>
-          </div>
-
-          {/* Right: action buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleDownloadTemplate}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
-              title="Tải file Excel mẫu"
-            >
-              <Download className="size-4 text-slate-400" />
-              <span className="hidden sm:inline">Tải file mẫu</span>
-            </button>
-            <button
-              onClick={() => setIsImportOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
-            >
-              <FileSpreadsheet className="size-4 text-green-600" />
-              Nhập Excel
-            </button>
-            <button
-              onClick={handleOpenAdd}
-              className="flex items-center gap-1.5 rounded-xl bg-brand-purple px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-purple/20 transition hover:bg-brand-purple-dark"
-            >
-              <Plus className="size-4" />
-              Thêm học sinh
-            </button>
-          </div>
-        </header>
-
-        {/* ── SUMMARY CARDS ── */}
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SummaryCard
             emoji="👩‍🏫"
-            label="Tổng số học sinh"
+            label="Tổng số"
             value={students.length}
             sub="học sinh"
-            color="bg-brand-purple/5 border border-brand-purple/10"
+            color="bg-pastel-sky"
           />
           <SummaryCard
             emoji="👦"
-            label="Học sinh Nam"
+            label="Nam"
             value={totalMale}
-            color="bg-sky-50 border border-sky-100"
+            sub="học sinh"
+            color="bg-brand-soft"
           />
           <SummaryCard
             emoji="👧"
-            label="Học sinh Nữ"
+            label="Nữ"
             value={totalFemale}
-            color="bg-pink-50 border border-pink-100"
+            sub="học sinh"
+            color="bg-pastel-pink"
           />
           <SummaryCard
             emoji="🏆"
             label="Đã chia tổ"
-            value={`${totalAssigned} / ${students.length}`}
-            color="bg-amber-50 border border-amber-100"
+            value={`${totalAssigned}/${students.length}`}
+            color="bg-pastel-yellow"
           />
         </div>
 
-        {/* ── SEARCH + FILTER TOOLBAR ── */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <ClassroomCard className="space-y-3">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                id="student-search"
-                placeholder="Tìm học sinh theo tên, quê quán, sđt, phụ huynh..."
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-brand-purple/40 focus:bg-white"
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm theo tên, quê quán, SĐT, phụ huynh..."
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              {searchQuery && (
+              {searchQuery ? (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  aria-label="Xóa tìm kiếm"
                 >
                   <X className="size-4" />
                 </button>
-              )}
+              ) : null}
             </div>
 
-            {/* Gender filter */}
-            <div className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <Filter className="size-3.5 text-slate-400" />
+            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <ArrowUpDown className="size-3.5 shrink-0 text-slate-400" />
               <select
-                id="filter-gender"
-                value={filterGender}
-                onChange={e => setFilterGender(e.target.value)}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as StudentSortOption)}
                 className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
               >
-                <option value="all">Tất cả giới tính</option>
-                <option value="male">👦 Nam</option>
-                <option value="female">👧 Nữ</option>
+                <option value="role-stt">Vai trò → STT</option>
+                <option value="name-asc">Tên A → Z</option>
+                <option value="name-desc">Tên Z → A</option>
+                <option value="points-desc">Điểm cao → thấp</option>
+                <option value="points-asc">Điểm thấp → cao</option>
+                <option value="team">Theo tổ</option>
+                <option value="newest">Mới thêm gần đây</option>
               </select>
             </div>
 
-            {/* Team filter — only shown when teams exist */}
-            {teams.length > 0 && (
-              <div className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <UserCheck className="size-3.5 text-slate-400" />
-                <select
-                  id="filter-team"
-                  value={filterTeam}
-                  onChange={e => setFilterTeam(e.target.value)}
-                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
-                >
-                  <option value="all">Tất cả tổ</option>
-                  <option value="none">Chưa có tổ</option>
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Clear filters */}
-            {hasActiveFilter && (
+            {hasActiveFilter ? (
               <button
+                type="button"
                 onClick={handleClearFilters}
-                className="flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                className="flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700"
               >
                 <X className="size-3.5" />
                 Xóa lọc
               </button>
-            )}
+            ) : null}
           </div>
 
-          {/* Result count */}
-          {hasActiveFilter && (
-            <p className="mt-2 px-1 text-xs font-semibold text-slate-400">
-              Hiển thị {filteredStudents.length} / {students.length} học sinh
-            </p>
-          )}
-        </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+            className="flex w-full items-center justify-between rounded-xl border border-sky-100 bg-brand-soft/50 px-3 py-2.5 text-left"
+          >
+            <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <Filter className="size-4 text-brand" />
+              Bộ lọc nhanh
+            </span>
+            <ChevronDown className={`size-4 text-slate-400 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {filtersOpen ? (
+            <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <Filter className="size-3.5 text-slate-400" />
+                <select
+                  value={filterGender}
+                  onChange={(e) => setFilterGender(e.target.value)}
+                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                >
+                  <option value="all">Tất cả giới tính</option>
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                </select>
+              </div>
+
+              {teams.length > 0 ? (
+                <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <UserCheck className="size-3.5 text-slate-400" />
+                  <select
+                    value={filterTeam}
+                    onChange={(e) => setFilterTeam(e.target.value)}
+                    className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                  >
+                    <option value="all">Tất cả tổ</option>
+                    <option value="none">Chưa có tổ</option>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              {classroomRoles.length > 0 ? (
+                <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <Crown className="size-3.5 text-slate-400" />
+                  <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                    className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                  >
+                    <option value="all">Tất cả vai trò</option>
+                    <option value="none">Chưa có vai trò</option>
+                    {classroomRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.icon ? `${role.icon} ` : ''}{role.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              {badges.length > 0 ? (
+                <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <Medal className="size-3.5 text-slate-400" />
+                  <select
+                    value={filterBadge}
+                    onChange={(e) => setFilterBadge(e.target.value)}
+                    className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                  >
+                    <option value="all">Tất cả huy hiệu</option>
+                    <option value="none">Chưa có huy hiệu</option>
+                    {badges.map((badge) => (
+                      <option key={badge.id} value={badge.id}>
+                        {badge.icon ? `${badge.icon} ` : ''}{badge.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <Star className="size-3.5 text-amber-500" />
+                <select
+                  value={filterPoints}
+                  onChange={(e) => setFilterPoints(e.target.value)}
+                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                >
+                  <option value="all">Tất cả điểm</option>
+                  <option value="has">Có điểm</option>
+                  <option value="none">Chưa có điểm</option>
+                </select>
+              </div>
+            </div>
+          ) : null}
+        </ClassroomCard>
 
         {/* ── STUDENT GRID / EMPTY STATE ── */}
         {filteredStudents.length === 0 ? (
-          <EmptyState
+          <StudentsEmptyState
             filtered={hasActiveFilter}
             onAdd={handleOpenAdd}
             onImport={() => setIsImportOpen(true)}
@@ -378,10 +422,13 @@ export default function StudentsPage() {
         ) : (
           <>
             {/* Count label */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between rounded-2xl bg-white/60 px-1 py-1">
               <p className="text-sm font-bold text-slate-500">
-                <span className="text-brand-purple">{filteredStudents.length}</span> học sinh
-                {hasActiveFilter && ' (đã lọc)'}
+                <span className="font-display text-lg text-brand">{filteredStudents.length}</span>
+                {' '}học sinh
+                {hasActiveFilter ? (
+                  <span className="ml-1 text-xs font-semibold text-slate-400">(đã lọc)</span>
+                ) : null}
               </p>
             </div>
 

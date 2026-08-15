@@ -38,6 +38,56 @@ export function sortStudentsByClassroomRoleThenStt(students: Student[], roster: 
   })
 }
 
+export type StudentSortOption =
+  | 'role-stt'
+  | 'name-asc'
+  | 'name-desc'
+  | 'points-desc'
+  | 'points-asc'
+  | 'newest'
+  | 'team'
+
+export function sortStudents(
+  students: Student[],
+  roster: Student[],
+  sortBy: StudentSortOption,
+  teams: Team[] = [],
+): Student[] {
+  const list = [...students]
+
+  switch (sortBy) {
+    case 'role-stt':
+      return sortStudentsByClassroomRoleThenStt(list, roster)
+    case 'name-asc':
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    case 'name-desc':
+      return list.sort((a, b) => b.name.localeCompare(a.name, 'vi'))
+    case 'points-desc':
+      return list.sort(
+        (a, b) => b.points - a.points || a.name.localeCompare(b.name, 'vi'),
+      )
+    case 'points-asc':
+      return list.sort(
+        (a, b) => a.points - b.points || a.name.localeCompare(b.name, 'vi'),
+      )
+    case 'newest':
+      return list.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+    case 'team': {
+      const teamOrder = new Map(teams.map((team, index) => [team.id, index]))
+      return list.sort((a, b) => {
+        const aRank = a.teamId ? (teamOrder.get(a.teamId) ?? 999) : 999
+        const bRank = b.teamId ? (teamOrder.get(b.teamId) ?? 999) : 999
+        if (aRank !== bRank) return aRank - bRank
+        return a.name.localeCompare(b.name, 'vi')
+      })
+    }
+    default:
+      return list
+  }
+}
+
 export function sortTeamMembersByLeadershipThenStt(
   members: Student[],
   team: Team,
