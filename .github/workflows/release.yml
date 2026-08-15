@@ -9,7 +9,61 @@ on:
       - 'v*'
 
 jobs:
-  publish-tauri:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        id: create-release
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        with:
+          script: |
+            const tag = `v${process.env.APP_VERSION}`;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            try {
+              const { data } = await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tag,
+                target_commitish: context.sha,
+                name: `QuanLyLopHoc v${process.env.APP_VERSION}`,
+                body: [
+                  'Desktop builds for Windows, macOS (Intel + Apple Silicon), and Linux.',
+                  '',
+                  'Download the installer or bundle for your platform from the assets below.',
+                ].join('\n'),
+                draft: true,
+                prerelease: false,
+              });
+              return data.id;
+            } catch (error) {
+              if (error.status !== 422) {
+                throw error;
+              }
+
+              const { data: existing } = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag,
+              });
+              return existing.id;
+            }
+
+  build-tauri:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -38,7 +92,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 22
           cache: npm
 
       - name: Install Rust stable
@@ -54,16 +108,12 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Build frontend
+        run: npm run build
+
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'QuanLyLopHoc v__VERSION__'
-          releaseBody: |
-            Desktop builds for Windows, macOS (Intel + Apple Silicon), and Linux.
-
-            Download the installer or bundle for your platform from the assets below.
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
