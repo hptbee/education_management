@@ -39,7 +39,7 @@ Inspect:
 | `/rewards` | Rewards |
 | `/badges` | Badge catalog & student awards |
 | `/tools` | Lucky Wheel, Study Timer, Lucky Star |
-| `/games` | Classroom games |
+| `/games` | Redirects to `/tools` (legacy route) |
 | `/recognition` | Recognition |
 | `/ranking` | Student & team rankings |
 | `/history` | Activity history |

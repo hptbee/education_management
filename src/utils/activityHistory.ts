@@ -1,10 +1,12 @@
 import type {
-  ClassroomDatabase,
   PointHistory,
   Recognition,
   RewardHistory,
+  Student,
+  Team,
   TeamScoreHistory,
 } from '@/src/types/models'
+import type { ClassroomDatabase } from '@/src/database/types'
 
 export type ActivityKind = 'points' | 'reward' | 'recognition' | 'team-score'
 
@@ -23,11 +25,11 @@ export interface ActivityEntry {
   teamName?: string
 }
 
-function studentNameById(students: ClassroomDatabase['students'], studentId: string) {
+function studentNameById(students: Student[], studentId: string) {
   return students.find((s) => s.id === studentId)?.name ?? 'Học sinh'
 }
 
-function teamNameById(teams: ClassroomDatabase['teams'], teamId: string) {
+function teamNameById(teams: Team[], teamId: string) {
   return teams.find((t) => t.id === teamId)?.name ?? 'Tổ'
 }
 

@@ -18,6 +18,24 @@ function SaveErrorNotifier() {
   return null
 }
 
+function InitErrorBanner({ onRetry }: { onRetry: () => void }) {
+  const { initError } = useAppData()
+  if (!initError) return null
+
+  return (
+    <div className="border-b border-rose-200 bg-rose-50 px-5 py-3">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-rose-700">
+          Không thể khởi tạo dữ liệu: {initError}
+        </p>
+        <ClassroomButton variant="outline" onClick={() => void onRetry()}>
+          Thử lại
+        </ClassroomButton>
+      </div>
+    </div>
+  )
+}
+
 export function AppDataShell({ children }: { children: ReactNode }) {
   const { data, isLoading, initError, retryInit } = useAppData()
   const pathname = usePathname()
@@ -34,6 +52,16 @@ export function AppDataShell({ children }: { children: ReactNode }) {
       <div className="flex flex-1 items-center justify-center">
         <p className="text-xl font-bold text-slate-500">Đang tải dữ liệu...</p>
       </div>
+    )
+  }
+
+  if (initError && onSettings) {
+    return (
+      <>
+        <InitErrorBanner onRetry={retryInit} />
+        <SaveErrorNotifier />
+        {children}
+      </>
     )
   }
 

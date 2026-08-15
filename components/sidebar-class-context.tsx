@@ -16,7 +16,7 @@ function formatSchoolYear(schoolYear?: string) {
 }
 
 export function SidebarClassContext() {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const { classroom, teacher } = useActiveClassroom()
 
   const teacherName = teacher?.name?.trim() || 'Giáo viên'

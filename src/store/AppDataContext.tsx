@@ -25,6 +25,12 @@ import {
 import type { ClassroomDatabase } from "../database/types";
 import { databaseService } from "../database/database.service";
 import { buildRecognizeStudentsUpdate, type RecognizeStudentsInput } from "../utils/recognition";
+import { capHistory } from "../utils/historyLimits";
+import {
+  clearLastClassroomId,
+  getLastClassroomId,
+  setLastClassroomId,
+} from "../utils/lastClassroom";
 
 export type { RecognizeStudentsInput };
 
@@ -85,6 +91,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const dataRef = useRef<ClassroomDatabase | null>(null);
   const lastPersistedRef = useRef<ClassroomDatabase | null>(null);
+  const saveGenerationRef = useRef(0);
 
   const clearSaveError = () => setSaveError(null);
 
@@ -92,6 +99,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setDataState(db);
     dataRef.current = db;
     lastPersistedRef.current = db;
+    if (db) {
+      setLastClassroomId(db.metadata.id);
+    } else {
+      clearLastClassroomId();
+    }
   }, []);
 
   const loadInitialDatabase = useCallback(async () => {
@@ -101,8 +113,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       await databaseService.initializeAndMigrate();
       const databases = await databaseService.listDatabases();
       if (databases.length > 0) {
-        const latest = databases[0];
-        const db = await databaseService.openDatabase(latest.id);
+        const lastId = getLastClassroomId();
+        const preferred = lastId ? databases.find((item) => item.id === lastId) : undefined;
+        const targetId = preferred?.id ?? databases[0].id;
+        const db = await databaseService.openDatabase(targetId);
         applyLoadedDatabase(db);
       } else {
         applyLoadedDatabase(null);
@@ -122,15 +136,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [loadInitialDatabase]);
 
   const commitData = useCallback((next: ClassroomDatabase) => {
+    const generation = ++saveGenerationRef.current;
     setDataState(next);
     dataRef.current = next;
 
     void databaseService
       .saveDatabase(next)
       .then((saved) => {
+        if (generation !== saveGenerationRef.current) return;
         lastPersistedRef.current = saved;
       })
       .catch(async (error) => {
+        if (generation !== saveGenerationRef.current) {
+          console.warn("[AppDataProvider] ignored stale save failure:", error);
+          return;
+        }
+
         const message =
           error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
         console.error("[AppDataProvider] save failed:", error);
@@ -143,7 +164,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         } else {
           try {
             const reloaded = await databaseService.openDatabase(classroomId);
-            if (reloaded) {
+            if (reloaded && generation === saveGenerationRef.current) {
               setDataState(reloaded);
               dataRef.current = reloaded;
               lastPersistedRef.current = reloaded;
@@ -471,7 +492,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             teams: current.teams.map((team) =>
               team.id === teamId ? { ...team, score: team.score + delta, updatedAt: history.createdAt } : team,
             ),
-            teamScoreHistory: [history, ...current.teamScoreHistory],
+            teamScoreHistory: capHistory([history, ...current.teamScoreHistory]),
           };
         }),
       resetTeamScore: (teamId) =>
@@ -488,7 +509,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return {
             ...current,
             teams: current.teams.map((item) => (item.id === teamId ? { ...item, score: 0, updatedAt: now } : item)),
-            teamScoreHistory: [history, ...current.teamScoreHistory],
+            teamScoreHistory: capHistory([history, ...current.teamScoreHistory]),
           };
         }),
       savePointAction: (action) =>
@@ -523,7 +544,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 ? { ...student, points: student.points + action.points, updatedAt: now }
                 : student,
             ),
-            pointHistory: [history, ...current.pointHistory],
+            pointHistory: capHistory([history, ...current.pointHistory]),
           };
         }),
       saveReward: (reward) =>
@@ -585,8 +606,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   }
                 : item,
             ),
-            rewardHistory: [history, ...current.rewardHistory],
-            pointHistory: [pointHistory, ...current.pointHistory],
+            rewardHistory: capHistory([history, ...current.rewardHistory]),
+            pointHistory: capHistory([pointHistory, ...current.pointHistory]),
           };
         });
         return success;
@@ -630,7 +651,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const result = buildRecognizeStudentsUpdate(current, input);
           if (!result) return current;
           created = result.created;
-          return result.next;
+          return {
+            ...result.next,
+            pointHistory: capHistory(result.next.pointHistory),
+            recognitions: capHistory(result.next.recognitions),
+          };
         });
         return created;
       },
@@ -667,7 +692,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   ? { ...s, points: s.points - recognition.awardedPoints!, updatedAt: now }
                   : s,
               );
-              pointHistory = [reversal, ...pointHistory];
+              pointHistory = capHistory([reversal, ...pointHistory]);
             }
           }
 
@@ -680,7 +705,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }),
       addRecognition: (recognition) => {
         const saved: Recognition = { ...recognition, id: createId("recognition"), createdAt: new Date().toISOString() };
-        setData((current) => ({ ...current, recognitions: [saved, ...current.recognitions] }));
+        setData((current) => ({
+          ...current,
+          recognitions: capHistory([saved, ...current.recognitions]),
+        }));
         return saved;
       },
       setWheelStudentBag: (bag) => setData((current) => ({ ...current, wheelStudentBag: bag })),

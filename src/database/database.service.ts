@@ -6,6 +6,7 @@ import { generateDatabaseId, generateExportFilename } from "./database.utils";
 import { normalizeClassroomDatabase } from "../utils/classroomRoles";
 import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
+import { assertImportFileSize } from "./importLimits";
 
 function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
   if (!data || typeof data !== "object") {
@@ -213,7 +214,20 @@ export class DatabaseService {
     };
 
     await this.storage.save(updatedDb);
-    await this.storage.delete(currentId);
+    const verified = await this.storage.load(newId);
+    if (!verified || verified.metadata.id !== newId) {
+      throw new Error("Không thể xác minh lớp học sau khi đổi tên. Vui lòng thử lại.");
+    }
+
+    try {
+      await this.storage.delete(currentId);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Không thể xóa bản ghi lớp cũ.";
+      throw new Error(
+        `Lớp mới đã được lưu thành công nhưng không thể xóa bản ghi cũ (${message}). Hãy xóa thủ công lớp cũ trong Cài đặt.`,
+      );
+    }
 
     return updatedDb;
   }
@@ -277,6 +291,8 @@ export class DatabaseService {
   }
 
   async importDatabase(file: File): Promise<ClassroomDatabase> {
+    assertImportFileSize(file);
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async (e) => {

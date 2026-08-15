@@ -95,7 +95,7 @@ function SidebarNavLink({
 }
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const settingsActive = isNavActive(pathname, '/settings')
 
   return (

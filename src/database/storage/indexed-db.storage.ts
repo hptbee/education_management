@@ -6,6 +6,22 @@ const DB_NAME = "ClassroomDatabases";
 const DB_VERSION = 1;
 const STORE_NAME = "databases";
 
+function runTransaction<T>(
+  db: IDBDatabase,
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, mode);
+    const store = transaction.objectStore(STORE_NAME);
+    const request = run(store);
+
+    request.onerror = () => reject(request.error);
+    transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB transaction aborted"));
+    transaction.oncomplete = () => resolve(request.result);
+  });
+}
+
 export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
   private dbPromise: Promise<IDBDatabase> | null = null;
   /** Serial write queue — prevents concurrent puts from racing */
@@ -37,27 +53,14 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
 
   async load(id: string): Promise<ClassroomDatabase | null> {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readonly");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.get(id);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result || null);
-    });
+    const result = await runTransaction(db, "readonly", (store) => store.get(id));
+    return result || null;
   }
 
   async save(database: ClassroomDatabase): Promise<void> {
     const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
       const db = await this.getDB();
-      await new Promise<void>((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, "readwrite");
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.put(database);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve();
-      });
+      await runTransaction(db, "readwrite", (store) => store.put(database));
     });
     this.writeQueue = nextQueue;
     return result;
@@ -66,14 +69,7 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
   async delete(id: string): Promise<void> {
     const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
       const db = await this.getDB();
-      await new Promise<void>((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, "readwrite");
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.delete(id);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve();
-      });
+      await runTransaction(db, "readwrite", (store) => store.delete(id));
     });
     this.writeQueue = nextQueue;
     return result;
@@ -81,29 +77,22 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
 
   async list(): Promise<DatabaseSummary[]> {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readonly");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.getAll();
+    const databases = await runTransaction<ClassroomDatabase[]>(db, "readonly", (store) => store.getAll());
+    const summaries = databases.map((dbItem) => ({
+      id: dbItem.metadata.id,
+      className: dbItem.classroomSettings.className,
+      schoolYear: dbItem.classroomSettings.schoolYear,
+      teacherName:
+        dbItem.classroomSettings.teacher?.name ||
+        (dbItem.classroomSettings as { teacherName?: string }).teacherName ||
+        "Teacher",
+      studentCount: dbItem.students.length,
+      createdAt: dbItem.metadata.createdAt,
+      updatedAt: dbItem.metadata.updatedAt,
+    }));
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const databases = request.result as ClassroomDatabase[];
-        const summaries = databases.map((db) => ({
-          id: db.metadata.id,
-          className: db.classroomSettings.className,
-          schoolYear: db.classroomSettings.schoolYear,
-          teacherName: db.classroomSettings.teacher?.name || (db.classroomSettings as any).teacherName || "Teacher",
-          studentCount: db.students.length,
-          createdAt: db.metadata.createdAt,
-          updatedAt: db.metadata.updatedAt,
-        }));
-        
-        // Sort by updatedAt descending
-        summaries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        
-        resolve(summaries);
-      };
-    });
+    summaries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+    return summaries;
   }
 }

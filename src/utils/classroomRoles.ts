@@ -120,6 +120,12 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
       students,
       teams,
       recognitions: db.recognitions ?? [],
+      luckyWheelHistory: db.luckyWheelHistory ?? [],
+      wheelStudentBag: db.wheelStudentBag ?? [],
+      appSettings: db.appSettings ?? {
+        soundEnabled: true,
+        animationsEnabled: true,
+      },
     }),
   );
 }

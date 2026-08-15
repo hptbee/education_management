@@ -108,7 +108,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 
 ### Other
 - Recognition ceremony screen
-- Random student classroom games (`/games`)
+- Classroom tools (`/tools`; `/games` redirects here)
 - Local image uploads (stored as base64 strings in the JSON database)
 - Export / Import JSON database backups
 - Duplicate databases for new school years

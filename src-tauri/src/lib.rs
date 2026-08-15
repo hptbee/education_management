@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
 fn get_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -8,6 +8,81 @@ fn get_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("Failed to get app data dir: {}", e))
 }
 
+fn normalize_for_compare(path: &Path) -> String {
+    let mut normalized = path
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_lowercase();
+    if let Some(stripped) = normalized.strip_prefix("//?/") {
+        normalized = stripped.to_string();
+    }
+    while normalized.len() > 1 && normalized.ends_with('/') {
+        normalized.pop();
+    }
+    normalized
+}
+
+fn path_is_under(base: &Path, candidate: &Path) -> bool {
+    let base_key = normalize_for_compare(base);
+    let candidate_key = normalize_for_compare(candidate);
+    candidate_key == base_key || candidate_key.starts_with(&format!("{}/", base_key))
+}
+
+fn resolve_under_data_path(path: &Path, create_missing_parent: bool) -> Result<PathBuf, String> {
+    if path.exists() {
+        return std::fs::canonicalize(path)
+            .map_err(|e| format!("Failed to canonicalize {}: {}", path.display(), e));
+    }
+
+    let parent = path
+        .parent()
+        .ok_or_else(|| format!("Invalid path: {}", path.display()))?;
+
+    if !parent.exists() {
+        if !create_missing_parent {
+            if path.file_name().is_none() {
+                return Err(format!("Path not found: {}", path.display()));
+            }
+            // Allow checking or removing a not-yet-created file under an existing parent.
+            if !parent.as_os_str().is_empty() {
+                let canonical_parent = std::fs::canonicalize(parent).map_err(|_| {
+                    format!("Path not found: {}", path.display())
+                })?;
+                return Ok(canonical_parent.join(path.file_name().unwrap()));
+            }
+            return Err(format!("Path not found: {}", path.display()));
+        }
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create parent dir {}: {}", parent.display(), e))?;
+    }
+
+    let canonical_parent = std::fs::canonicalize(parent)
+        .map_err(|e| format!("Failed to canonicalize {}: {}", parent.display(), e))?;
+
+    match path.file_name() {
+        Some(name) => Ok(canonical_parent.join(name)),
+        None => Ok(canonical_parent),
+    }
+}
+
+fn assert_under_data_dir(app: &AppHandle, path: &str, create_missing_parent: bool) -> Result<PathBuf, String> {
+    let data_dir = get_data_dir(app)?;
+    std::fs::create_dir_all(&data_dir)
+        .map_err(|e| format!("Failed to create data dir {}: {}", data_dir.display(), e))?;
+
+    let canonical_data = std::fs::canonicalize(&data_dir)
+        .map_err(|e| format!("Failed to canonicalize data dir {}: {}", data_dir.display(), e))?;
+
+    let requested = PathBuf::from(path);
+    let resolved = resolve_under_data_path(&requested, create_missing_parent)?;
+
+    if !path_is_under(&canonical_data, &resolved) {
+        return Err("Access denied: path is outside application data directory".to_string());
+    }
+
+    Ok(resolved)
+}
+
 #[tauri::command]
 async fn get_data_directory(app: AppHandle) -> Result<String, String> {
     let dir = get_data_dir(&app)?;
@@ -15,59 +90,77 @@ async fn get_data_directory(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn ensure_dir(path: String) -> Result<(), String> {
-    std::fs::create_dir_all(&path).map_err(|e| format!("Failed to create dir {}: {}", path, e))
+async fn ensure_dir(app: AppHandle, path: String) -> Result<(), String> {
+    let safe_path = assert_under_data_dir(&app, &path, true)?;
+    std::fs::create_dir_all(&safe_path)
+        .map_err(|e| format!("Failed to create dir {}: {}", safe_path.display(), e))
 }
 
 #[tauri::command]
-async fn read_text_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| format!("Failed to read {}: {}", path, e))
+async fn read_text_file(app: AppHandle, path: String) -> Result<String, String> {
+    let safe_path = assert_under_data_dir(&app, &path, false)?;
+    std::fs::read_to_string(&safe_path)
+        .map_err(|e| format!("Failed to read {}: {}", safe_path.display(), e))
 }
 
 #[tauri::command]
-async fn write_text_file(path: String, contents: String) -> Result<(), String> {
-    // Safe write: write to temp file then rename
-    let temp_path = format!("{}.tmp", path);
+async fn write_text_file(app: AppHandle, path: String, contents: String) -> Result<(), String> {
+    let safe_path = assert_under_data_dir(&app, &path, true)?;
+    let temp_path = PathBuf::from(format!("{}.tmp", safe_path.to_string_lossy()));
+    let canonical_data = std::fs::canonicalize(get_data_dir(&app)?)
+        .map_err(|e| format!("Failed to canonicalize data dir: {}", e))?;
+    if !path_is_under(&canonical_data, &temp_path) {
+        return Err("Access denied: temp path is outside application data directory".to_string());
+    }
+
     std::fs::write(&temp_path, &contents)
-        .map_err(|e| format!("Failed to write temp file {}: {}", temp_path, e))?;
-    std::fs::rename(&temp_path, &path)
-        .map_err(|e| format!("Failed to rename temp file to {}: {}", path, e))
+        .map_err(|e| format!("Failed to write temp file {}: {}", temp_path.display(), e))?;
+    std::fs::rename(&temp_path, &safe_path)
+        .map_err(|e| format!("Failed to rename temp file to {}: {}", safe_path.display(), e))
 }
 
 #[tauri::command]
-async fn remove_file(path: String) -> Result<(), String> {
-    if std::path::Path::new(&path).exists() {
-        std::fs::remove_file(&path).map_err(|e| format!("Failed to remove {}: {}", path, e))
+async fn remove_file(app: AppHandle, path: String) -> Result<(), String> {
+    let safe_path = match assert_under_data_dir(&app, &path, false) {
+        Ok(resolved) => resolved,
+        Err(_) => return Ok(()),
+    };
+    if safe_path.exists() {
+        std::fs::remove_file(&safe_path)
+            .map_err(|e| format!("Failed to remove {}: {}", safe_path.display(), e))
     } else {
         Ok(())
     }
 }
 
 #[tauri::command]
-async fn file_exists(path: String) -> Result<bool, String> {
-    Ok(std::path::Path::new(&path).exists())
+async fn file_exists(app: AppHandle, path: String) -> Result<bool, String> {
+    let safe_path = assert_under_data_dir(&app, &path, false)?;
+    Ok(safe_path.exists())
 }
-
 #[tauri::command]
-async fn open_path(path: String) -> Result<(), String> {
+async fn open_path(app: AppHandle, path: String) -> Result<(), String> {
+    let safe_path = assert_under_data_dir(&app, &path, false)?;
+    let open_target = safe_path.to_string_lossy().to_string();
+
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
-            .arg(&path)
+            .arg(&open_target)
             .spawn()
             .map_err(|e| format!("Failed to open explorer: {}", e))?;
     }
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
-            .arg(&path)
+            .arg(&open_target)
             .spawn()
             .map_err(|e| format!("Failed to open finder: {}", e))?;
     }
     #[cfg(target_os = "linux")]
     {
         std::process::Command::new("xdg-open")
-            .arg(&path)
+            .arg(&open_target)
             .spawn()
             .map_err(|e| format!("Failed to open file manager: {}", e))?;
     }
