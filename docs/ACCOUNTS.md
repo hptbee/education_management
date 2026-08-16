@@ -107,7 +107,7 @@ Rotating keys invalidates existing entitlements — teachers must sign in again.
 
 | Plan | `appAccess` | `cloudBackup` | Typical expiry |
 |---|---|---|---|
-| **trial** | yes | no | **7 days** (`DEFAULT_TRIAL_DAYS = 7` in `wrangler.toml`) on first login |
+| **trial** | yes | no | **7 days** (`DEFAULT_TRIAL_DAYS = 7` in `wrangler.toml`) on **first** Google login only |
 | **basic** | yes | no | Set by admin |
 | **premium** | yes | yes | Set by admin |
 | **lifetime** | yes | yes | None (`expires_at` null) |
@@ -115,6 +115,8 @@ Rotating keys invalidates existing entitlements — teachers must sign in again.
 Teacher-facing plan comparison in **Cài đặt → Tài khoản** shows **Dùng thử** (7 ngày), **Gói Cơ bản**, and **Premium 1 năm** only. The `lifetime` plan remains fully supported for existing licenses but is not advertised as an upgrade option.
 
 Changing `DEFAULT_TRIAL_DAYS` affects **new** trial licenses only. Teachers who already have a trial row in D1 keep their stored `expires_at` until an admin updates the license.
+
+**Trial is once per Google account.** If a trial expires, later logins return `LICENSE_EXPIRED` until an admin issues a new license via `POST /admin/licenses`. Redeploy the Worker after changing trial or backup validation logic.
 
 Permissions are embedded in the signed entitlement JWT and re-derived from D1 on each Worker request. When an admin changes a teacher's plan, the teacher must **refresh** (or wait for auto-refresh when online) to get updated permissions in the app.
 

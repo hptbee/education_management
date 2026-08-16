@@ -1,7 +1,8 @@
 'use client'
 
 import { AlertTriangle } from 'lucide-react'
-import type { Team, Student } from '@/src/types/models'
+import type { Team } from '@/src/types/models'
+import { useModalFocusTrap } from '@/src/components/classroom'
 
 interface DeleteTeamDialogProps {
   isOpen: boolean
@@ -12,16 +13,25 @@ interface DeleteTeamDialogProps {
 }
 
 export function DeleteTeamDialog({ isOpen, onClose, onConfirm, team, memberCount }: DeleteTeamDialogProps) {
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
+
   if (!isOpen || !team) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl text-center">
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-team-title"
+        tabIndex={-1}
+        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl text-center"
+      >
         <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-red-100 text-red-500">
           <AlertTriangle className="size-8" />
         </div>
 
-        <h2 className="font-display text-xl font-extrabold text-slate-800">Xóa tổ này?</h2>
+        <h2 id="delete-team-title" className="font-display text-xl font-extrabold text-slate-800">Xóa tổ này?</h2>
 
         <div className="mt-3 space-y-1">
           <p className="text-sm text-slate-600">

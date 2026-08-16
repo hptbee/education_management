@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { AlertTriangle, Sprout, WifiOff, type LucideIcon } from "lucide-react";
-import { ClassroomButton, ClassroomCard, ClassroomSkeleton } from "@/src/components/classroom";
+import { ClassroomButton, ClassroomCard, ClassroomSkeleton, useClassroomDialog } from "@/src/components/classroom";
 import { useAuth } from "@/src/store/AuthContext";
 import { getGoogleClientId } from "@/src/auth/api";
 import type { AccessState } from "@/src/auth/types";
@@ -93,8 +93,28 @@ function GoogleSignInButton({ onCredential }: { onCredential: (idToken: string) 
   return <div ref={buttonRef} className="flex justify-center" />;
 }
 
+function formatLoginError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/secure storage/i.test(message)) {
+    return "Không lưu được phiên đăng nhập an toàn. Vui lòng thử lại hoặc liên hệ hỗ trợ.";
+  }
+  return message || "Đăng nhập thất bại. Vui lòng thử lại.";
+}
+
 export function AccessGate({ children }: { children: React.ReactNode }) {
   const { isLoading, accessState, loginWithGoogle, refreshSession, logout } = useAuth();
+  const { showAlert } = useClassroomDialog();
+
+  const handleLogin = async (token?: string) => {
+    try {
+      await loginWithGoogle(token);
+    } catch (error) {
+      await showAlert(formatLoginError(error), {
+        title: "Đăng nhập thất bại",
+        variant: "error",
+      });
+    }
+  };
 
   const allowed =
     accessState === "AUTHENTICATED_AND_ACTIVE" || accessState === "OFFLINE_GRACE";
@@ -129,11 +149,11 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
           {accessState === "AUTH_REQUIRED" ? (
             <>
               {isTauri() ? (
-                <ClassroomButton onClick={() => void loginWithGoogle()}>
+                <ClassroomButton onClick={() => void handleLogin()}>
                   Đăng nhập bằng Google
                 </ClassroomButton>
               ) : (
-                <GoogleSignInButton onCredential={(token) => void loginWithGoogle(token)} />
+                <GoogleSignInButton onCredential={(token) => void handleLogin(token)} />
               )}
             </>
           ) : (

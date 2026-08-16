@@ -1,7 +1,7 @@
 'use client'
 
 import { Calendar, BookOpen, Rocket, School, Upload, User } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
 import {
   ClassroomButton,
@@ -21,11 +21,26 @@ export function ClassroomSelectorScreen() {
   const { showAlert } = useClassroomDialog()
   const [draft, setDraft] = useState({ className: '', teacherName: '', schoolYear: '' })
   const [databases, setDatabases] = useState<DatabaseSummary[]>([])
+  const [listError, setListError] = useState<string | null>(null)
+  const [listLoading, setListLoading] = useState(false)
+
+  const loadDatabases = useCallback(async () => {
+    setListLoading(true)
+    setListError(null)
+    try {
+      const list = await databaseService.listDatabases()
+      setDatabases(list)
+    } catch (error) {
+      setListError(error instanceof Error ? error.message : 'Không thể tải danh sách lớp học.')
+    } finally {
+      setListLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (isLoading) return
-    void databaseService.listDatabases().then(setDatabases)
-  }, [data, isLoading])
+    void loadDatabases()
+  }, [data, isLoading, loadDatabases])
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -129,6 +144,21 @@ export function ClassroomSelectorScreen() {
         subtitle="Chọn, tạo hoặc nhập lớp học"
       />
 
+      {listError ? (
+        <ClassroomCard className="border-rose-200 bg-rose-50">
+          <p className="text-sm font-semibold text-rose-700">{listError}</p>
+          <ClassroomButton className="mt-3" variant="outline" onClick={() => void loadDatabases()}>
+            Thử lại
+          </ClassroomButton>
+        </ClassroomCard>
+      ) : null}
+
+      {listLoading && databases.length === 0 ? (
+        <ClassroomCard>
+          <p className="text-sm font-semibold text-slate-500">Đang tải danh sách lớp học...</p>
+        </ClassroomCard>
+      ) : null}
+
       {hasClasses ? (
         <div className="grid gap-6">
           <ClassroomCard>
@@ -144,7 +174,12 @@ export function ClassroomSelectorScreen() {
             {importCard}
           </div>
         </div>
-      ) : (
+      ) : listError ? (
+        <div className="grid gap-6">
+          {createForm}
+          {importCard}
+        </div>
+      ) : listLoading ? null : (
         <div className="grid gap-6">
           <EmptyState
             icon={BookOpen}

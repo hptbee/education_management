@@ -2,10 +2,14 @@
 
 import { useState, useRef } from 'react'
 import { X, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react'
-import * as XLSX from 'xlsx'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
-import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
+import { useClassroomDialog, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import {
+  downloadStudentExcelTemplate,
+  mapStudentExcelRows,
+  parseStudentExcelFile,
+} from '@/src/utils/studentExcel'
 
 interface ImportModalProps {
   isOpen: boolean
@@ -29,180 +33,36 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
   const [step, setStep] = useState<1 | 2>(1)
   const [previewData, setPreviewData] = useState<PreviewRow[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
 
   if (!isOpen) return null
 
   const handleDownloadTemplate = () => {
-    const ws = XLSX.utils.aoa_to_sheet([
-      ['Stt', 'Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Số điện thoại di động', 'Địa chỉ'],
-      ['1', 'Nguyễn Minh Anh', '10/03/2018', 'Nữ', 'TP. Hồ Chí Minh', 'Nguyễn Thị Lan', '0901234567', 'Phú Nhuận, TP. Hồ Chí Minh']
-    ])
-    
-    // Set column widths to make the template look better
-    ws['!cols'] = [
-      { wch: 5 },  // Stt
-      { wch: 25 }, // Họ và tên
-      { wch: 15 }, // Ngày sinh
-      { wch: 10 }, // Giới tính
-      { wch: 20 }, // Quê quán
-      { wch: 25 }, // Họ tên phụ huynh
-      { wch: 20 }, // Số điện thoại di động
-      { wch: 40 }, // Địa chỉ
-    ]
-    
-    // Attempting to freeze the top row
-    ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' }
-
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học sinh')
-
-    XLSX.writeFile(wb, 'DanhSachHocSinh_Template.xlsx')
-  }
-
-  const normalizeString = (str: string | undefined | null) => {
-    if (!str) return ''
-    return String(str).trim().toLowerCase().replace(/\s+/g, ' ')
-  }
-
-  const parseExcelDate = (excelDate: any) => {
-    if (!excelDate) return undefined
-    // If it's a number (Excel serial date)
-    if (typeof excelDate === 'number') {
-      const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000))
-      return date.toISOString().split('T')[0]
-    }
-    
-    const str = String(excelDate).trim()
-    
-    // Try some common formats like DD/MM/YYYY or DD-MM-YYYY
-    const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-    if (dmyMatch) {
-      const [_, d, m, y] = dmyMatch
-      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-    }
-    
-    const ymdMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
-    if (ymdMatch) {
-      const [_, y, m, d] = ymdMatch
-      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-    }
-    
-    return str
-  }
-
-  const parseGender = (raw: string | undefined): 'male' | 'female' | 'other' | 'unknown' => {
-    const s = normalizeString(raw)
-    if (['nam', 'male', 'm'].includes(s)) return 'male'
-    if (['nữ', 'nu', 'female', 'f'].includes(s)) return 'female'
-    if (['khác', 'other'].includes(s)) return 'other'
-    return 'unknown'
-  }
-
-  const formatPhoneNumber = (raw: any) => {
-      if (!raw) return undefined;
-      let str = String(raw).trim();
-      // If Excel stripped the leading zero because it treated it as a number
-      if (typeof raw === 'number' && str.length >= 8 && str.length <= 10 && !str.startsWith('0')) {
-          str = '0' + str;
-      }
-      return str;
+    void downloadStudentExcelTemplate()
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = (evt) => {
+    void (async () => {
       try {
-        const bstr = evt.target?.result
-        const wb = XLSX.read(bstr, { type: 'binary' })
-        const wsname = wb.SheetNames[0]
-        const ws = wb.Sheets[wsname]
-        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]
-
-        if (rawData.length <= 1) {
-          void showAlert('File trống hoặc không có dữ liệu.', { variant: 'warning' })
-          return
-        }
-
-        const headers = (rawData[0] || []).map(normalizeString)
-        
-        // Find indices based on requested columns + aliases
-        const sttIdx = headers.findIndex(h => h === 'stt' || h === 'số thứ tự' || h === 'no' || h === '#')
-        const nameIdx = headers.findIndex(h => h.includes('họ và tên') || h.includes('họ tên') || h.includes('full name') || h.includes('student name') || h === 'name')
-        const dobIdx = headers.findIndex(h => h.includes('ngày sinh') || h.includes('dob') || h.includes('date of birth'))
-        const genderIdx = headers.findIndex(h => h.includes('giới tính') || h.includes('gender') || h.includes('sex'))
-        const hometownIdx = headers.findIndex(h => h.includes('quê quán') || h.includes('hometown'))
-        const parentNameIdx = headers.findIndex(h => h.includes('họ tên phụ huynh') || h.includes('phụ huynh') || h.includes('parent name') || h === 'parent')
-        const parentPhoneIdx = headers.findIndex(h => h.includes('số điện thoại di động') || h.includes('số điện thoại') || h.includes('sđt') || h.includes('sđt phụ huynh') || h.includes('phone') || h.includes('mobile') || h.includes('parent phone'))
-        const addressIdx = headers.findIndex(h => h.includes('địa chỉ') || h.includes('địa chỉ hiện tại') || h.includes('address'))
-
-        const preview: PreviewRow[] = []
-
-        for (let i = 1; i < rawData.length; i++) {
-          const row = rawData[i]
-          if (!row || row.length === 0 || !row.some(c => !!c)) continue // skip empty rows
-
-          const rawStt = sttIdx >= 0 && row[sttIdx] ? String(row[sttIdx]) : ''
-          const rawName = nameIdx >= 0 ? row[nameIdx] : undefined
-          
-          if (!rawName || String(rawName).trim() === '') {
-            preview.push({
-              index: i + 1,
-              stt: rawStt,
-              data: {},
-              status: 'invalid',
-              message: 'Thiếu Họ và tên'
-            })
-            continue
-          }
-
-          const parsedStudent: Partial<Student> = {
-            name: String(rawName).trim().replace(/\s+/g, ' '),
-            dateOfBirth: dobIdx >= 0 ? parseExcelDate(row[dobIdx]) : undefined,
-            gender: genderIdx >= 0 ? parseGender(row[genderIdx]) : 'unknown',
-            hometown: hometownIdx >= 0 && row[hometownIdx] ? String(row[hometownIdx]).trim() : undefined,
-            address: addressIdx >= 0 && row[addressIdx] ? String(row[addressIdx]).trim() : undefined,
-            parent: {
-              fullName: parentNameIdx >= 0 && row[parentNameIdx] ? String(row[parentNameIdx]).trim().replace(/\s+/g, ' ') : undefined,
-              phoneNumber: parentPhoneIdx >= 0 ? formatPhoneNumber(row[parentPhoneIdx]) : undefined,
-            },
-          }
-
-          // Duplicate detection (Primary: normalized fullName + dateOfBirth, Fallback: normalized fullName)
-          const normNewName = normalizeString(parsedStudent.name)
-          const isDup = existingStudents.some(es => {
-              const normEsName = normalizeString(es.name)
-              if (parsedStudent.dateOfBirth && es.dateOfBirth) {
-                  return normEsName === normNewName && es.dateOfBirth === parsedStudent.dateOfBirth
-              }
-              return normEsName === normNewName
-          })
-
-          preview.push({
-            index: i + 1,
-            stt: rawStt,
-            data: parsedStudent,
-            status: isDup ? 'duplicate' : 'valid',
-            message: isDup ? 'Học sinh đã tồn tại' : 'Hợp lệ'
-          })
-        }
-
+        const rawData = await parseStudentExcelFile(file)
+        const preview = mapStudentExcelRows(rawData, existingStudents)
         setPreviewData(preview)
         setStep(2)
-
       } catch (err) {
-        void showAlert('Lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng.', { variant: 'error' })
+        void showAlert(err instanceof Error ? err.message : 'Lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng.', {
+          variant: 'error',
+        })
       }
-    }
-    reader.readAsBinaryString(file)
+    })()
   }
 
   const handleConfirmImport = () => {
-    const validRows = previewData.filter(r => r.status === 'valid')
+    const validRows = previewData.filter((r) => r.status === 'valid')
     const now = new Date().toISOString()
-    const newStudents: Student[] = validRows.map(r => ({
+    const newStudents: Student[] = validRows.map((r) => ({
       id: createId('student'),
       name: r.data.name!,
       avatar: r.data.avatar,
@@ -223,15 +83,22 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
     onClose()
   }
 
-  const validCount = previewData.filter(r => r.status === 'valid').length
-  const dupCount = previewData.filter(r => r.status === 'duplicate').length
-  const invalidCount = previewData.filter(r => r.status === 'invalid').length
+  const validCount = previewData.filter((r) => r.status === 'valid').length
+  const dupCount = previewData.filter((r) => r.status === 'duplicate').length
+  const invalidCount = previewData.filter((r) => r.status === 'invalid').length
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-students-title"
+        tabIndex={-1}
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl"
+      >
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
-          <h2 className="font-display text-xl font-extrabold text-slate-800">
+          <h2 id="import-students-title" className="font-display text-xl font-extrabold text-slate-800">
             Nhập danh sách từ Excel
           </h2>
           <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">
@@ -259,7 +126,7 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
                   <Upload className="size-4" />
                   Chọn file tải lên
                 </button>
-                <input ref={fileInputRef} type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+                <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleFileUpload} />
               </div>
             </div>
           ) : (

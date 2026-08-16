@@ -12,7 +12,6 @@ fn path_has_forbidden_components(path: &Path) -> bool {
     for component in path.components() {
         match component {
             Component::ParentDir => return true,
-            Component::RootDir | Component::Prefix(_) => return true,
             Component::Normal(s) if s.is_empty() => return true,
             _ => {}
         }
@@ -47,7 +46,7 @@ fn resolve_under_data_path(
         .ok_or_else(|| format!("Invalid path: {}", path.display()))?;
 
     let resolved_parent = if parent.as_os_str().is_empty() {
-        canonical_data.clone()
+        canonical_data.to_path_buf()
     } else if parent.exists() {
         let canonical_parent = std::fs::canonicalize(parent)
             .map_err(|e| format!("Failed to canonicalize {}: {}", parent.display(), e))?;
@@ -75,7 +74,7 @@ fn resolve_under_data_path(
         return Err(format!("Path not found: {}", path.display()));
     } else {
         let joined = if path.is_absolute() {
-            parent.clone()
+            parent.to_path_buf()
         } else {
             canonical_data.join(parent)
         };
@@ -162,15 +161,19 @@ const ENTITLEMENT_USER: &str = "teacher-entitlement";
 
 #[tauri::command]
 fn save_entitlement(app: AppHandle, payload: String) -> Result<(), String> {
-  if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
-    if entry.set_password(&payload).is_ok() {
-      return Ok(());
-    }
-  }
+  let entry = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER)
+    .map_err(|e| format!("Failed to access secure storage: {}", e))?;
+  entry
+    .set_password(&payload)
+    .map_err(|e| format!("Failed to save entitlement to secure storage: {}", e))?;
 
   let data_dir = get_data_dir(&app)?;
   let path = data_dir.join("entitlement.sec");
-  std::fs::write(&path, payload).map_err(|e| format!("Failed to save entitlement: {}", e))
+  if path.exists() {
+    let _ = std::fs::remove_file(&path);
+  }
+
+  Ok(())
 }
 
 #[tauri::command]
@@ -471,6 +474,24 @@ async fn file_exists(app: AppHandle, path: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
+async fn list_dir(app: AppHandle, path: String) -> Result<Vec<String>, String> {
+    let safe_path = assert_under_data_dir(&app, &path, false)?;
+    if !safe_path.is_dir() {
+        return Ok(vec![]);
+    }
+
+    let mut names = Vec::new();
+    for entry in std::fs::read_dir(&safe_path)
+        .map_err(|e| format!("Failed to list {}: {}", safe_path.display(), e))?
+    {
+        let entry = entry.map_err(|e| format!("Failed to read dir entry: {}", e))?;
+        names.push(entry.file_name().to_string_lossy().to_string());
+    }
+    names.sort();
+    Ok(names)
+}
+
+#[tauri::command]
 async fn open_path(app: AppHandle, path: String) -> Result<(), String> {
     let safe_path = assert_under_data_dir(&app, &path, false)?;
     let open_target = safe_path.to_string_lossy().to_string();
@@ -528,8 +549,80 @@ pub fn run() {
             remove_dir,
             rename_path,
             file_exists,
+            list_dir,
             open_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+    use std::fs;
+    use std::sync::{Mutex, OnceLock};
+
+    fn test_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn with_temp_data_dir<F: FnOnce(&Path)>(test: F) {
+        let _guard = test_lock().lock().expect("test lock poisoned");
+        let base = std::env::temp_dir().join(format!(
+            "classroom_mgmt_path_test_{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&base).expect("create temp data dir");
+        test(&base);
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn rejects_parent_dir_components() {
+        assert!(path_has_forbidden_components(Path::new("../secret")));
+        assert!(path_has_forbidden_components(Path::new("classrooms/../../etc/passwd")));
+    }
+
+    #[test]
+    fn allows_absolute_paths_under_data_dir() {
+        with_temp_data_dir(|data_dir| {
+            let canonical_data = fs::canonicalize(data_dir).expect("canonicalize data dir");
+            let classrooms = data_dir.join("classrooms");
+            fs::create_dir_all(&classrooms).expect("create classrooms dir");
+
+            let absolute = classrooms.join("Lop-2-7.json");
+            let resolved =
+                resolve_under_data_path(&absolute, &canonical_data, true).expect("resolve in-root absolute path");
+            assert!(path_is_under(&canonical_data, &resolved));
+        });
+    }
+
+    #[test]
+    fn denies_absolute_paths_outside_data_dir() {
+        with_temp_data_dir(|data_dir| {
+            let canonical_data = fs::canonicalize(data_dir).expect("canonicalize data dir");
+            let outside = std::env::temp_dir().join("classroom_mgmt_outside");
+            let _ = fs::remove_dir_all(&outside);
+            fs::create_dir_all(&outside).expect("create outside dir");
+
+            let err = resolve_under_data_path(&outside, &canonical_data, false)
+                .expect_err("outside path must be denied");
+            assert!(err.contains("outside application data directory"));
+
+            let _ = fs::remove_dir_all(&outside);
+        });
+    }
+
+    #[test]
+    fn denies_parent_dir_traversal() {
+        with_temp_data_dir(|data_dir| {
+            let canonical_data = fs::canonicalize(data_dir).expect("canonicalize data dir");
+            let traversal = data_dir.join("classrooms").join("..").join("..").join("secret.txt");
+            let err = resolve_under_data_path(&traversal, &canonical_data, false)
+                .expect_err("parent traversal must be denied");
+            assert!(err.contains("invalid path components") || err.contains("outside application data directory"));
+        });
+    }
 }

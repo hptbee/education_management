@@ -39,6 +39,31 @@ export interface IndexFile {
 
 export const EMPTY_INDEX: IndexFile = { version: 1, activeClassroomId: null, classrooms: [] };
 
+function entryFromDatabase(db: ClassroomDatabase, fileName: string): ClassroomIndexEntry {
+  return {
+    id: db.metadata.id,
+    fileName,
+    className: db.classroomSettings.className,
+    schoolYear: db.classroomSettings.schoolYear,
+    teacherName: db.classroomSettings.teacher?.name ?? "Teacher",
+    studentCount: db.students.length,
+    createdAt: db.metadata.createdAt,
+    updatedAt: db.metadata.updatedAt,
+  };
+}
+
+function parseIndexFile(text: string): IndexFile {
+  const parsed = JSON.parse(text) as IndexFile;
+  if (parsed.version !== 1 || !Array.isArray(parsed.classrooms)) {
+    throw new Error("Invalid index format");
+  }
+  return {
+    version: 1,
+    activeClassroomId: parsed.activeClassroomId ?? null,
+    classrooms: parsed.classrooms,
+  };
+}
+
 // ─── STORAGE IMPLEMENTATION ──────────────────────────────────────────────────
 
 export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
@@ -72,17 +97,57 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
 
   // ── Index helpers ───────────────────────────────────────────────────────────
 
+  private async rebuildIndexFromClassrooms(): Promise<IndexFile> {
+    const names = await this.fs.listDir(this.classroomsDir);
+    const classrooms: ClassroomIndexEntry[] = [];
+
+    for (const name of names) {
+      if (!name.endsWith(".json")) continue;
+      try {
+        const text = await this.fs.readTextFile(this.classroomFilePath(name));
+        const db = JSON.parse(text) as ClassroomDatabase;
+        if (!db?.metadata?.id) continue;
+        classrooms.push(entryFromDatabase(db, name));
+      } catch {
+        // Skip unreadable classroom files during recovery.
+      }
+    }
+
+    return { version: 1, activeClassroomId: null, classrooms };
+  }
+
   private async readIndex(): Promise<IndexFile> {
+    const exists = await this.fs.fileExists(this.indexPath);
+    if (!exists) {
+      return this.rebuildIndexFromClassrooms();
+    }
+
+    const text = await this.fs.readTextFile(this.indexPath);
+    if (!text.trim()) {
+      return this.rebuildIndexFromClassrooms();
+    }
+
+    return parseIndexFile(text);
+  }
+
+  private async readIndexWithRecovery(): Promise<IndexFile> {
     try {
-      const text = await this.fs.readTextFile(this.indexPath);
-      const parsed = JSON.parse(text) as IndexFile;
-      return {
-        version: 1,
-        activeClassroomId: parsed.activeClassroomId ?? null,
-        classrooms: Array.isArray(parsed.classrooms) ? parsed.classrooms : [],
-      };
+      return await this.readIndex();
     } catch {
-      return { ...EMPTY_INDEX };
+      const rebuilt = await this.rebuildIndexFromClassrooms();
+      if (rebuilt.classrooms.length > 0) {
+        await this.writeIndex(rebuilt);
+      }
+      return rebuilt;
+    }
+  }
+
+  private async readIndexOrThrow(): Promise<IndexFile> {
+    try {
+      return await this.readIndex();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      throw new Error(`index.json is missing or corrupt: ${message}`);
     }
   }
 
@@ -103,7 +168,8 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
 
   async list(): Promise<DatabaseSummary[]> {
     await this.initialize();
-    const index = await this.readIndex();
+    const index = await this.readIndexWithRecovery();
+
     return index.classrooms
       .map((entry) => ({
         id: entry.id,
@@ -119,7 +185,8 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
 
   async load(id: string): Promise<ClassroomDatabase | null> {
     await this.initialize();
-    const index = await this.readIndex();
+    const index = await this.readIndexWithRecovery();
+
     const entry = index.classrooms.find((c) => c.id === id);
     if (!entry) return null;
 
@@ -135,7 +202,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     await this.initialize();
 
     const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
-      const index = await this.readIndex();
+      const index = await this.readIndexWithRecovery();
       const existingIdx = index.classrooms.findIndex((c) => c.id === db.metadata.id);
       const existingFileName = existingIdx >= 0 ? index.classrooms[existingIdx].fileName : undefined;
       const fileName = this.resolveFileName(db, existingFileName);
@@ -143,16 +210,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
 
       await this.fs.writeTextFile(filePath, JSON.stringify(db, null, 2));
 
-      const entry: ClassroomIndexEntry = {
-        id: db.metadata.id,
-        fileName,
-        className: db.classroomSettings.className,
-        schoolYear: db.classroomSettings.schoolYear,
-        teacherName: db.classroomSettings.teacher?.name ?? "Teacher",
-        studentCount: db.students.length,
-        createdAt: db.metadata.createdAt,
-        updatedAt: db.metadata.updatedAt,
-      };
+      const entry = entryFromDatabase(db, fileName);
 
       if (existingIdx >= 0) {
         index.classrooms[existingIdx] = entry;
@@ -160,7 +218,13 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
         index.classrooms.push(entry);
       }
 
-      await this.writeIndex(index);
+      try {
+        await this.writeIndex(index);
+      } catch (error) {
+        throw new Error(
+          `Classroom saved but index update failed: ${error instanceof Error ? error.message : "unknown error"}`,
+        );
+      }
     });
     this.writeQueue = nextQueue;
     return result;
@@ -170,7 +234,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     await this.initialize();
 
     const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
-      const index = await this.readIndex();
+      const index = await this.readIndexWithRecovery();
       const entry = index.classrooms.find((c) => c.id === id);
 
       if (entry) {
@@ -190,7 +254,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     await this.initialize();
 
     const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
-      const index = await this.readIndex();
+      const index = await this.readIndexWithRecovery();
       index.activeClassroomId = id;
       await this.writeIndex(index);
     });
@@ -200,13 +264,18 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
 
   async getActiveClassroomId(): Promise<string | null> {
     await this.initialize();
-    const index = await this.readIndex();
+    const index = await this.readIndexWithRecovery();
     return index.activeClassroomId ?? null;
   }
 
   async ensureEmptyIndex(): Promise<void> {
     await this.initialize();
     if (await this.fs.fileExists(this.indexPath)) return;
+    const rebuilt = await this.rebuildIndexFromClassrooms();
+    if (rebuilt.classrooms.length > 0) {
+      await this.writeIndex(rebuilt);
+      return;
+    }
     await this.writeIndex({ ...EMPTY_INDEX });
   }
 

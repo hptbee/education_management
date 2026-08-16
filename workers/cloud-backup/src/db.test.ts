@@ -122,4 +122,22 @@ describe("db users and licenses", () => {
     const again = await findOrCreateUserFromGoogle(db, env, { sub: "existing", email: "e@example.com" });
     expect(again.user.google_sub).toBe("existing");
   });
+
+  it("does not mint a second trial after the first expires", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    const db = mockDb as unknown as D1Database;
+    const first = await findOrCreateUserFromGoogle(db, env, { sub: "expired-user" });
+    expect(first.license?.plan).toBe("trial");
+
+    const trial = mockDb.licenses.find((license) => license.user_id === first.user.id);
+    expect(trial).toBeDefined();
+    trial!.expires_at = new Date(Date.now() - 86_400_000).toISOString();
+    trial!.status = "expired";
+
+    const second = await findOrCreateUserFromGoogle(db, env, { sub: "expired-user" });
+    expect(second.license).toBeNull();
+    expect(mockDb.licenses.filter((license) => license.plan === "trial")).toHaveLength(1);
+  });
 });

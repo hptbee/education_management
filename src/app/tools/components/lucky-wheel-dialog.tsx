@@ -43,7 +43,11 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   const animationsEnabled = data?.appSettings.animationsEnabled ?? true
   const allowMotion = canAnimate(animationsEnabled)
   const bagRef = useRef<string[]>([])
-  bagRef.current = data?.wheelStudentBag ?? []
+  const wheelStudentBag = data?.wheelStudentBag
+
+  useEffect(() => {
+    bagRef.current = wheelStudentBag ?? []
+  }, [wheelStudentBag])
 
   const sortedStudents = useMemo(
     () => sortStudentsByClassroomRoleThenStt(students, students),
@@ -299,7 +303,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   )
 
   const revealNextInBatch = useCallback(
-    (pendingIds: string[], index: number, accumulated: Student[]) => {
+    function revealNextInBatch(pendingIds: string[], index: number, accumulated: Student[]) {
       const nextId = pendingIds[index]
       const nextStudent = students.find((s) => s.id === nextId)
       if (!nextStudent) {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Gift, Student } from "@/src/types/models";
 import { StudentSearchPicker } from "@/src/app/badges/components/student-search-picker";
-import { ClassroomButton } from "@/src/components/classroom";
+import { ClassroomButton, useModalFocusTrap } from "@/src/components/classroom";
 import { useGiftImageUrl } from "@/src/hooks/useGiftImageUrl";
 
 interface GiftRedeemDialogProps {
@@ -25,6 +25,7 @@ export function GiftRedeemDialog({
 }: GiftRedeemDialogProps) {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const imageUrl = useGiftImageUrl(classroomId, gift?.imagePath);
+  const dialogRef = useModalFocusTrap(isOpen, onClose);
 
   if (!isOpen || !gift) return null;
 
@@ -34,9 +35,11 @@ export function GiftRedeemDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="gift-redeem-title"
+        tabIndex={-1}
         className="flex w-full max-w-lg flex-col gap-4 rounded-3xl border border-sky-100 bg-white p-5 shadow-xl"
       >
         <div className="flex items-start gap-4">

@@ -58,6 +58,10 @@ export const tauriFs: FileStorageAdapter = {
     return invoke<boolean>("file_exists", { path });
   },
 
+  async listDir(path: string): Promise<string[]> {
+    return invoke<string[]>("list_dir", { path });
+  },
+
   async openPath(path: string): Promise<void> {
     return invoke<void>("open_path", { path });
   },

@@ -11,6 +11,7 @@ export interface FileStorageAdapter {
   removeDir(path: string): Promise<void>;
   renamePath(from: string, to: string): Promise<void>;
   fileExists(path: string): Promise<boolean>;
+  listDir(path: string): Promise<string[]>;
   joinPath(...parts: string[]): string;
   openPath?(path: string): Promise<void>;
 }

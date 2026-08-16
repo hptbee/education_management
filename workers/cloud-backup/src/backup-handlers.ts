@@ -3,7 +3,7 @@ import { errorResponse, jsonResponse, readBodyWithLimit } from "./http";
 import { buildUserClassroomKey, buildUserClassroomsPrefix, sanitizeBackupIdentifier } from "./paths";
 import type { BackupUploadBody, Env } from "./types";
 
-function assertUploadBody(data: unknown): BackupUploadBody {
+export function assertUploadBody(data: unknown): BackupUploadBody {
   if (!data || typeof data !== "object") {
     throw new Error("Invalid request body");
   }
@@ -31,6 +31,18 @@ function assertUploadBody(data: unknown): BackupUploadBody {
 
   if (!record.payload || typeof record.payload !== "object") {
     throw new Error("Invalid payload");
+  }
+
+  const payload = record.payload as Record<string, unknown>;
+  const metadata = payload.metadata as Record<string, unknown> | undefined;
+  if (!metadata || typeof metadata.id !== "string" || metadata.id !== record.classroomId) {
+    throw new Error("payload.metadata.id must match classroomId");
+  }
+  if (typeof metadata.version !== "number") {
+    throw new Error("Invalid payload.metadata.version");
+  }
+  if (metadata.version !== record.schemaVersion) {
+    throw new Error("payload.metadata.version must match schemaVersion");
   }
 
   return record as unknown as BackupUploadBody;

@@ -4,7 +4,7 @@
 export const SETTINGS_TABS = {
   /** Hồ sơ embeds Vai trò; hide the separate Vai trò tab. */
   mergeProfileAndRoles: true,
-  /** Dữ liệu tab (switch class, export, rename DB, …) */
+  /** Dữ liệu tab (switch class, export, rename DB, …) — hidden intentionally; see AGENTS.md */
   showDataTab: false,
   /** Nguy hiểm tab (delete classroom) */
   showDangerTab: false,

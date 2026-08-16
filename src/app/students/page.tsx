@@ -9,7 +9,7 @@ import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import type { Student } from '@/src/types/models'
 import { sortStudents, type StudentSortOption } from '@/src/utils/student'
-import * as XLSX from 'xlsx'
+import { downloadStudentExcelTemplate } from '@/src/utils/studentExcel'
 
 import { StudentCard } from './components/student-card'
 import { StudentFormModal } from './components/student-form-modal'
@@ -173,28 +173,7 @@ export default function StudentsPage() {
   const handleImportSuccess = (newStudents: Student[]) => saveStudents(newStudents)
 
   const handleDownloadTemplate = () => {
-    const ws = XLSX.utils.aoa_to_sheet([
-      ['Stt', 'Họ và tên', 'Ngày sinh', 'Giới tính', 'Quê quán', 'Họ tên phụ huynh', 'Số điện thoại di động', 'Địa chỉ'],
-      ['1', 'Nguyễn Minh Anh', '10/03/2018', 'Nữ', 'TP. Hồ Chí Minh', 'Nguyễn Thị Lan', '0901234567', 'Phú Nhuận, TP. Hồ Chí Minh']
-    ])
-
-    ws['!cols'] = [
-      { wch: 5 },  // Stt
-      { wch: 25 }, // Họ và tên
-      { wch: 15 }, // Ngày sinh
-      { wch: 10 }, // Giới tính
-      { wch: 20 }, // Quê quán
-      { wch: 25 }, // Họ tên phụ huynh
-      { wch: 20 }, // Số điện thoại di động
-      { wch: 40 }, // Địa chỉ
-    ]
-
-    ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' }
-
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học sinh')
-
-    XLSX.writeFile(wb, 'DanhSachHocSinh_Template.xlsx')
+    void downloadStudentExcelTemplate()
   }
 
   const handleClearFilters = () => {

@@ -724,6 +724,8 @@ When a classroom is active, show four pill tabs:
 | Roles | Vai trò | Classroom role catalog (FR-010c) |
 | Data | Dữ liệu | Switch class, create/import another, rename database + school year, duplicate, export JSON, open data folder (Tauri) |
 
+**Dữ liệu** is implemented but not shown by default (`SETTINGS_TABS.showDataTab` in `settings-flags.ts` is `false`).
+
 **Nguy hiểm** (delete classroom) is implemented but not shown by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` is `false`).
 
 **Display name vs database rename:** Changing **Tên lớp (hiển thị)** on **Hồ sơ** updates UI labels only. **Đổi tên database** on **Dữ liệu** changes the stored database identity (file/folder name and school year metadata).

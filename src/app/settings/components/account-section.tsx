@@ -5,13 +5,15 @@ import {
   CircleCheck,
   Cloud,
   Hourglass,
+  Loader2,
   LogOut,
+  RefreshCw,
   Sparkles,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { LicensePlan } from '@/src/auth/types'
 import { Avatar } from '@/src/components/Avatar'
-import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomCard, useClassroomDialog, useModalFocusTrap } from '@/src/components/classroom'
 import { databaseService } from '@/src/database/database.service'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useAuth } from '@/src/store/AuthContext'
@@ -44,6 +46,8 @@ function PlanBenefitsDialog({
   currentPlan: LicensePlan | string | undefined
   onClose: () => void
 }) {
+  const dialogRef = useModalFocusTrap(open, onClose)
+
   if (!open) return null
 
   const currentPresentation = getPlanPresentation(currentPlan)
@@ -53,9 +57,11 @@ function PlanBenefitsDialog({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="plan-benefits-title"
+        tabIndex={-1}
         className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
       >
         <h2 id="plan-benefits-title" className="font-display text-xl font-extrabold text-slate-800">
@@ -125,13 +131,62 @@ export function AccountSection() {
     refreshSession,
     logout,
   } = useAuth()
+  const { showConfirm, showAlert } = useClassroomDialog()
   const [localClassCount, setLocalClassCount] = useState(0)
   const [backupPromptDismissed, setBackupPromptDismissed] = useState(false)
   const [benefitsOpen, setBenefitsOpen] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [classListError, setClassListError] = useState<string | null>(null)
 
   useEffect(() => {
-    void databaseService.listDatabases().then((list) => setLocalClassCount(list.length))
+    void databaseService
+      .listDatabases()
+      .then((list) => {
+        setLocalClassCount(list.length)
+        setClassListError(null)
+      })
+      .catch((error) => {
+        setClassListError(error instanceof Error ? error.message : 'Không thể tải danh sách lớp học.')
+      })
   }, [data?.metadata.id])
+
+  const actionsBusy = isVerifying || isLoggingOut
+
+  const handleRefresh = async () => {
+    if (actionsBusy) return
+    setIsVerifying(true)
+    try {
+      await refreshSession()
+    } catch {
+      await showAlert('Không thể xác minh lúc này. Vui lòng kiểm tra kết nối mạng rồi thử lại.', {
+        title: 'Xác minh thất bại',
+        variant: 'error',
+      })
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    if (actionsBusy) return
+    const confirmed = await showConfirm(
+      'Cô sẽ cần đăng nhập Google lại để tiếp tục dùng ứng dụng. Dữ liệu lớp trên máy vẫn được giữ nguyên.',
+      {
+        title: 'Đăng xuất?',
+        confirmLabel: 'Đăng xuất',
+        cancelLabel: 'Ở lại',
+        variant: 'warning',
+      },
+    )
+    if (!confirmed) return
+    setIsLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
 
   if (!user) {
     return (
@@ -233,6 +288,12 @@ export function AccountSection() {
           </div>
         </div>
 
+        {classListError ? (
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            {classListError}
+          </div>
+        ) : null}
+
         {hasCloudBackup && localClassCount > 0 && !data?.appSettings.cloudBackupEnabled && !backupPromptDismissed ? (
           <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
             <p className="text-sm font-bold text-slate-700">
@@ -283,13 +344,34 @@ export function AccountSection() {
           ) : null}
         </div>
 
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <ClassroomButton variant="outline" onClick={() => void refreshSession()}>
-            Xác minh lại
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <ClassroomButton
+            variant="outline"
+            className="min-h-11 w-full border-sky-200 text-brand-dark hover:bg-brand-soft sm:w-auto"
+            disabled={actionsBusy}
+            aria-busy={isVerifying}
+            onClick={() => void handleRefresh()}
+          >
+            {isVerifying ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden />
+            )}
+            {isVerifying ? 'Đang xác minh...' : 'Xác minh lại'}
           </ClassroomButton>
-          <ClassroomButton variant="outline" onClick={() => void logout()}>
-            <LogOut className="size-4" />
-            Đăng xuất
+          <ClassroomButton
+            variant="danger"
+            className="min-h-11 w-full sm:w-auto"
+            disabled={actionsBusy}
+            aria-busy={isLoggingOut}
+            onClick={() => void handleLogout()}
+          >
+            {isLoggingOut ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <LogOut className="size-4" aria-hidden />
+            )}
+            {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
           </ClassroomButton>
         </div>
       </ClassroomCard>

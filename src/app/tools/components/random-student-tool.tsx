@@ -24,7 +24,9 @@ export function RandomStudentTool() {
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const bagRef = useRef(bag)
 
-  bagRef.current = bag
+  useEffect(() => {
+    bagRef.current = bag
+  }, [bag])
 
   const pool = useMemo(() => students, [students])
   const studentIds = useMemo(() => pool.map((student) => student.id).join('|'), [pool])

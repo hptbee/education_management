@@ -44,7 +44,7 @@ Inspect:
 | `/recognition` | Recognition ceremony, badge roster, title catalog, Wall of Fame |
 | `/ranking` | Student & team rankings |
 | `/history` | Activity history |
-| `/settings` | Classroom selector; in-class settings (Tài khoản, Hồ sơ, Vai trò, Dữ liệu) |
+| `/settings` | Classroom selector; in-class settings (Tài khoản, Hồ sơ, Vai trò; **Dữ liệu** hidden by flag) |
 
 ## Settings (`/settings`)
 
@@ -55,7 +55,7 @@ Route: `src/app/settings/page.tsx`. When `data` is null, render `ClassroomSelect
 | Tài khoản | `account-section.tsx` | Google account, plan, verification, logout; backup prompt |
 | Hồ sơ | `profile-section.tsx` | Teacher name, display class name, avatar, home banner |
 | Vai trò | `classroom-roles-section.tsx` | Role catalog CRUD |
-| Dữ liệu | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder, cloud backup opt-in, cloud restore |
+| Dữ liệu | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder, cloud backup opt-in, cloud restore (**hidden:** `SETTINGS_TABS.showDataTab`) |
 
 **Nguy hiểm** (delete classroom) exists in `settings-page.tsx` but is hidden by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` — currently `false`).
 
@@ -63,9 +63,9 @@ Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.ts
 
 **Auth shell:** `AuthProvider` → `AppDataProvider` → `AccessGate` → `AppShell` in `src/app/layout.tsx`. Lock screens hide Sidebar (same pattern as presentation mode). Never delete local classrooms on lock/logout.
 
-**Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity.
+**Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity (tab hidden by default — same pattern as **Nguy hiểm**).
 
-**Trial license:** First Google login auto-creates a **7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan.
+**Trial license:** First Google login auto-creates a **one-time 7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Expired trials are **not** renewed on later logins — admin `POST /admin/licenses` restores access. Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan. Redeploy the Worker after license-logic changes.
 
 ## Recognition (`/recognition`)
 

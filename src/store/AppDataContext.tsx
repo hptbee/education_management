@@ -99,6 +99,8 @@ interface AppDataContextValue {
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
 const SAVE_DEBOUNCE_MS = 400;
+const SAVE_BACKOFF_MS = [1000, 2000, 5000];
+const MAX_AUTO_SAVE_ATTEMPTS = 3;
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [data, setDataState] = useState<ClassroomDatabase | null>(null);
@@ -113,6 +115,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<ClassroomDatabase | null>(null);
   const saveInFlightRef = useRef(false);
+  const saveFailureCountRef = useRef(0);
+  const saveRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearSaveError = () => setSaveError(null);
 
@@ -198,6 +202,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lastPersistedRef.current = saved;
       setLocalSaveStatus("saved");
       setSaveError(null);
+      saveFailureCountRef.current = 0;
+      if (saveRetryTimerRef.current) {
+        clearTimeout(saveRetryTimerRef.current);
+        saveRetryTimerRef.current = null;
+      }
       try {
         await backupMetadataService.recordLocalSave(saved.metadata.id, saved.metadata.updatedAt);
       } catch (error) {
@@ -216,6 +225,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       console.error("[AppDataProvider] save failed:", error);
       setLocalSaveStatus("error");
       setSaveError(message);
+      saveFailureCountRef.current += 1;
       if (!pendingSaveRef.current) {
         pendingSaveRef.current = payload;
       }
@@ -223,7 +233,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } finally {
       saveInFlightRef.current = false;
       if (pendingSaveRef.current) {
-        void flushSave();
+        if (saveFailureCountRef.current === 0) {
+          void flushSave();
+        } else if (saveFailureCountRef.current < MAX_AUTO_SAVE_ATTEMPTS) {
+          const delay = SAVE_BACKOFF_MS[Math.min(saveFailureCountRef.current - 1, SAVE_BACKOFF_MS.length - 1)];
+          if (saveRetryTimerRef.current) clearTimeout(saveRetryTimerRef.current);
+          saveRetryTimerRef.current = setTimeout(() => {
+            saveRetryTimerRef.current = null;
+            void flushSave();
+          }, delay);
+        }
       }
     }
   }, []);
@@ -288,6 +307,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const retrySave = useCallback(async () => {
     if (!dataRef.current) return;
+    saveFailureCountRef.current = 0;
+    if (saveRetryTimerRef.current) {
+      clearTimeout(saveRetryTimerRef.current);
+      saveRetryTimerRef.current = null;
+    }
     pendingSaveRef.current = dataRef.current;
     if (saveDebounceRef.current) {
       clearTimeout(saveDebounceRef.current);
@@ -375,6 +399,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       closeDatabase: async () => {
         const persisted = await persistNow();
         if (!persisted) return;
+        try {
+          await databaseService.closeDatabase();
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Không thể đóng lớp học.";
+          console.error("[AppDataProvider] closeDatabase failed:", error);
+          setSaveError(message);
+          return;
+        }
         applyLoadedDatabase(null);
       },
       createDatabase: async (settings) => {

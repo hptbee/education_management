@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react'
 import type { Student } from '@/src/types/models'
+import { useModalFocusTrap } from '@/src/components/classroom'
 
 interface DeleteConfirmModalProps {
   isOpen: boolean
@@ -11,16 +12,25 @@ interface DeleteConfirmModalProps {
 }
 
 export function DeleteConfirmModal({ isOpen, onClose, onConfirm, student }: DeleteConfirmModalProps) {
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
+
   if (!isOpen || !student) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="flex w-full max-w-md flex-col rounded-3xl bg-white p-6 shadow-2xl text-center items-center">
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-student-title"
+        tabIndex={-1}
+        className="flex w-full max-w-md flex-col rounded-3xl bg-white p-6 shadow-2xl text-center items-center"
+      >
         <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-red-100 text-red-500">
           <AlertTriangle className="size-8" />
         </div>
         
-        <h2 className="font-display text-xl font-extrabold text-slate-800">
+        <h2 id="delete-student-title" className="font-display text-xl font-extrabold text-slate-800">
           Xóa học sinh này?
         </h2>
         

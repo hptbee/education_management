@@ -236,7 +236,7 @@ export async function findOrCreateUserFromGoogle(
   db: D1Database,
   env: Env,
   profile: GoogleProfile,
-): Promise<{ user: DbUser; license: DbLicense }> {
+): Promise<{ user: DbUser; license: DbLicense | null }> {
   let user = await findUserByGoogleSub(db, profile.sub);
 
   if (!user) {
@@ -250,10 +250,6 @@ export async function findOrCreateUserFromGoogle(
   await updateUserProfile(db, user.id, profile);
   user = (await findUserById(db, user.id))!;
 
-  let license = await findActiveLicense(db, user.id);
-  if (!license) {
-    license = await createTrialLicense(db, user.id, env);
-  }
-
+  const license = await findActiveLicense(db, user.id);
   return { user, license };
 }

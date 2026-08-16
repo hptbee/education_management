@@ -169,4 +169,82 @@ describe("TauriFsClassroomStorage", () => {
 
     expect(await storage.getActiveClassroomId!()).toBe(db.metadata.id);
   });
+
+  it("still lists classrooms after a failed index write", async () => {
+    const fs = new MemoryFileStorageAdapter();
+    const storage = new TauriFsClassroomStorage(fs);
+    const db = makeDb("2/7", "2026-2027");
+    await storage.save(db);
+
+    const root = await fs.getDataDirectory();
+    const indexPath = fs.joinPath(root, "index.json");
+    const originalWrite = fs.writeTextFile.bind(fs);
+    vi.spyOn(fs, "writeTextFile").mockImplementation(async (path, contents) => {
+      if (path === indexPath) {
+        throw new Error("index write failed");
+      }
+      return originalWrite(path, contents);
+    });
+
+    const updated = structuredClone(await storage.load(db.metadata.id))!;
+    updated.students.push({
+      id: "student-2",
+      name: "Lan",
+      classroomRoleIds: [],
+      badgeIds: [],
+      points: 0,
+      totalRewards: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    await expect(storage.save(updated)).rejects.toThrow("index update failed");
+
+    const storage2 = new TauriFsClassroomStorage(fs);
+    const list = await storage2.list();
+    expect(list.some((entry) => entry.id === db.metadata.id)).toBe(true);
+  });
+
+  it("rebuilds index from classroom JSON when index is missing", async () => {
+    const fs = new MemoryFileStorageAdapter();
+    const db = makeDb("2/7", "2026-2027");
+    const dataDir = await fs.getDataDirectory();
+    const fileName = makeClassroomFileName(db.metadata.id);
+    await fs.writeTextFile(fs.joinPath(dataDir, "classrooms", fileName), JSON.stringify(db, null, 2));
+
+    const storage = new TauriFsClassroomStorage(fs);
+    const list = await storage.list();
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe(db.metadata.id);
+  });
+
+  it("recovers corrupt index on save and setActiveClassroomId", async () => {
+    const fs = new MemoryFileStorageAdapter();
+    const storage = new TauriFsClassroomStorage(fs);
+    const db = makeDb("2/7", "2026-2027");
+    await storage.save(db);
+
+    const root = await fs.getDataDirectory();
+    await fs.writeTextFile(fs.joinPath(root, "index.json"), "{not valid json");
+
+    const updated = structuredClone(await storage.load(db.metadata.id))!;
+    updated.students.push({
+      id: "student-2",
+      name: "Lan",
+      classroomRoleIds: [],
+      badgeIds: [],
+      points: 0,
+      totalRewards: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    await storage.save(updated);
+
+    await storage.setActiveClassroomId!(db.metadata.id);
+    expect(await storage.getActiveClassroomId!()).toBe(db.metadata.id);
+
+    const list = await storage.list();
+    expect(list.some((entry) => entry.id === db.metadata.id)).toBe(true);
+    const loaded = await storage.load(db.metadata.id);
+    expect(loaded?.students).toHaveLength(1);
+  });
 });

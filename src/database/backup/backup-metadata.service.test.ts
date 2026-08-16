@@ -53,6 +53,7 @@ describe("BackupMetadataService", () => {
       removeFile: vi.fn(),
       removeDir: vi.fn(),
       renamePath: vi.fn(),
+      listDir: vi.fn().mockResolvedValue([]),
       openPath: vi.fn(),
     };
     const service = new BackupMetadataService(fs);

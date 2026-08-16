@@ -7,7 +7,6 @@ export class MemoryFileStorageAdapter implements FileStorageAdapter {
 
   constructor(root = "/appdata/ClassroomManagement") {
     this.root = root.replace(/\\/g, "/").replace(/\/$/, "");
-    this.files.set(`${this.root}/index.json`, "");
   }
 
   async getDataDirectory(): Promise<string> {
@@ -95,6 +94,23 @@ export class MemoryFileStorageAdapter implements FileStorageAdapter {
   async fileExists(path: string): Promise<boolean> {
     const normalized = this.normalize(path);
     return this.files.has(normalized) || this.binaryFiles.has(normalized);
+  }
+
+  async listDir(path: string): Promise<string[]> {
+    const normalized = this.normalize(path);
+    const prefix = `${normalized}/`;
+    const names = new Set<string>();
+
+    for (const key of [...this.files.keys(), ...this.binaryFiles.keys()]) {
+      if (key === normalized) continue;
+      if (key.startsWith(prefix)) {
+        const rest = key.slice(prefix.length);
+        const name = rest.split("/")[0];
+        if (name) names.add(name);
+      }
+    }
+
+    return [...names].sort();
   }
 
   joinPath(...parts: string[]): string {

@@ -1,7 +1,7 @@
 import type { ClassroomDatabase, DatabaseSummary } from "./types";
 import type { ClassroomDatabaseStorage } from "./storage/storage.interface";
 import { IndexedDbClassroomStorage } from "./storage/indexed-db.storage";
-import { createEmptyDatabase } from "./database.factory";
+import { createEmptyDatabase, DATABASE_VERSION } from "./database.factory";
 import { assertSafeClassroomId, generateDatabaseId, generateExportFilename } from "./database.utils";
 import { normalizeClassroomDatabase } from "../utils/classroomRoles";
 import { migrateLegacyGiftImages } from "../utils/gifts";
@@ -10,6 +10,29 @@ import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
 import { assertImportFileSize } from "./importLimits";
 import { getLastClassroomId, setLastClassroomId } from "../utils/lastClassroom";
+
+function assertEntityArray(
+  record: Record<string, unknown>,
+  field: string,
+  requireId = true,
+): void {
+  const value = record[field];
+  if (!Array.isArray(value)) {
+    throw new Error(`Định dạng file không hợp lệ: thiếu hoặc sai kiểu mảng "${field}".`);
+  }
+  for (let i = 0; i < value.length; i++) {
+    const item = value[i];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Định dạng file không hợp lệ: phần tử ${i + 1} trong "${field}" không phải object.`);
+    }
+    if (requireId) {
+      const id = (item as Record<string, unknown>).id;
+      if (typeof id !== "string" || !id.trim()) {
+        throw new Error(`Định dạng file không hợp lệ: phần tử ${i + 1} trong "${field}" thiếu id.`);
+      }
+    }
+  }
+}
 
 function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
   if (!data || typeof data !== "object") {
@@ -24,27 +47,50 @@ function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
     throw new Error("Định dạng file không hợp lệ: thiếu metadata.id.");
   }
   assertSafeClassroomId(metadata.id);
+  if (typeof metadata.version !== "number") {
+    throw new Error("Định dạng file không hợp lệ: metadata.version phải là số.");
+  }
+  if (metadata.version > DATABASE_VERSION) {
+    throw new Error(`Định dạng file không hợp lệ: phiên bản ${metadata.version} chưa được hỗ trợ.`);
+  }
   if (!settings?.className || typeof settings.className !== "string") {
     throw new Error("Định dạng file không hợp lệ: thiếu thông tin lớp học.");
   }
 
-  const arrayFields = [
+  const idArrays = [
     "students",
     "teams",
     "pointActions",
-    "pointHistory",
     "rewards",
-    "rewardHistory",
     "recognitions",
-    "teamScoreHistory",
     "classroomRoles",
     "badges",
     "recognitionTitles",
   ] as const;
 
-  for (const field of arrayFields) {
-    if (!Array.isArray(record[field])) {
-      throw new Error(`Định dạng file không hợp lệ: thiếu hoặc sai kiểu mảng "${field}".`);
+  for (const field of idArrays) {
+    assertEntityArray(record, field, true);
+  }
+
+  const historyArrays = [
+    "pointHistory",
+    "rewardHistory",
+    "teamScoreHistory",
+    "badgeAwardHistory",
+    "luckyWheelHistory",
+  ] as const;
+
+  for (const field of historyArrays) {
+    assertEntityArray(record, field, true);
+  }
+
+  const wheelBag = record.wheelStudentBag;
+  if (!Array.isArray(wheelBag)) {
+    throw new Error('Định dạng file không hợp lệ: thiếu hoặc sai kiểu mảng "wheelStudentBag".');
+  }
+  for (let i = 0; i < wheelBag.length; i++) {
+    if (typeof wheelBag[i] !== "string") {
+      throw new Error(`Định dạng file không hợp lệ: wheelStudentBag[${i}] phải là chuỗi.`);
     }
   }
 }

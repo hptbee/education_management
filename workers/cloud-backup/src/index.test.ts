@@ -335,7 +335,10 @@ describe("backup ownership", () => {
           fileName: "class.json",
           schemaVersion: 1,
           timestamp: new Date().toISOString(),
-          payload: { students: [] },
+          payload: {
+            metadata: { id: "2-7_2026-2027", version: 1 },
+            students: [],
+          },
         }),
       }),
       env,

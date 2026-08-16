@@ -41,6 +41,7 @@ describe("DeviceIdService", () => {
       removeFile: vi.fn(),
       removeDir: vi.fn(),
       renamePath: vi.fn(),
+      listDir: vi.fn().mockResolvedValue([]),
       openPath: vi.fn(),
     };
     const service = new DeviceIdService(fs);

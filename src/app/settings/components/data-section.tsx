@@ -1,7 +1,7 @@
 'use client'
 
 import { CloudDownload, Copy, Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
 import { ClassroomButton, ClassroomCard, useClassroomDialog } from '@/src/components/classroom'
 import { listCloudClassrooms, restoreCloudClassroom } from '@/src/auth/api'
@@ -54,14 +54,25 @@ export function DataSection({
   const [loadingCloud, setLoadingCloud] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [cloudError, setCloudError] = useState<string | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
+
+  const loadDatabases = useCallback(async () => {
+    setListError(null)
+    try {
+      const list = await databaseService.listDatabases()
+      setDatabases(list)
+    } catch (error) {
+      setListError(error instanceof Error ? error.message : 'Không thể tải danh sách lớp học.')
+    }
+  }, [])
 
   useEffect(() => {
     void isCloudBackupConfigured().then(setCloudConfigured)
   }, [data.metadata.id, data.appSettings.cloudBackupEnabled, entitlement])
 
   useEffect(() => {
-    void databaseService.listDatabases().then(setDatabases)
-  }, [data.metadata.id])
+    void loadDatabases()
+  }, [data.metadata.id, loadDatabases])
 
   useEffect(() => {
     if (!cloudConfigured || !entitlement) {
@@ -98,8 +109,7 @@ export function DataSection({
         throw new Error('Không tìm thấy bản sao lưu trên đám mây.')
       }
       await databaseService.importDatabaseFromJson(payload)
-      const refreshed = await databaseService.listDatabases()
-      setDatabases(refreshed)
+      await loadDatabases()
     } catch (err) {
       setCloudError(err instanceof Error ? err.message : 'Khôi phục thất bại.')
     } finally {
@@ -119,7 +129,15 @@ export function DataSection({
         <p className="mt-1 text-sm font-semibold text-slate-500">
           Mở lớp khác hoặc quay lại màn hình chọn lớp
         </p>
-        {otherClasses.length > 0 ? (
+        {listError ? (
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="text-sm font-semibold text-rose-700">{listError}</p>
+            <ClassroomButton className="mt-3" variant="outline" onClick={() => void loadDatabases()}>
+              Thử lại
+            </ClassroomButton>
+          </div>
+        ) : null}
+        {listError ? null : otherClasses.length > 0 ? (
           <div className="mt-4 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin">
             <ClassroomList
               databases={otherClasses}

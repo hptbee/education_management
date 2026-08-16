@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
 import { ClassroomButton } from './ClassroomButton'
+import { useModalFocusTrap } from './useModalFocusTrap'
 
 type DialogVariant = 'info' | 'warning' | 'error'
 
@@ -129,12 +130,16 @@ export function ClassroomDialogProvider({ children }: { children: ReactNode }) {
     confirmResolver.current = null
   }, [])
 
+  const cancelConfirm = useCallback(() => closeConfirm(false), [closeConfirm])
+
   const value = useMemo(() => ({ showAlert, showConfirm }), [showAlert, showConfirm])
 
   const alertVariant = variantStyles(alertState.variant)
   const confirmVariant = variantStyles(confirmState.variant)
   const AlertIcon = alertVariant.icon
   const ConfirmIcon = confirmVariant.icon
+  const alertDialogRef = useModalFocusTrap(alertState.open, closeAlert)
+  const confirmDialogRef = useModalFocusTrap(confirmState.open, cancelConfirm)
 
   return (
     <ClassroomDialogContext.Provider value={value}>
@@ -143,9 +148,11 @@ export function ClassroomDialogProvider({ children }: { children: ReactNode }) {
       {alertState.open ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div
+            ref={alertDialogRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="classroom-alert-title"
+            tabIndex={-1}
             className="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl"
           >
             <div className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${alertVariant.iconWrap}`}>
@@ -167,9 +174,11 @@ export function ClassroomDialogProvider({ children }: { children: ReactNode }) {
       {confirmState.open ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div
+            ref={confirmDialogRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="classroom-confirm-title"
+            tabIndex={-1}
             className="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl"
           >
             <div className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${confirmVariant.iconWrap}`}>
