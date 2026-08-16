@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { MonitorPlay, Sparkles } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { usePresentationMode } from '@/src/store/PresentationModeContext'
@@ -26,7 +27,9 @@ export default function ToolsPage() {
     return (
       <PresentationChrome title="Thử thách & Công cụ" subtitle="Hoạt động vui nhộn cho cả lớp">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 lg:grid-cols-3">
-          <LuckyWheelTool />
+          <Suspense fallback={null}>
+            <LuckyWheelTool />
+          </Suspense>
           <StudyTimerTool />
           <RandomStudentTool />
         </div>
@@ -57,7 +60,9 @@ export default function ToolsPage() {
         </div>
 
         <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
-          <LuckyWheelTool />
+          <Suspense fallback={null}>
+            <LuckyWheelTool />
+          </Suspense>
           <StudyTimerTool />
           <RandomStudentTool />
         </div>

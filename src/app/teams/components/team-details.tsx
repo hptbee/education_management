@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { X, Plus, Star, ArrowLeftRight, UserMinus, History, Crown, Shield } from 'lucide-react'
 import type { Student, Team, TeamScoreHistory } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
-import { IconTouchButton } from '@/src/components/classroom'
+import { IconTouchButton, useClassroomDialog, useModalFocusTrap } from '@/src/components/classroom'
 import { AssignStudentsDialog } from './assign-students-dialog'
 import { MoveStudentDialog } from './move-student-dialog'
 import {
@@ -39,18 +39,43 @@ export function TeamDetails({
   team, isOpen, onClose, members, allStudents, allTeams, pointHistory,
   onAssign, onMove, onRemove, onClearAllMembers, onEditTeam, onOpenPoints, onUpdateLeadership,
 }: TeamDetailsProps) {
+  const { showConfirm } = useClassroomDialog()
   const [activeTab, setActiveTab] = useState<'members' | 'history'>('members')
   const [isAssignOpen, setIsAssignOpen] = useState(false)
   const [moveStudent, setMoveStudent] = useState<Student | null>(null)
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
 
   if (!isOpen || !team) return null
+
+  const handleRemoveMember = async (student: Student) => {
+    const confirmed = await showConfirm(
+      `${student.name} sẽ không còn trong tổ ${team.name}.`,
+      {
+        title: 'Bỏ học sinh khỏi tổ?',
+        confirmLabel: 'Bỏ khỏi tổ',
+        variant: 'warning',
+      },
+    )
+    if (confirmed) onRemove(student.id)
+  }
 
   const teamHistory = pointHistory.filter(h => h.teamId === team.id).slice(0, 50)
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-center justify-end bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-white shadow-2xl">
+      <div
+        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="team-details-title"
+        tabIndex={-1}
+        className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col bg-white shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 p-5">
           <div className="flex items-center gap-3">
@@ -58,7 +83,7 @@ export function TeamDetails({
               {team.avatar || '🏆'}
             </span>
             <div>
-              <h2 className="font-display text-xl font-extrabold text-slate-800">{team.name}</h2>
+              <h2 id="team-details-title" className="font-display text-xl font-extrabold text-slate-800">{team.name}</h2>
               <div className="mt-1 flex items-center gap-3 text-sm font-semibold">
                 <span className="text-amber-500">⭐ {team.score} điểm</span>
                 <span className="text-slate-400">·</span>
@@ -224,20 +249,20 @@ export function TeamDetails({
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button
+                      <IconTouchButton
                         onClick={() => setMoveStudent(student)}
-                        title="Chuyển tổ"
-                        className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-brand-purple"
+                        aria-label={`Chuyển ${student.name} sang tổ khác`}
+                        className="text-slate-400 hover:bg-slate-100 hover:text-brand-purple"
                       >
                         <ArrowLeftRight className="size-4" />
-                      </button>
-                      <button
-                        onClick={() => onRemove(student.id)}
-                        title="Bỏ khỏi tổ"
-                        className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                      </IconTouchButton>
+                      <IconTouchButton
+                        onClick={() => handleRemoveMember(student)}
+                        aria-label={`Bỏ ${student.name} khỏi tổ`}
+                        className="text-slate-400 hover:bg-red-50 hover:text-red-500"
                       >
                         <UserMinus className="size-4" />
-                      </button>
+                      </IconTouchButton>
                     </div>
                   </div>
                   )

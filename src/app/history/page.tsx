@@ -80,11 +80,12 @@ export default function HistoryPage() {
                 key={option.id}
                 type="button"
                 onClick={() => setKindFilter(option.id)}
-                className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                className={`min-h-11 rounded-full px-3 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                   kindFilter === option.id
                     ? 'bg-brand text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
+                aria-pressed={kindFilter === option.id}
               >
                 {option.label}
               </button>

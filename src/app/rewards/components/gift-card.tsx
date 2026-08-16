@@ -13,6 +13,7 @@ interface GiftCardProps {
   onRedeem?: () => void;
   onToggleActive?: () => void;
   onDelete?: () => void;
+  redeemDisabled?: boolean;
 }
 
 export function GiftCard({
@@ -23,6 +24,7 @@ export function GiftCard({
   onRedeem,
   onToggleActive,
   onDelete,
+  redeemDisabled = false,
 }: GiftCardProps) {
   const imageUrl = useGiftImageUrl(classroomId, gift.imagePath);
   const hidden = !gift.isActive;
@@ -102,13 +104,15 @@ export function GiftCard({
         </p>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {onRedeem && gift.isActive ? (
           <button
             type="button"
             onClick={onRedeem}
+            disabled={redeemDisabled}
             aria-label={`Đổi quà ${gift.name}`}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand px-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            title={redeemDisabled ? 'Chưa có học sinh để đổi quà' : undefined}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand px-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50"
           >
             Đổi quà
           </button>

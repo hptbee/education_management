@@ -291,6 +291,7 @@ export default function StudentsPage() {
               variant="danger"
               size="sm"
               onClick={handleClearFilters}
+              disabled={!hasActiveFilter}
               className="shrink-0 rounded-xl"
             >
               <X className="size-3.5" />
@@ -447,6 +448,14 @@ export default function StudentsPage() {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         student={selectedStudent}
+        onEdit={(s) => {
+          setIsDetailsOpen(false)
+          handleOpenEdit(s)
+        }}
+        onDelete={(s) => {
+          setIsDetailsOpen(false)
+          handleOpenDelete(s)
+        }}
       />
       <DeleteConfirmModal
         isOpen={isDeleteOpen}

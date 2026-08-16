@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function LuckyWheelRedirectPage() {
-  redirect('/tools')
+  redirect('/tools?tool=wheel')
 }

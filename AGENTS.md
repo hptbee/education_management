@@ -38,7 +38,7 @@ Inspect:
 | `/teams` | Team management |
 | `/points` | Point actions & quick scoring |
 | `/rewards` | Rewards |
-| `/badges` | Redirects to `/recognition?tab=badges` (legacy route) |
+| `/badges` | Redirects to `/recognition?tab=catalog` (legacy route) |
 | `/tools` | Lucky Wheel, Study Timer, Lucky Star |
 | `/games` | Redirects to `/tools` (legacy route) |
 | `/recognition` | Recognition ceremony, badge roster, title catalog, Wall of Fame |
@@ -86,7 +86,7 @@ Auth JSON (`POST /auth/google`) and admin JSON bodies are bounded to ~64 KB (`re
 
 ## Recognition (`/recognition`)
 
-Four tabs: **Tuyên dương mới**, **Huy hiệu** (roster toggle), **Danh mục** (title catalog; each title auto-creates a linked badge), **Góc tuyên dương**. Query: `?tab=badges&studentId=` for deep links. Legacy `/badges` redirects here.
+Four tabs: **Tuyên dương mới**, **Danh hiệu & huy hiệu** (title catalog + badge roster), **Góc tuyên dương**. Query: `?tab=catalog&studentId=` for deep links; legacy `?tab=badges` / `?tab=titles` still resolve. Legacy `/badges` redirects here.
 
 ## After coding
 

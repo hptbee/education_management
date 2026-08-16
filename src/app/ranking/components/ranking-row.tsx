@@ -64,7 +64,7 @@ export function RankingRow({
         type="button"
         onClick={onClick}
         className={cn(
-          'flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-sm',
+          'flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
           rowClass,
         )}
       >

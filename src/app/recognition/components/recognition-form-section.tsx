@@ -4,12 +4,12 @@ import { useMemo, useState } from 'react'
 import { Minus, PartyPopper, Plus, Star, Users } from 'lucide-react'
 import type { ClassroomRole, Recognition, RecognitionTitle, Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { createId } from '@/src/utils/id'
 import { getStudentAvatar } from '@/src/utils/student'
 import { resolveBadgeIdForTitle } from '@/src/utils/recognition'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
 import { RecognitionStudentPicker } from './recognition-student-picker'
 import { CelebrationOverlay } from './celebration-overlay'
+import { TitleFormDialog } from './title-form-dialog'
 
 interface RecognitionFormSectionProps {
   students: Student[]
@@ -38,8 +38,6 @@ export function RecognitionFormSection({
   const [submitting, setSubmitting] = useState(false)
   const [celebrationRecords, setCelebrationRecords] = useState<Recognition[] | null>(null)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  const [quickName, setQuickName] = useState('')
-  const [quickIcon, setQuickIcon] = useState('🌟')
 
   const activeTitles = useMemo(() => titles.filter((t) => t.isActive), [titles])
 
@@ -81,23 +79,6 @@ export function RecognitionFormSection({
     } finally {
       setSubmitting(false)
     }
-  }
-
-  const handleQuickAddTitle = () => {
-    if (!quickName.trim()) return
-    const now = new Date().toISOString()
-    const title: RecognitionTitle = {
-      id: createId('recognition-title'),
-      name: quickName.trim(),
-      icon: quickIcon,
-      isActive: true,
-      createdAt: now,
-    }
-    saveRecognitionTitle(title)
-    setSelectedTitleId(title.id)
-    setQuickAddOpen(false)
-    setQuickName('')
-    setQuickIcon('🌟')
   }
 
   if (students.length === 0) {
@@ -163,36 +144,13 @@ export function RecognitionFormSection({
             </div>
           )}
 
-          {quickAddOpen ? (
-            <div className="mt-4 flex flex-wrap items-end gap-2 rounded-2xl bg-slate-50 p-3">
-              <input
-                value={quickIcon}
-                onChange={(e) => setQuickIcon(e.target.value)}
-                className="classroom-field w-16 px-2 text-center text-xl"
-                maxLength={2}
-              />
-              <input
-                value={quickName}
-                onChange={(e) => setQuickName(e.target.value)}
-                placeholder="Tên danh hiệu mới..."
-                className="classroom-field min-w-[180px] flex-1 px-4"
-              />
-              <ClassroomButton size="sm" onClick={handleQuickAddTitle}>
-                Lưu
-              </ClassroomButton>
-              <ClassroomButton size="sm" variant="ghost" onClick={() => setQuickAddOpen(false)}>
-                Hủy
-              </ClassroomButton>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setQuickAddOpen(true)}
-              className="mt-3 text-sm font-bold text-brand hover:underline"
-            >
-              + Thêm danh hiệu nhanh
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setQuickAddOpen(true)}
+            className="mt-3 text-sm font-bold text-brand hover:underline"
+          >
+            + Thêm danh hiệu nhanh
+          </button>
         </div>
 
         <div className="mb-6 border-t border-sky-100 pt-6">
@@ -306,6 +264,16 @@ export function RecognitionFormSection({
           onRecognizeMore={() => setCelebrationRecords(null)}
         />
       ) : null}
+
+      <TitleFormDialog
+        isOpen={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        onSave={(title) => {
+          saveRecognitionTitle(title)
+          setSelectedTitleId(title.id)
+          setQuickAddOpen(false)
+        }}
+      />
     </>
   )
 }

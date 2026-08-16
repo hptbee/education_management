@@ -1,6 +1,7 @@
 'use client'
 
-import { Bell } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, Bell } from 'lucide-react'
 import { ClassroomCard } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import { buildClassroomActivity } from '@/src/utils/activityHistory'
@@ -59,6 +60,13 @@ export function RecentActivity() {
           })}
         </ul>
       )}
+      <Link
+        href="/history"
+        className="mt-4 flex min-h-11 items-center justify-center gap-1.5 border-t border-sky-100 pt-4 text-sm font-bold text-brand transition hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded-lg"
+      >
+        Xem lịch sử
+        <ArrowRight className="size-4" aria-hidden />
+      </Link>
     </ClassroomCard>
   )
 }

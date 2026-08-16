@@ -20,7 +20,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <header className={cn('flex items-start gap-4', className)}>
+    <header className={cn('flex flex-wrap items-start gap-x-4 gap-y-3', className)}>
       <div
         className={cn(
           'flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-light text-white shadow-sm',
@@ -35,7 +35,7 @@ export function PageHeader({
           <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
         ) : null}
       </div>
-      {actions ? <div className="shrink-0">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
   )
 }

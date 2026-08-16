@@ -70,6 +70,14 @@ export default function PointsPage() {
             icon={Users}
             title="Chưa có học sinh nào trong lớp"
             description="Hãy thêm học sinh trước khi tích điểm."
+            action={
+              <a
+                href="/students"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              >
+                Thêm học sinh
+              </a>
+            }
           />
         ) : (
           <ClassroomCard>

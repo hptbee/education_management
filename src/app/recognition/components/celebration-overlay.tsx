@@ -8,7 +8,7 @@ import type { Recognition, Student } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
 import { dedupeRecognitionsByStudent } from '@/src/utils/recognition'
 import { canAnimate } from '@/src/utils/motion'
-import { ClassroomButton } from '@/src/components/classroom'
+import { ClassroomButton, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface CelebrationOverlayProps {
   recognitions: Recognition[]
@@ -181,6 +181,7 @@ export function CelebrationOverlay({
   const isMulti = items.length > 1
   const current = items[stepIndex]
   const allowMotion = canAnimate(animationsEnabled)
+  const dialogRef = useModalFocusTrap(true, onClose)
 
   useEffect(() => {
     if (!allowMotion) return
@@ -358,17 +359,24 @@ export function CelebrationOverlay({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-gradient-to-b from-pastel-sky via-white to-pastel-pink">
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="celebration-dialog-title"
+      tabIndex={-1}
+      className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-gradient-to-b from-pastel-sky via-white to-pastel-pink"
+    >
+      <h2 id="celebration-dialog-title" className="sr-only">Lễ tuyên dương</h2>
       {allowMotion ? <CelebrationBackgroundEffects /> : null}
 
-      <button
-        type="button"
+      <IconTouchButton
         onClick={onClose}
-        className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-700"
         aria-label="Đóng"
+        className="absolute right-4 top-4 z-10 bg-white/80 text-slate-500 shadow-sm hover:bg-white hover:text-slate-700"
       >
         <X className="size-5" />
-      </button>
+      </IconTouchButton>
 
       <div className="relative z-[1] flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-16 scrollbar-thin">
         <AnimatePresence mode="wait">
@@ -394,8 +402,9 @@ export function CelebrationOverlay({
               animate={{ opacity: 1, scale: 1 }}
               className="w-full max-w-3xl text-center"
             >
-              <motion.h2
-                className="font-display text-3xl font-black text-slate-800 sm:text-4xl"
+        <motion.h2
+          id="celebration-title"
+          className="font-display text-3xl font-black text-slate-800 sm:text-4xl"
                 animate={allowMotion ? { scale: [1, 1.03, 1] } : undefined}
                 transition={{ duration: 1.5, repeat: Infinity }}
               >

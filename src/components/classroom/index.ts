@@ -1,4 +1,4 @@
-export { ClassroomButton } from './ClassroomButton'
+export { ClassroomButton, classroomButtonVariants } from './ClassroomButton'
 export { ClassroomCard } from './ClassroomCard'
 export { PageHeader } from './PageHeader'
 export { EmptyState } from './EmptyState'

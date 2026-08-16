@@ -8,7 +8,7 @@ function BadgesRedirectContent() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const params = new URLSearchParams({ tab: 'badges' })
+    const params = new URLSearchParams({ tab: 'catalog' })
     const studentId = searchParams?.get('studentId')
     if (studentId) {
       params.set('studentId', studentId)

@@ -1,6 +1,7 @@
 'use client'
 
-import { X, Star, Trophy, Target, Medal } from 'lucide-react'
+import { useMemo } from 'react'
+import { X, Star, Trophy, Target, Medal, Edit2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
@@ -9,6 +10,7 @@ import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { getStudentBadges } from '@/src/utils/badges'
 import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
+import { BadgeToggleGrid } from '@/src/app/recognition/components/badge-toggle-grid'
 import {
   ACTIVITY_KIND_EMOJI,
   buildClassroomActivity,
@@ -19,33 +21,42 @@ interface StudentDetailsModalProps {
   isOpen: boolean
   onClose: () => void
   student: Student | null
+  onEdit?: (student: Student) => void
+  onDelete?: (student: Student) => void
 }
 
-export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetailsModalProps) {
-  const { data } = useAppData()
+export function StudentDetailsModal({ isOpen, onClose, student, onEdit, onDelete }: StudentDetailsModalProps) {
+  const { data, toggleStudentBadge } = useAppData()
   const dialogRef = useModalFocusTrap(isOpen, onClose)
 
-  if (!isOpen || !student) return null
+  const liveStudent = useMemo(() => {
+    if (!student) return null
+    return data?.students.find((s) => s.id === student.id) ?? student
+  }, [data?.students, student])
 
-  const teamName = student.teamId
-    ? data?.teams.find((t) => t.id === student.teamId)?.name ?? 'Chưa có nhóm'
+  if (!isOpen || !student || !liveStudent) return null
+
+  const badges = data?.badges ?? []
+
+  const teamName = liveStudent.teamId
+    ? data?.teams.find((t) => t.id === liveStudent.teamId)?.name ?? 'Chưa có nhóm'
     : 'Chưa có nhóm'
-  const assignedRoles = getStudentClassroomRoles(student, data?.classroomRoles ?? [])
-  const awardedBadges = getStudentBadges(student, data?.badges ?? [])
+  const assignedRoles = getStudentClassroomRoles(liveStudent, data?.classroomRoles ?? [])
+  const awardedBadges = getStudentBadges(liveStudent, badges)
   const recentActivity = data
     ? buildClassroomActivity(data)
         .filter(
           (entry) =>
-            entry.studentId === student.id ||
-            (entry.studentIds?.includes(student.id) ?? false),
+            entry.studentId === liveStudent.id ||
+            (entry.studentIds?.includes(liveStudent.id) ?? false),
         )
         .slice(0, 10)
     : []
 
   let genderDisplay = ''
-  if (student.gender === 'female') genderDisplay = 'Nữ'
-  else if (student.gender === 'male') genderDisplay = 'Nam'
-  else if (student.gender === 'other') genderDisplay = 'Khác'
+  if (liveStudent.gender === 'female') genderDisplay = 'Nữ'
+  else if (liveStudent.gender === 'male') genderDisplay = 'Nam'
+  else if (liveStudent.gender === 'other') genderDisplay = 'Khác'
   else genderDisplay = 'Chưa rõ'
 
   return (
@@ -62,37 +73,57 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
           <h2 id="student-details-title" className="font-display text-xl font-extrabold text-slate-800">
             Hồ sơ học sinh
           </h2>
-          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-            <X className="size-5" />
-          </IconTouchButton>
+          <div className="flex items-center gap-1">
+            {onEdit ? (
+              <IconTouchButton
+                onClick={() => onEdit(liveStudent)}
+                aria-label="Chỉnh sửa học sinh"
+                className="text-slate-400 hover:bg-slate-100 hover:text-brand"
+              >
+                <Edit2 className="size-5" />
+              </IconTouchButton>
+            ) : null}
+            {onDelete ? (
+              <IconTouchButton
+                onClick={() => onDelete(liveStudent)}
+                aria-label="Xóa học sinh"
+                className="text-slate-400 hover:bg-slate-100 hover:text-rose-500"
+              >
+                <Trash2 className="size-5" />
+              </IconTouchButton>
+            ) : null}
+            <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+              <X className="size-5" />
+            </IconTouchButton>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
           <div className="flex flex-col gap-8">
             
             {/* Header Profile */}
-            <div className="flex items-center gap-5 rounded-2xl bg-slate-50 p-5 border border-slate-100">
+            <div className="flex flex-col items-center gap-5 rounded-2xl border border-slate-100 bg-slate-50 p-5 sm:flex-row sm:items-start">
               <img
-                src={getStudentAvatar(student)}
-                alt={student.name}
+                src={getStudentAvatar(liveStudent)}
+                alt={liveStudent.name}
                 className={`size-24 rounded-full object-cover ring-4 ${
-                  student.gender === 'female' ? 'ring-pink-100' : 'ring-sky-100'
+                  liveStudent.gender === 'female' ? 'ring-pink-100' : 'ring-sky-100'
                 }`}
               />
               <div>
-                <h3 className="font-display text-2xl font-black text-slate-800">{student.name}</h3>
+                <h3 className="font-display text-2xl font-black text-slate-800">{liveStudent.name}</h3>
                 <ClassroomRoleBadges roles={assignedRoles} className="mt-2 justify-start" size="md" />
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  {genderDisplay} {student.dateOfBirth ? `• Sinh ngày: ${student.dateOfBirth}` : ''}
+                  {genderDisplay} {liveStudent.dateOfBirth ? `• Sinh ngày: ${liveStudent.dateOfBirth}` : ''}
                 </p>
                 <div className="mt-3 flex gap-3">
                   <div className="flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-sm font-extrabold text-amber-600">
                     <Star className="size-4 fill-amber-500" />
-                    {student.points} điểm
+                    {liveStudent.points} điểm
                   </div>
                   <div className="flex items-center gap-1.5 rounded-lg bg-rose-100 px-3 py-1.5 text-sm font-extrabold text-rose-600">
                     <Trophy className="size-4" />
-                    {student.totalRewards} quà tặng
+                    {liveStudent.totalRewards} quà tặng
                   </div>
                 </div>
               </div>
@@ -102,32 +133,30 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
               <div className="flex items-center justify-between gap-3">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-brand-purple">
                   <Medal className="size-4" /> Huy hiệu
+                  {awardedBadges.length > 0 ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-700">
+                      {awardedBadges.length}
+                    </span>
+                  ) : null}
                 </h4>
                 <Link
-                  href={`/recognition?tab=badges&studentId=${student.id}`}
+                  href={`/recognition?tab=catalog&studentId=${liveStudent.id}`}
                   onClick={onClose}
-                  className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-200"
+                  className="text-xs font-bold text-brand transition hover:text-brand-dark hover:underline"
                 >
-                  Quản lý huy hiệu
+                  Thao huy hiệu
                 </Link>
               </div>
               <div className="rounded-xl border border-slate-100 bg-white p-4">
-                {awardedBadges.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {awardedBadges.map((badge) => (
-                      <span
-                        key={badge.id}
-                        title={badge.description}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200"
-                      >
-                        <span>{badge.icon ?? '🏅'}</span>
-                        {badge.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm font-semibold text-slate-400">Chưa có huy hiệu nào</p>
-                )}
+                <p className="mb-3 text-xs font-semibold text-slate-500">
+                  Bấm huy hiệu để trao hoặc thu hồi
+                </p>
+                <BadgeToggleGrid
+                  compact
+                  badges={badges}
+                  student={liveStudent}
+                  onToggle={(badgeId) => toggleStudentBadge(liveStudent.id, badgeId)}
+                />
               </div>
             </section>
 
@@ -153,9 +182,9 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
                     )}
                   </p>
                   <p className="mb-2"><span className="font-semibold text-slate-500">Tổ/Nhóm: </span> {teamName}</p>
-                  <p className="mb-2"><span className="font-semibold text-slate-500">Lớp cũ: </span> {student.previousClass || 'Trống'}</p>
-                  <p className="mb-2"><span className="font-semibold text-slate-500">Thành tích cũ: </span> {student.previousAchievements || 'Trống'}</p>
-                  <p><span className="font-semibold text-slate-500">Ghi chú: </span> {student.potentialNote || 'Trống'}</p>
+                  <p className="mb-2"><span className="font-semibold text-slate-500">Lớp cũ: </span> {liveStudent.previousClass || 'Trống'}</p>
+                  <p className="mb-2"><span className="font-semibold text-slate-500">Thành tích cũ: </span> {liveStudent.previousAchievements || 'Trống'}</p>
+                  <p><span className="font-semibold text-slate-500">Ghi chú: </span> {liveStudent.potentialNote || 'Trống'}</p>
                 </div>
               </section>
 
@@ -163,13 +192,13 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
                 <h4 className="text-sm font-bold text-brand-purple">Thông tin Phụ huynh (Bảo mật)</h4>
                 <div className="rounded-xl border border-slate-100 bg-white p-4 text-sm">
                   <div className="mb-2">
-                    <p className="font-bold text-slate-700">Họ tên: <span className="font-normal text-slate-500">{student.parent?.fullName || 'Trống'}</span></p>
+                    <p className="font-bold text-slate-700">Họ tên: <span className="font-normal text-slate-500">{liveStudent.parent?.fullName || 'Trống'}</span></p>
                   </div>
                   <div className="mb-2">
-                    <p className="font-bold text-slate-700">SĐT: <span className="font-normal text-slate-500">{student.parent?.phoneNumber || 'Trống'}</span></p>
+                    <p className="font-bold text-slate-700">SĐT: <span className="font-normal text-slate-500">{liveStudent.parent?.phoneNumber || 'Trống'}</span></p>
                   </div>
                   <div>
-                    <p className="font-bold text-slate-700">Địa chỉ: <span className="font-normal text-slate-500">{student.address || 'Trống'}</span></p>
+                    <p className="font-bold text-slate-700">Địa chỉ: <span className="font-normal text-slate-500">{liveStudent.address || 'Trống'}</span></p>
                   </div>
                 </div>
               </section>

@@ -106,6 +106,7 @@ export function GiftCabinetPage() {
           }}
           onToggleActive={() => void handleToggleActive(gift)}
           onRedeem={() => setRedeemGiftTarget(gift)}
+          redeemDisabled={students.length === 0}
           onDelete={() => void handleDelete(gift)}
         />
       ))}

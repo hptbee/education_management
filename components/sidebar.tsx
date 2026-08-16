@@ -70,10 +70,12 @@ function SidebarNavLink({
   icon: Icon,
   title,
   active,
-}: NavItem & { active: boolean }) {
+  onNavigate,
+}: NavItem & { active: boolean; onNavigate?: () => void }) {
   return (
     <Link
       href={href}
+      onClick={() => onNavigate?.()}
       aria-current={active ? 'page' : undefined}
       title={title ?? label}
       className={cn(
@@ -93,12 +95,24 @@ function SidebarNavLink({
   )
 }
 
-export function Sidebar() {
+export function Sidebar({
+  mobileOpen = false,
+  onNavigate,
+}: {
+  mobileOpen?: boolean
+  onNavigate?: () => void
+}) {
   const pathname = usePathname() ?? ''
   const settingsActive = isNavActive(pathname, '/settings')
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sky-100 bg-surface-soft">
+    <aside
+      className={cn(
+        'flex h-full w-64 shrink-0 flex-col border-r border-sky-100 bg-surface-soft',
+        'fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:relative md:translate-x-0',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+      )}
+    >
       <SidebarClassContext />
 
       <nav aria-label="Điều hướng lớp học" className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 py-1 scrollbar-thin">
@@ -114,6 +128,7 @@ export function Sidebar() {
                 key={item.href}
                 {...item}
                 active={isNavActive(pathname, item.href)}
+                onNavigate={onNavigate}
               />
             ))}
           </div>
@@ -127,7 +142,18 @@ export function Sidebar() {
           label="Cài đặt"
           icon={Settings}
           active={settingsActive}
+          onNavigate={onNavigate}
         />
+        <p className="mt-3 px-3 text-[11px] font-semibold text-slate-400">
+          <a
+            href="https://www.facebook.com/10t03/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded"
+          >
+            Copyright by Tùng Huỳnh
+          </a>
+        </p>
       </div>
     </aside>
   )

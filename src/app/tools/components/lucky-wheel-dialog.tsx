@@ -442,14 +442,37 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
     return 'Nhấn quay để chọn học sinh'
   })()
 
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
+  const wheelSizeClass = showStudentList
+    ? 'max-w-[min(100%,280px)] sm:max-w-[320px] lg:max-w-[380px]'
+    : 'max-w-[min(100%,320px)] sm:max-w-[480px] lg:max-w-[620px]'
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm">
-      <div className="flex h-[min(900px,94vh)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lucky-wheel-title"
+        className="flex h-[min(900px,94vh)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
-            <h2 className="font-display text-xl font-extrabold text-slate-800">Vòng quay may mắn</h2>
+            <h2 id="lucky-wheel-title" className="font-display text-xl font-extrabold text-slate-800">Vòng quay may mắn</h2>
             <p className="text-xs font-semibold text-slate-500">Chọn học sinh và quay để chọn ngẫu nhiên</p>
           </div>
           <IconTouchButton
@@ -461,18 +484,18 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
           </IconTouchButton>
         </header>
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <AnimatePresence initial={false}>
             {showStudentList ? (
               <motion.aside
                 key="student-list"
-                initial={allowMotion ? { width: 0, opacity: 0 } : false}
-                animate={allowMotion ? { width: 300, opacity: 1 } : { width: 300, opacity: 1 }}
-                exit={allowMotion ? { width: 0, opacity: 0 } : undefined}
-                transition={allowMotion ? { duration: 0.45, ease: 'easeInOut' } : { duration: 0 }}
-                className="h-full shrink-0 overflow-hidden border-r border-slate-100"
+                initial={allowMotion ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={allowMotion ? { opacity: 0 } : undefined}
+                transition={allowMotion ? { duration: 0.25 } : { duration: 0 }}
+                className="shrink-0 overflow-hidden border-b border-slate-100 lg:h-full lg:w-[300px] lg:border-b-0 lg:border-r"
               >
-                <div className="flex h-full w-[300px] flex-col overflow-y-auto bg-slate-50/70 p-3 scrollbar-thin">
+                <div className="flex h-full max-h-[45vh] flex-col overflow-y-auto bg-slate-50/70 p-3 scrollbar-thin lg:max-h-none lg:w-[300px]">
                   <PickerConfigPanel
                     session={{ ...session, selectedStudentIds: sanitizedSessionIds, pendingRevealIds: sanitizedPendingIds }}
                     teams={teams}
@@ -546,22 +569,8 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
             ) : null}
           </AnimatePresence>
 
-          <div className="flex min-w-0 flex-1 flex-col items-center justify-center bg-gradient-to-b from-pastel-sky/50 via-white to-pastel-pink/30 px-6 py-4">
-            <motion.div
-              animate={
-                allowMotion
-                  ? {
-                      width: showStudentList ? 380 : 620,
-                      height: showStudentList ? 380 : 620,
-                    }
-                  : {
-                      width: showStudentList ? 380 : 620,
-                      height: showStudentList ? 380 : 620,
-                    }
-              }
-              transition={allowMotion ? { duration: 0.45, ease: 'easeInOut' } : { duration: 0 }}
-              className="relative"
-            >
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-center bg-gradient-to-b from-pastel-sky/50 via-white to-pastel-pink/30 px-4 py-4 sm:px-6">
+            <div className={`relative mx-auto aspect-square w-full ${wheelSizeClass}`}>
               <NamedWheel
                 students={wheelStudents}
                 rotation={rotation}
@@ -569,7 +578,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
                 spinDurationSec={spinPlan.durationSec}
                 spinEase={spinPlan.ease}
               />
-            </motion.div>
+            </div>
 
             <div className={`mt-3 flex w-full max-w-md shrink-0 flex-col items-center ${multipleComplete ? 'min-h-[200px]' : 'min-h-[120px]'}`}>
               <AnimatePresence mode="wait">

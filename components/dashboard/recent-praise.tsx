@@ -1,6 +1,7 @@
 'use client'
 
-import { Trophy, Star } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, Trophy, Star } from 'lucide-react'
 import { ClassroomCard } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import { formatRecognitionRelativeDate } from '@/src/utils/recognition'
@@ -55,6 +56,13 @@ export function RecentPraise() {
           </div>
         </div>
       )}
+      <Link
+        href="/recognition?tab=wall"
+        className="mt-4 flex min-h-11 items-center justify-center gap-1.5 border-t border-sky-100 pt-4 text-sm font-bold text-brand transition hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded-lg"
+      >
+        Xem Góc tuyên dương
+        <ArrowRight className="size-4" aria-hidden />
+      </Link>
     </ClassroomCard>
   )
 }

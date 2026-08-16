@@ -7,7 +7,7 @@ import { createId } from '@/src/utils/id'
 import { getStudentAvatar } from '@/src/utils/student'
 import { readStudentAvatarImage } from '@/src/utils/images'
 import { useAppData } from '@/src/store/AppDataContext'
-import { useClassroomDialog, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { useClassroomDialog, ClassroomButton, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -153,8 +153,18 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <p className="mt-3 text-xs font-semibold text-slate-500">
-                Click vào ảnh để đổi ảnh đại diện
+              <ClassroomButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="size-4" aria-hidden />
+                Đổi ảnh
+              </ClassroomButton>
+              <p className="mt-2 text-xs font-semibold text-slate-500">
+                Hoặc bấm vào ảnh để chọn ảnh mới
               </p>
             </section>
 

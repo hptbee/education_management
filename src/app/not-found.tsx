@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { House } from 'lucide-react'
-import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
+import { cn } from '@/lib/utils'
+import { ClassroomCard, classroomButtonVariants } from '@/src/components/classroom'
 
 export default function NotFound() {
   return (
@@ -14,11 +15,11 @@ export default function NotFound() {
           Trang bạn tìm không tồn tại hoặc đã được chuyển đi.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <Link href="/">
-            <ClassroomButton>Về trang chủ</ClassroomButton>
+          <Link href="/" className={cn(classroomButtonVariants())}>
+            Về trang chủ
           </Link>
-          <Link href="/settings">
-            <ClassroomButton variant="outline">Cài đặt</ClassroomButton>
+          <Link href="/settings" className={cn(classroomButtonVariants({ variant: 'outline' }))}>
+            Cài đặt
           </Link>
         </div>
       </ClassroomCard>

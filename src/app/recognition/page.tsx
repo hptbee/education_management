@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense, useCallback, useMemo } from 'react'
-import { LayoutList, Medal, MonitorPlay, Sparkles, Star, Trophy } from 'lucide-react'
+import { Suspense, useCallback, useEffect, useMemo } from 'react'
+import { LayoutList, MonitorPlay, Sparkles, Star, Trophy } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
@@ -13,20 +13,31 @@ import { RecognitionFormSection } from './components/recognition-form-section'
 import { TitleCatalogSection } from './components/title-catalog-section'
 import { WallOfFameSection } from './components/wall-of-fame-section'
 
-export type RecognitionTab = 'new' | 'badges' | 'titles' | 'wall'
+export type RecognitionTab = 'new' | 'catalog' | 'wall'
 
-const TAB_IDS: RecognitionTab[] = ['new', 'badges', 'titles', 'wall']
+const TAB_IDS: RecognitionTab[] = ['new', 'catalog', 'wall']
+
+const LEGACY_TAB_ALIASES: Record<string, RecognitionTab> = {
+  badges: 'catalog',
+  titles: 'catalog',
+}
 
 const TABS: { id: RecognitionTab; label: string; icon: React.ReactNode }[] = [
   { id: 'new', label: 'Tuyên dương mới', icon: <Sparkles className="size-4" /> },
-  { id: 'badges', label: 'Huy hiệu', icon: <Medal className="size-4" /> },
-  { id: 'titles', label: 'Danh mục', icon: <LayoutList className="size-4" /> },
+  {
+    id: 'catalog',
+    label: 'Danh hiệu & huy hiệu',
+    icon: <LayoutList className="size-4" />,
+  },
   { id: 'wall', label: 'Góc tuyên dương', icon: <Star className="size-4" /> },
 ]
 
 function parseTab(value: string | null): RecognitionTab {
   if (value && TAB_IDS.includes(value as RecognitionTab)) {
     return value as RecognitionTab
+  }
+  if (value && LEGACY_TAB_ALIASES[value]) {
+    return LEGACY_TAB_ALIASES[value]
   }
   return 'new'
 }
@@ -45,7 +56,7 @@ function RecognitionPageContent() {
     (tab: RecognitionTab) => {
       const params = new URLSearchParams(searchParams?.toString() ?? '')
       params.set('tab', tab)
-      if (tab !== 'badges') {
+      if (tab !== 'catalog') {
         params.delete('studentId')
       }
       const qs = params.toString()
@@ -59,6 +70,12 @@ function RecognitionPageContent() {
   const classroomRoles = data?.classroomRoles ?? []
   const titles = data?.recognitionTitles ?? []
   const studentIdFromQuery = searchParams?.get('studentId') ?? undefined
+
+  useEffect(() => {
+    if (activeTab === 'catalog' && studentIdFromQuery) {
+      document.getElementById('badge-roster-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [activeTab, studentIdFromQuery])
 
   if (!isLoaded) {
     return (
@@ -96,13 +113,17 @@ function RecognitionPageContent() {
           }
         />
 
-        <div className="flex flex-wrap gap-2">
+        <div role="tablist" aria-label="Phần tuyên dương" className="flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              id={`recognition-tab-${tab.id}`}
+              aria-selected={activeTab === tab.id}
+              aria-controls={`recognition-panel-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-extrabold transition-all duration-200 ${
+              className={`flex min-h-11 items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-extrabold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                 activeTab === tab.id
                   ? 'bg-brand text-white shadow-lg shadow-sky-200'
                   : 'bg-white/80 text-slate-500 ring-1 ring-sky-100 hover:bg-brand-soft hover:text-brand-dark'
@@ -115,27 +136,37 @@ function RecognitionPageContent() {
         </div>
 
         {activeTab === 'new' ? (
+          <div role="tabpanel" id="recognition-panel-new" aria-labelledby="recognition-tab-new">
           <RecognitionFormSection
             students={students}
             teams={teams}
             classroomRoles={classroomRoles}
             titles={titles}
-            onGoToTitles={() => setActiveTab('titles')}
+            onGoToTitles={() => setActiveTab('catalog')}
           />
+          </div>
         ) : null}
 
-        {activeTab === 'badges' ? (
-          <BadgeRosterSection initialStudentId={studentIdFromQuery} />
+        {activeTab === 'catalog' ? (
+          <div
+            role="tabpanel"
+            id="recognition-panel-catalog"
+            aria-labelledby="recognition-tab-catalog"
+            className="flex flex-col gap-6"
+          >
+            <TitleCatalogSection />
+            <BadgeRosterSection initialStudentId={studentIdFromQuery} />
+          </div>
         ) : null}
-
-        {activeTab === 'titles' ? <TitleCatalogSection /> : null}
 
         {activeTab === 'wall' ? (
+          <div role="tabpanel" id="recognition-panel-wall" aria-labelledby="recognition-tab-wall">
           <WallOfFameSection
             students={students}
             teams={teams}
             onStartRecognition={() => setActiveTab('new')}
           />
+          </div>
         ) : null}
       </div>
     </div>

@@ -94,6 +94,17 @@ export default function RankingPage() {
     setPeriod(DEFAULT_FILTERS.period)
   }
 
+  const handleEnterPresentation = () => {
+    clearFilters()
+    enterPresentationMode()
+  }
+
+  const pageTitle = mode === 'teams' ? 'Thi đua tổ' : 'Bảng xếp hạng học sinh'
+  const pageSubtitle =
+    mode === 'teams'
+      ? 'Điểm thi đua các tổ trong lớp'
+      : 'Thành tích và điểm số của các bạn trong lớp'
+
   if (!isLoaded) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -113,6 +124,9 @@ export default function RankingPage() {
         }
       >
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <RankingModeToggle mode={mode} onChange={setMode} />
+          </div>
           {mode === 'teams' ? (
             teams.length === 0 ? (
               <EmptyState icon={Users} title="Chưa có tổ nào để xếp hạng" />
@@ -155,12 +169,12 @@ export default function RankingPage() {
       <div className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 pb-10">
         <PageHeader
           icon={Crown}
-          title="Bảng xếp hạng học sinh"
-          subtitle="Thành tích và điểm số của các bạn trong lớp"
+          title={pageTitle}
+          subtitle={pageSubtitle}
           iconClassName="from-amber-400 to-yellow-500"
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <ClassroomButton variant="secondary" onClick={enterPresentationMode}>
+              <ClassroomButton variant="secondary" onClick={handleEnterPresentation}>
                 <MonitorPlay className="size-4" aria-hidden /> Trình chiếu
               </ClassroomButton>
               <RankingModeToggle mode={mode} onChange={setMode} />
