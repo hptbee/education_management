@@ -4,7 +4,7 @@ import { Leaderboard } from '@/components/dashboard/leaderboard'
 import { TeamCompetition } from '@/components/dashboard/team-competition'
 import { RecentPraise } from '@/components/dashboard/recent-praise'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
-import { Announcements } from '@/components/dashboard/announcements'
+import { FeaturedGifts } from '@/components/dashboard/featured-gifts'
 
 export default function Home() {
   return (
@@ -21,7 +21,7 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <RecentPraise />
           <RecentActivity />
-          <Announcements />
+          <FeaturedGifts />
         </div>
       </div>
     </div>
