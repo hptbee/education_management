@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { ClassroomButton } from "@/src/components/classroom";
 import { usePresentationMode } from "@/src/store/PresentationModeContext";
@@ -13,10 +13,19 @@ interface PresentationChromeProps {
 
 export function PresentationChrome({ title, subtitle, children }: PresentationChromeProps) {
   const { exitPresentationMode } = usePresentationMode();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    const root = rootRef.current;
+    if (!root) return;
+
+    const syncFullscreen = () => {
+      // Defer until after the browser finishes reparenting the fullscreen subtree.
+      requestAnimationFrame(() => {
+        setIsFullscreen(document.fullscreenElement === root);
+      });
+    };
     syncFullscreen();
     document.addEventListener("fullscreenchange", syncFullscreen);
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
@@ -34,15 +43,20 @@ export function PresentationChrome({ title, subtitle, children }: PresentationCh
   }, [exitPresentationMode]);
 
   const handleToggleFullscreen = () => {
-    if (document.fullscreenElement) {
+    const root = rootRef.current;
+    if (!root) return;
+    if (document.fullscreenElement === root) {
       void document.exitFullscreen().catch(() => undefined);
     } else {
-      void document.documentElement.requestFullscreen().catch(() => undefined);
+      void root.requestFullscreen().catch(() => undefined);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-page">
+    <div
+      ref={rootRef}
+      className="presentation-chrome fixed inset-0 z-40 flex flex-col bg-page"
+    >
       <div className="flex items-center justify-between gap-3 border-b border-sky-100 bg-white/90 px-5 py-4 backdrop-blur-sm">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-black text-slate-800">{title}</h1>
@@ -52,18 +66,20 @@ export function PresentationChrome({ title, subtitle, children }: PresentationCh
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <ClassroomButton variant="secondary" onClick={handleToggleFullscreen} className="min-h-11">
-            {isFullscreen ? (
-              <>
-                <Minimize2 className="size-4" aria-hidden /> Thoát toàn màn hình
-              </>
-            ) : (
-              <>
-                <Maximize2 className="size-4" aria-hidden /> Toàn màn hình
-              </>
-            )}
+            <span className="inline-flex items-center gap-2">
+              {isFullscreen ? (
+                <Minimize2 className="size-4" aria-hidden />
+              ) : (
+                <Maximize2 className="size-4" aria-hidden />
+              )}
+              {isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+            </span>
           </ClassroomButton>
           <ClassroomButton onClick={exitPresentationMode} className="min-h-11">
-            <X className="size-4" aria-hidden /> Thoát trình chiếu
+            <span className="inline-flex items-center gap-2">
+              <X className="size-4" aria-hidden />
+              Thoát trình chiếu
+            </span>
           </ClassroomButton>
         </div>
       </div>

@@ -205,7 +205,7 @@
       radial-gradient(ellipse 45% 38% at 6% 92%, rgba(253, 216, 228, 0.35) 0%, transparent 50%);
   }
 
-  .classroom-shell > * {
+  .classroom-shell > *:not(.presentation-chrome) {
     position: relative;
     z-index: 1;
   }

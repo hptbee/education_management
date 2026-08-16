@@ -127,16 +127,18 @@ export default function RankingPage() {
             )
           ) : students.length === 0 ? (
             <EmptyState icon={Users} title="Chưa có học sinh để xếp hạng" />
+          ) : filteredStudents.length === 0 ? (
+            <EmptyState icon={Users} title="Không tìm thấy học sinh phù hợp" />
           ) : (
             <>
-              {rankedStudents.length > 0 ? (
+              {filteredStudents.length > 0 ? (
                 <ClassroomCard>
-                  <RankingPodium entries={rankedStudents} />
+                  <RankingPodium entries={filteredStudents} />
                 </ClassroomCard>
               ) : null}
               <ClassroomCard>
                 <RankingList
-                  entries={rankedStudents}
+                  entries={filteredStudents}
                   teams={teams}
                   classroomRoles={classroomRoles}
                 />

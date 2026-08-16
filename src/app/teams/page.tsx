@@ -21,7 +21,7 @@ import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, useClassroomDia
 export default function TeamsPage() {
   const { data, saveTeam, deleteTeam, saveStudent, saveStudents } = useAppData()
   const { classroom, isLoaded } = useActiveClassroom()
-  const { showAlert } = useClassroomDialog()
+  const { showAlert, showConfirm } = useClassroomDialog()
 
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -131,6 +131,24 @@ export default function TeamsPage() {
   const handleRemove = (studentId: string) => {
     const s = students.find(st => st.id === studentId)
     if (s) saveStudent({ ...s, teamId: undefined, updatedAt: new Date().toISOString() })
+  }
+
+  const handleClearAllMembers = async (team: Team) => {
+    const members = students.filter((student) => student.teamId === team.id)
+    if (members.length === 0) return
+
+    const confirmed = await showConfirm(
+      `Bỏ ${members.length} học sinh khỏi tổ "${team.name}"? Các học sinh sẽ trở thành chưa chia tổ.`,
+      {
+        title: 'Bỏ hết thành viên',
+        confirmLabel: 'Bỏ hết',
+        variant: 'warning',
+      },
+    )
+    if (!confirmed) return
+
+    const now = new Date().toISOString()
+    saveStudents(members.map((student) => ({ ...student, teamId: undefined, updatedAt: now })))
   }
 
   const handleRandomize = async () => {
@@ -257,6 +275,7 @@ export default function TeamsPage() {
                   colorIndex={Math.max(0, teams.findIndex((t) => t.id === team.id))}
                   onEdit={() => handleOpenEdit(team)}
                   onDelete={() => handleOpenDelete(team)}
+                  onClearAllMembers={() => void handleClearAllMembers(team)}
                   onViewDetails={() => handleOpenDetails(team)}
                   onViewMembers={() => handleOpenDetails(team)}
                 />
@@ -326,6 +345,7 @@ export default function TeamsPage() {
         onAssign={handleAssign}
         onMove={handleMove}
         onRemove={handleRemove}
+        onClearAllMembers={() => selectedTeam && void handleClearAllMembers(selectedTeam)}
         onEditTeam={() => { setIsDetailsOpen(false); selectedTeam && handleOpenEdit(selectedTeam) }}
         onOpenPoints={() => { setIsDetailsOpen(false); selectedTeam && handleOpenPoints(selectedTeam) }}
         onUpdateLeadership={handleUpdateLeadership}

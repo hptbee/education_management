@@ -1,4 +1,4 @@
-import { Users, Edit2, Trash2 } from 'lucide-react'
+import { Users, Edit2, Trash2, UserMinus } from 'lucide-react'
 import type { Team, Student } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
 import { getTeamMotivationMessage } from '@/src/utils/teams'
@@ -15,6 +15,7 @@ interface TeamCardProps {
   colorIndex: number
   onEdit: () => void
   onDelete: () => void
+  onClearAllMembers: () => void
   onViewDetails: () => void
   onViewMembers: () => void
 }
@@ -34,6 +35,7 @@ export function TeamCard({
   colorIndex,
   onEdit,
   onDelete,
+  onClearAllMembers,
   onViewDetails,
 }: TeamCardProps) {
   const color = getTeamPastelStyle(colorIndex)
@@ -66,6 +68,16 @@ export function TeamCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center">
+          {members.length > 0 ? (
+            <button
+              type="button"
+              onClick={onClearAllMembers}
+              className="flex size-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-amber-600"
+              title="Bỏ hết thành viên"
+            >
+              <UserMinus className="size-4" />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onEdit}
