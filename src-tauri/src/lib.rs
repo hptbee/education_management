@@ -157,6 +157,142 @@ fn get_cloud_backup_token() -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+const ENTITLEMENT_SERVICE: &str = "education-management";
+const ENTITLEMENT_USER: &str = "teacher-entitlement";
+
+#[tauri::command]
+fn save_entitlement(app: AppHandle, payload: String) -> Result<(), String> {
+  if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
+    if entry.set_password(&payload).is_ok() {
+      return Ok(());
+    }
+  }
+
+  let data_dir = get_data_dir(&app)?;
+  let path = data_dir.join("entitlement.sec");
+  std::fs::write(&path, payload).map_err(|e| format!("Failed to save entitlement: {}", e))
+}
+
+#[tauri::command]
+fn load_entitlement(app: AppHandle) -> Result<Option<String>, String> {
+  if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
+    if let Ok(value) = entry.get_password() {
+      if !value.trim().is_empty() {
+        return Ok(Some(value));
+      }
+    }
+  }
+
+  let data_dir = get_data_dir(&app)?;
+  let path = data_dir.join("entitlement.sec");
+  if path.exists() {
+  let value = std::fs::read_to_string(&path)
+      .map_err(|e| format!("Failed to read entitlement: {}", e))?;
+    if !value.trim().is_empty() {
+      return Ok(Some(value));
+    }
+  }
+  Ok(None)
+}
+
+#[tauri::command]
+fn clear_entitlement(app: AppHandle) -> Result<(), String> {
+  if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
+    let _ = entry.delete_credential();
+  }
+  let data_dir = get_data_dir(&app)?;
+  let path = data_dir.join("entitlement.sec");
+  if path.exists() {
+    let _ = std::fs::remove_file(&path);
+  }
+  Ok(())
+}
+
+fn open_system_url(url: &str) -> Result<(), String> {
+  #[cfg(target_os = "windows")]
+  {
+    std::process::Command::new("cmd")
+      .args(["/C", "start", "", url])
+      .spawn()
+      .map_err(|e| format!("Failed to open browser: {}", e))?;
+  }
+  #[cfg(target_os = "macos")]
+  {
+    std::process::Command::new("open")
+      .arg(url)
+      .spawn()
+      .map_err(|e| format!("Failed to open browser: {}", e))?;
+  }
+  #[cfg(target_os = "linux")]
+  {
+    std::process::Command::new("xdg-open")
+      .arg(url)
+      .spawn()
+      .map_err(|e| format!("Failed to open browser: {}", e))?;
+  }
+  Ok(())
+}
+
+#[tauri::command]
+async fn start_google_oauth(client_id: String, code_challenge: String) -> Result<String, String> {
+  use std::io::{Read, Write};
+  use std::net::TcpListener;
+  use std::time::{Duration, Instant};
+
+  let listener = TcpListener::bind("127.0.0.1:0")
+    .map_err(|e| format!("Failed to bind loopback port: {}", e))?;
+  let port = listener
+    .local_addr()
+    .map_err(|e| format!("Failed to read local addr: {}", e))?
+    .port();
+  let redirect_uri = format!("http://127.0.0.1:{port}/oauth/callback");
+  let auth_url = format!(
+    "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope=openid%20email%20profile&code_challenge={}&code_challenge_method=S256&access_type=offline&prompt=consent",
+    urlencoding::encode(&client_id),
+    urlencoding::encode(&redirect_uri),
+    urlencoding::encode(&code_challenge),
+  );
+
+  open_system_url(&auth_url)?;
+
+  listener
+    .set_nonblocking(true)
+    .map_err(|e| format!("Failed to configure listener: {}", e))?;
+
+  let started = Instant::now();
+  loop {
+    if started.elapsed() > Duration::from_secs(180) {
+      return Err("Google sign-in timed out".to_string());
+    }
+
+    if let Ok((mut stream, _)) = listener.accept() {
+      let mut buffer = [0u8; 4096];
+      let read = stream
+        .read(&mut buffer)
+        .map_err(|e| format!("Failed to read OAuth callback: {}", e))?;
+      let request = String::from_utf8_lossy(&buffer[..read]);
+      let request_line = request.lines().next().unwrap_or("");
+      let path = request_line
+        .split_whitespace()
+        .nth(1)
+        .unwrap_or("/");
+      let callback = format!("http://127.0.0.1:{port}{path}");
+
+      let response_body = "Đăng nhập thành công. Bạn có thể quay lại ứng dụng.";
+      let response = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        response_body.len(),
+        response_body
+      );
+      let _ = stream.write_all(response.as_bytes());
+      let _ = stream.flush();
+      return Ok(callback);
+    }
+
+    std::thread::sleep(Duration::from_millis(50));
+  }
+}
+
 #[tauri::command]
 async fn ensure_dir(app: AppHandle, path: String) -> Result<(), String> {
     let safe_path = assert_under_data_dir(&app, &path, true)?;
@@ -379,6 +515,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_data_directory,
             get_cloud_backup_token,
+            save_entitlement,
+            load_entitlement,
+            clear_entitlement,
+            start_google_oauth,
             ensure_dir,
             read_text_file,
             write_text_file,

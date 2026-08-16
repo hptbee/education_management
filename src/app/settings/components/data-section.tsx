@@ -1,12 +1,14 @@
 'use client'
 
-import { Copy, Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
+import { CloudDownload, Copy, Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
 import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
+import { listCloudClassrooms, restoreCloudClassroom } from '@/src/auth/api'
 import { databaseService } from '@/src/database/database.service'
 import { isCloudBackupConfigured } from '@/src/database/backup/cloud-backup.service'
 import type { ClassroomDatabase, DatabaseSummary } from '@/src/database/types'
+import { useAuth } from '@/src/store/AuthContext'
 import { ClassroomList } from './classroom-list'
 
 interface DataSectionProps {
@@ -42,18 +44,66 @@ export function DataSection({
   onCloseDatabase,
   onCloudBackupEnabledChange,
 }: DataSectionProps) {
+  const { entitlement, permissions } = useAuth()
   const [databases, setDatabases] = useState<DatabaseSummary[]>([])
   const [cloudConfigured, setCloudConfigured] = useState(false)
+  const [cloudClassrooms, setCloudClassrooms] = useState<
+    { classroomId: string; updatedAt: string | null; size: number }[]
+  >([])
+  const [loadingCloud, setLoadingCloud] = useState(false)
+  const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [cloudError, setCloudError] = useState<string | null>(null)
 
   useEffect(() => {
     void isCloudBackupConfigured().then(setCloudConfigured)
-  }, [data.metadata.id, data.appSettings.cloudBackupEnabled])
+  }, [data.metadata.id, data.appSettings.cloudBackupEnabled, entitlement])
 
   useEffect(() => {
     void databaseService.listDatabases().then(setDatabases)
   }, [data.metadata.id])
 
+  useEffect(() => {
+    if (!cloudConfigured || !entitlement) {
+      setCloudClassrooms([])
+      return
+    }
+
+    setLoadingCloud(true)
+    setCloudError(null)
+    void listCloudClassrooms(entitlement)
+      .then(setCloudClassrooms)
+      .catch(() => setCloudError('Không tải được danh sách lớp trên đám mây.'))
+      .finally(() => setLoadingCloud(false))
+  }, [cloudConfigured, entitlement, data.metadata.id])
+
+  const handleRestoreFromCloud = async (classroomId: string) => {
+    if (!entitlement) return
+    const confirmed = window.confirm(
+      `Khôi phục lớp "${classroomId}" từ đám mây? Dữ liệu sẽ được nhập vào thiết bị này (không ghi đè lớp trùng mã).`,
+    )
+    if (!confirmed) return
+
+    setRestoringId(classroomId)
+    setCloudError(null)
+    try {
+      const payload = await restoreCloudClassroom(entitlement, classroomId)
+      if (!payload) {
+        throw new Error('Không tìm thấy bản sao lưu trên đám mây.')
+      }
+      await databaseService.importDatabaseFromJson(payload)
+      const refreshed = await databaseService.listDatabases()
+      setDatabases(refreshed)
+    } catch (err) {
+      setCloudError(err instanceof Error ? err.message : 'Khôi phục thất bại.')
+    } finally {
+      setRestoringId(null)
+    }
+  }
+
   const otherClasses = databases.filter((db) => db.id !== data.metadata.id)
+  const hasCloudBackupPermission = permissions?.cloudBackup === true
+  const showCloudFeatures = cloudConfigured && hasCloudBackupPermission
+  const showCloudUpgradeNote = Boolean(entitlement) && !hasCloudBackupPermission
 
   return (
     <div className="grid gap-4">
@@ -165,7 +215,7 @@ export function DataSection({
             <p className="mt-1 text-sm font-semibold text-slate-500">
               Xuất JSON hoặc mở thư mục dữ liệu (Tauri). Sao lưu đám mây là tùy chọn — chỉ gửi JSON lớp khi bật.
             </p>
-            {cloudConfigured ? (
+            {showCloudFeatures ? (
               <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-2xl border border-sky-100 bg-surface-soft px-4 py-3">
                 <input
                   type="checkbox"
@@ -177,9 +227,13 @@ export function DataSection({
                   Tự động sao lưu lớp này lên đám mây sau khi lưu cục bộ
                 </span>
               </label>
+            ) : showCloudUpgradeNote ? (
+              <p className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                Gói Cơ bản không bao gồm sao lưu đám mây. Liên hệ quản trị viên để nâng cấp Premium.
+              </p>
             ) : (
               <p className="mt-3 text-sm font-semibold text-slate-500">
-                Sao lưu đám mây chưa cấu hình (cần URL Worker và mã bảo mật trong môi trường).
+                Sao lưu đám mây chưa cấu hình (cần URL Worker, khóa công khai entitlement và đăng nhập Google).
               </p>
             )}
           </div>
@@ -195,6 +249,55 @@ export function DataSection({
           </div>
         </div>
       </ClassroomCard>
+
+      {showCloudFeatures ? (
+        <ClassroomCard>
+          <h2 className="font-display text-lg font-extrabold text-slate-800">Khôi phục từ đám mây</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-500">
+            Tải lớp đã sao lưu trên tài khoản của cô về thiết bị này.
+          </p>
+          {cloudError ? (
+            <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+              {cloudError}
+            </p>
+          ) : null}
+          {loadingCloud ? (
+            <p className="mt-4 text-sm font-semibold text-slate-500">Đang tải danh sách...</p>
+          ) : cloudClassrooms.length === 0 ? (
+            <p className="mt-4 rounded-2xl bg-surface-soft px-4 py-3 text-sm font-semibold text-slate-500">
+              Chưa có lớp nào được sao lưu trên đám mây.
+            </p>
+          ) : (
+            <ul className="mt-4 grid gap-2">
+              {cloudClassrooms.map((item) => (
+                <li
+                  key={item.classroomId}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-surface-soft px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{item.classroomId}</p>
+                    <p className="text-xs font-semibold text-slate-400">
+                      {item.updatedAt
+                        ? new Date(item.updatedAt).toLocaleString('vi-VN')
+                        : '—'}
+                      {' · '}
+                      {Math.round(item.size / 1024)} KB
+                    </p>
+                  </div>
+                  <ClassroomButton
+                    variant="outline"
+                    disabled={restoringId === item.classroomId}
+                    onClick={() => void handleRestoreFromCloud(item.classroomId)}
+                  >
+                    <CloudDownload className="size-4" />
+                    {restoringId === item.classroomId ? 'Đang khôi phục...' : 'Khôi phục'}
+                  </ClassroomButton>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ClassroomCard>
+      ) : null}
     </div>
   )
 }

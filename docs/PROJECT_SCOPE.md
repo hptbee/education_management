@@ -16,6 +16,11 @@
 >
 > Do not introduce backend, authentication, APIs, cloud infrastructure, or unnecessary
 > enterprise architecture unless explicitly requested in the future.
+>
+> **Exception (v0.1.7+):** Teacher **Google sign-in**, **signed entitlements**, and **optional
+> cloud backup** are implemented via `workers/cloud-backup` (Cloudflare Worker + D1 + R2).
+> Classroom JSON remains local-first. See [ACCOUNTS.md](./ACCOUNTS.md). This does not change
+> the rule that `ClassroomDatabase` is the in-app source of truth for classroom data.
 
 ---
 
@@ -1740,7 +1745,18 @@ Do not implement unless useful:
 
 # FR-019 — Backup, Restore, and Reset
 
-Because the application is local-only, data protection is important.
+Because the application is local-first, data protection is important.
+
+## Cloud backup (optional, v0.1.7+)
+
+When signed in with a valid entitlement and per-class opt-in (`appSettings.cloudBackupEnabled`):
+
+- After each local save, the app may upload classroom JSON to R2 via the Cloudflare Worker.
+- Storage key: `users/{userId}/classrooms/{classroomId}/database.json`.
+- Teacher can list and restore cloud backups from **Cài đặt → Dữ liệu**.
+- Cloud backup does not replace local JSON; local save always happens first.
+
+See [ACCOUNTS.md](./ACCOUNTS.md).
 
 ## Export Backup
 
@@ -2534,10 +2550,10 @@ For each feature:
 
 Do not:
 
-- Add backend functionality
-- Add authentication
-- Add APIs
-- Add cloud services
+- Add backend functionality *(except `workers/cloud-backup` for auth/licensing/backup — see ACCOUNTS.md)*
+- Add authentication *(except required teacher Google sign-in — see ACCOUNTS.md)*
+- Add APIs *(except Worker endpoints for auth/backup/admin — see ACCOUNTS.md)*
+- Add cloud services *(except optional R2 classroom backup — see ACCOUNTS.md)*
 - Introduce Redux
 - Over-engineer abstractions
 - Hardcode classroom identity

@@ -75,7 +75,7 @@ function minimalDb(overrides: Partial<ClassroomDatabase> = {}): ClassroomDatabas
     luckyWheelHistory: [],
     badgeAwardHistory: [],
     wheelStudentBag: [],
-    appSettings: { soundEnabled: true, animationsEnabled: true },
+    appSettings: { soundEnabled: true, animationsEnabled: true, cloudBackupEnabled: false },
     ...overrides,
   };
 }

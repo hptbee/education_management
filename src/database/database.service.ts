@@ -388,6 +388,30 @@ export class DatabaseService {
     }
   }
 
+  private async importParsedDatabase(data: unknown): Promise<ClassroomDatabase> {
+    const record = data as Record<string, unknown>;
+    const classroomData =
+      record.payload && typeof record.payload === "object" ? record.payload : data;
+
+    assertImportShape(classroomData);
+
+    const db = normalizeClassroomDatabase(classroomData);
+    const storage = await this.getStorage();
+    const existing = await storage.load(db.metadata.id);
+    if (existing) {
+      throw new Error(
+        `Đã có lớp "${existing.classroomSettings.className}" (${existing.classroomSettings.schoolYear}) với cùng mã dữ liệu. Hãy xóa lớp cũ hoặc chỉnh tên lớp/năm học trong file trước khi nhập.`,
+      );
+    }
+    const saved = await this.saveDatabase(db);
+    await persistActiveClassroomId(saved.metadata.id);
+    return saved;
+  }
+
+  async importDatabaseFromJson(data: unknown): Promise<ClassroomDatabase> {
+    return this.importParsedDatabase(data);
+  }
+
   async importDatabase(file: File): Promise<ClassroomDatabase> {
     assertImportFileSize(file);
 
@@ -397,19 +421,7 @@ export class DatabaseService {
         try {
           const text = e.target?.result as string;
           const data = JSON.parse(text);
-
-          assertImportShape(data);
-
-          const db = normalizeClassroomDatabase(data);
-          const storage = await this.getStorage();
-          const existing = await storage.load(db.metadata.id);
-          if (existing) {
-            throw new Error(
-              `Đã có lớp "${existing.classroomSettings.className}" (${existing.classroomSettings.schoolYear}) với cùng mã dữ liệu. Hãy xóa lớp cũ hoặc chỉnh tên lớp/năm học trong file trước khi nhập.`,
-            );
-          }
-          const saved = await this.saveDatabase(db);
-          await persistActiveClassroomId(saved.metadata.id);
+          const saved = await this.importParsedDatabase(data);
           resolve(saved);
         } catch (err) {
           reject(err);

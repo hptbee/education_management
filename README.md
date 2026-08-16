@@ -21,11 +21,28 @@ The app is designed for a single classroom and focuses on student profiles, clas
 ## Architecture & Constraints
 
 - **Local-first Desktop App**: Runs natively on Windows/macOS/Linux via Tauri.
-- **No backend / No cloud services**: Data is entirely owned by the user.
-- **No authentication**: Designed for single-teacher local use.
-- **JSON File Persistence**: Data is safely stored in local JSON files via Tauri filesystem APIs.
+- **Classroom data stays local**: `ClassroomDatabase` JSON on disk (Tauri) or IndexedDB (web dev) is the source of truth for students, points, teams, etc.
+- **Google sign-in required**: Teachers authenticate via Google; the app receives a signed **entitlement** from the Cloudflare Worker.
+- **Optional cloud backup**: Per-class opt-in upload to R2 — not a replacement for local storage.
+- **JSON File Persistence**: Classroom data is stored in local JSON files via Tauri filesystem APIs.
+
+See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) for OAuth, Worker, D1, and entitlement setup.
 
 ## Getting Started
+
+### Environment
+
+Copy `.env.example` to `.env.local` and configure:
+
+```env
+NEXT_PUBLIC_CLOUD_BACKUP_URL=https://classroom-cloud-backup.phuontun-01.workers.dev
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<your-google-client-id>
+NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+...
+-----END PUBLIC KEY-----"
+```
+
+See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) for Google OAuth and Worker secret setup.
 
 Install dependencies:
 
@@ -83,10 +100,11 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 
 ### Classroom & Students
 - Classroom dashboard
-- **Settings** (`/settings`) — classroom selector when no class is open; four in-class tabs when a class is active:
+- **Settings** (`/settings`) — classroom selector when no class is open; tabs when a class is active:
+  - **Tài khoản** — Google account, plan, verification status, logout; first-login cloud backup prompt
   - **Hồ sơ** — teacher name, display class name, avatar (auto-save on pick), home banner; single **Lưu thay đổi** for text fields
   - **Vai trò** — classroom role catalog
-  - **Dữ liệu** — switch class, rename database / school year, duplicate, export JSON, open data folder (Tauri)
+  - **Dữ liệu** — switch class, rename database / school year, duplicate, export JSON, open data folder (Tauri), opt-in cloud backup, restore from cloud
   - **Nguy hiểm** — delete classroom (name confirmation)
 - Configurable classroom roles (e.g. class president, vice president)
 - Student management with search, import, and detailed profiles
@@ -116,6 +134,8 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - Classroom tools (`/tools`; `/games` redirects here)
 - Local image uploads (stored as base64 strings in the JSON database)
 - Export / Import JSON database backups
+- **Cloud backup** (opt-in per class; requires **trial**, **premium**, or **lifetime** plan) — automatic upload to R2 after local save when signed in
+- **Cloud restore** — list and import classrooms from teacher's cloud account (Settings → Dữ liệu)
 - Duplicate databases for new school years
 
 ## Design System
@@ -144,3 +164,5 @@ Student-facing tools (Lucky Wheel, Timer, Lucky Star): larger type, more celebra
 ## Project Scope
 
 See [docs/PROJECT_SCOPE.md](./docs/PROJECT_SCOPE.md) for the full product requirements and implementation scope.
+
+**Accounts & cloud backup** (added after v0.1.6 scope): see [docs/ACCOUNTS.md](./docs/ACCOUNTS.md). Classroom JSON remains local-first; Worker handles auth, licensing, and optional backup only.

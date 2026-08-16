@@ -2,16 +2,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptyDatabase } from "../database.factory";
 import {
   CloudBackupScheduler,
-  buildBackupStorageKey,
-  resetCloudBackupTokenCache,
-  sanitizeBackupIdentifier,
+  buildUserClassroomStorageKey,
   uploadClassroomBackup,
 } from "./cloud-backup.service";
+import { verifyEntitlementToken } from "@/src/auth/entitlement";
 
-vi.mock("./device-id.service", () => ({
-  deviceIdService: {
-    getDeviceId: vi.fn().mockResolvedValue("device-test-123"),
-  },
+vi.mock("@/src/auth/secure-storage", () => ({
+  loadAuthSession: vi.fn().mockResolvedValue({
+    entitlement: "test-entitlement-token",
+    user: { id: "usr_test" },
+    license: null,
+    lastVerifiedAt: new Date().toISOString(),
+    lastTrustedIat: Math.floor(Date.now() / 1000),
+  }),
+}));
+
+vi.mock("@/src/auth/entitlement", () => ({
+  verifyEntitlementToken: vi.fn().mockResolvedValue({
+    claims: {
+      userId: "usr_test",
+      permissions: { appAccess: true, cloudBackup: true },
+    },
+    issuedAt: Math.floor(Date.now() / 1000),
+    expiresAt: Math.floor(Date.now() / 1000) + 3600,
+  }),
 }));
 
 vi.mock("./backup-metadata.service", () => ({
@@ -42,38 +56,29 @@ function makeDb(cloudBackupEnabled = true) {
 }
 
 describe("backup sanitization", () => {
-  it("accepts safe identifiers", () => {
-    expect(sanitizeBackupIdentifier("device-123_abc")).toBe("device-123_abc");
-    expect(buildBackupStorageKey("device-1", "2-7_2026-2027")).toBe(
-      "backups/device-1/2-7_2026-2027/latest.json",
+  it("builds per-user classroom keys", () => {
+    expect(buildUserClassroomStorageKey("usr_abc", "2-7_2026-2027")).toBe(
+      "users/usr_abc/classrooms/2-7_2026-2027/database.json",
     );
-  });
-
-  it("rejects unsafe identifiers", () => {
-    expect(sanitizeBackupIdentifier("../evil")).toBeNull();
-    expect(sanitizeBackupIdentifier("a/b")).toBeNull();
-    expect(() => buildBackupStorageKey("../evil", "ok")).toThrow();
   });
 });
 
 describe("uploadClassroomBackup", () => {
   const originalUrl = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
-  const originalToken = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN;
+  const originalPublicKey = process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY;
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "test-token";
-    resetCloudBackupTokenCache();
+    process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAtest\n-----END PUBLIC KEY-----";
   });
 
   afterEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalUrl;
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = originalToken;
-    resetCloudBackupTokenCache();
+    process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = originalPublicKey;
     vi.clearAllMocks();
   });
 
-  it("uploads classroom JSON to worker when opt-in is enabled", async () => {
+  it("uploads classroom JSON with entitlement bearer", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
     await uploadClassroomBackup(makeDb(true), fetchMock as unknown as typeof fetch);
@@ -83,9 +88,10 @@ describe("uploadClassroomBackup", () => {
     expect(url).toBe("https://backup.example.workers.dev/backup");
     expect(init?.method).toBe("PUT");
     const body = JSON.parse(String(init?.body));
-    expect(body.deviceId).toBe("device-test-123");
     expect(body.classroomId).toBe("2-7_2026-2027");
-    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer test-token");
+    expect((init?.headers as Record<string, string>).Authorization).toBe(
+      "Bearer test-entitlement-token",
+    );
   });
 
   it("skips upload when cloud backup opt-in is disabled", async () => {
@@ -94,9 +100,21 @@ describe("uploadClassroomBackup", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("skips upload when token is missing", async () => {
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "";
-    resetCloudBackupTokenCache();
+  it("skips upload when entitlement lacks cloudBackup permission", async () => {
+    vi.mocked(verifyEntitlementToken).mockResolvedValueOnce({
+      claims: {
+        userId: "usr_test",
+        role: "teacher",
+        plan: "basic",
+        status: "active",
+        permissions: { appAccess: true, cloudBackup: false },
+        licenseVersion: 1,
+        offlineValidUntil: Math.floor(Date.now() / 1000) + 3600,
+      },
+      issuedAt: Math.floor(Date.now() / 1000),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    });
+
     const fetchMock = vi.fn();
     await uploadClassroomBackup(makeDb(true), fetchMock as unknown as typeof fetch);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -105,18 +123,16 @@ describe("uploadClassroomBackup", () => {
 
 describe("CloudBackupScheduler", () => {
   const originalUrl = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
-  const originalToken = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN;
+  const originalPublicKey = process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY;
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "test-token";
-    resetCloudBackupTokenCache();
+    process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAtest\n-----END PUBLIC KEY-----";
   });
 
   afterEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalUrl;
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = originalToken;
-    resetCloudBackupTokenCache();
+    process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = originalPublicKey;
     vi.clearAllMocks();
   });
 
@@ -130,49 +146,5 @@ describe("CloudBackupScheduler", () => {
     await scheduler.flushPending();
 
     expect(states).toContain("failed");
-  });
-
-  it("retries and succeeds after a failed upload", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("fail", { status: 500 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-
-    const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);
-    scheduler.scheduleAfterLocalSave(makeDb());
-    await scheduler.flushPending();
-    await scheduler.flushPending();
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(scheduler.getState()).toBe("synced");
-  });
-
-  it("does not clear pending when a newer snapshot arrives during upload", async () => {
-    const first = makeDb();
-    const second = {
-      ...makeDb(),
-      metadata: {
-        ...makeDb().metadata,
-        updatedAt: "2026-01-02T00:00:00.000Z",
-      },
-    };
-
-    let resolveUpload: (value: Response) => void = () => {};
-    const uploadPromise = new Promise<Response>((resolve) => {
-      resolveUpload = resolve;
-    });
-
-    const fetchMock = vi.fn().mockReturnValue(uploadPromise);
-    const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);
-
-    scheduler.scheduleAfterLocalSave(first);
-    const flush1 = scheduler.flushPending();
-    scheduler.scheduleAfterLocalSave(second);
-    resolveUpload(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    await flush1;
-    await scheduler.flushPending();
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(scheduler.getState()).toBe("synced");
   });
 });

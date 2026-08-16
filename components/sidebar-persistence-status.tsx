@@ -1,12 +1,11 @@
 'use client'
 
 import { useAppData } from '@/src/store/AppDataContext'
-import { isCloudBackupEnabled } from '@/src/database/backup/cloud-backup.service'
 import { cn } from '@/lib/utils'
 
 export function SidebarPersistenceStatus() {
   const { localSaveStatus, cloudBackupState, saveError, retrySave } = useAppData()
-  const cloudEnabled = isCloudBackupEnabled()
+  const cloudEnabled = cloudBackupState !== 'disabled'
 
   const localLabel =
     localSaveStatus === 'saving'

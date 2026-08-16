@@ -9,6 +9,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { ClassroomRolesSection } from './classroom-roles-section'
 import { DataSection } from './data-section'
 import { ProfileSection } from './profile-section'
+import { AccountSection } from './account-section'
 import { SETTINGS_TABS } from './settings-flags'
 import { SettingsTabs, type SettingsTab } from './settings-tabs'
 
@@ -24,7 +25,7 @@ export function SettingsPage() {
     closeDatabase,
     switchDatabase,
   } = useAppData()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account')
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -208,6 +209,8 @@ export function SettingsPage() {
       )}
 
       {showRolesSection && <ClassroomRolesSection />}
+
+      {activeTab === 'account' && <AccountSection />}
 
       {SETTINGS_TABS.showDataTab && activeTab === 'data' && (
         <DataSection

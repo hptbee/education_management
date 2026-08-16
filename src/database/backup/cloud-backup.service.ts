@@ -1,13 +1,12 @@
 import type { ClassroomDatabase } from "../types";
 import { makeClassroomFileName } from "../database.utils";
 import { DATABASE_VERSION } from "../database.factory";
-import { deviceIdService } from "./device-id.service";
 import { backupMetadataService } from "./backup-metadata.service";
-import { isTauri } from "../tauri-fs.service";
+import { loadAuthSession } from "@/src/auth/secure-storage";
+import { verifyEntitlementToken } from "@/src/auth/entitlement";
 import { sanitizeBackupIdentifier } from "../safeIdentifiers";
 
 export interface BackupUploadRequest {
-  deviceId: string;
   classroomId: string;
   fileName: string;
   schemaVersion: number;
@@ -22,50 +21,24 @@ export function getCloudBackupUrl(): string | null {
   return url || null;
 }
 
-function getWebCloudBackupToken(): string | null {
-  const token = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN?.trim();
-  return token || null;
+export function isEntitlementConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY?.trim());
 }
 
-let cachedCloudBackupToken: string | null | undefined;
+export async function resolveEntitlementToken(): Promise<string | null> {
+  const session = await loadAuthSession();
+  if (!session?.entitlement) return null;
 
-export async function resolveCloudBackupToken(): Promise<string | null> {
-  if (cachedCloudBackupToken !== undefined) {
-    return cachedCloudBackupToken;
-  }
+  const verified = await verifyEntitlementToken(session.entitlement);
+  if (!verified?.claims.permissions.cloudBackup) return null;
 
-  if (isTauri()) {
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      const token = await invoke<string | null>("get_cloud_backup_token");
-      cachedCloudBackupToken = token?.trim() || null;
-    } catch {
-      cachedCloudBackupToken = null;
-    }
-    return cachedCloudBackupToken;
-  }
-
-  cachedCloudBackupToken = getWebCloudBackupToken();
-  return cachedCloudBackupToken;
-}
-
-/** Sync token lookup for web builds (tests / dev). Tauri uses {@link resolveCloudBackupToken}. */
-export function getCloudBackupToken(): string | null {
-  return getWebCloudBackupToken();
-}
-
-export function isCloudBackupConfiguredSync(): boolean {
-  return Boolean(getCloudBackupUrl() && getCloudBackupToken());
-}
-
-export function resetCloudBackupTokenCache(): void {
-  cachedCloudBackupToken = undefined;
+  return session.entitlement;
 }
 
 export async function isCloudBackupConfigured(): Promise<boolean> {
   const url = getCloudBackupUrl();
-  if (!url) return false;
-  const token = await resolveCloudBackupToken();
+  if (!url || !isEntitlementConfigured()) return false;
+  const token = await resolveEntitlementToken();
   return Boolean(token);
 }
 
@@ -73,13 +46,18 @@ export function isCloudBackupEnabledForDatabase(db: ClassroomDatabase): boolean 
   return Boolean(db.appSettings?.cloudBackupEnabled);
 }
 
-/** @deprecated Use isCloudBackupConfigured + isCloudBackupEnabledForDatabase */
-export function isCloudBackupEnabled(): boolean {
-  return isCloudBackupConfiguredSync();
-}
-
 export { sanitizeBackupIdentifier };
 
+export function buildUserClassroomStorageKey(userId: string, classroomId: string): string {
+  const safeUser = sanitizeBackupIdentifier(userId);
+  const safeClassroom = sanitizeBackupIdentifier(classroomId);
+  if (!safeUser || !safeClassroom) {
+    throw new Error("Invalid backup identifiers");
+  }
+  return `users/${safeUser}/classrooms/${safeClassroom}/database.json`;
+}
+
+/** @deprecated Legacy device-based layout */
 export function buildBackupStorageKey(deviceId: string, classroomId: string): string {
   const safeDevice = sanitizeBackupIdentifier(deviceId);
   const safeClassroom = sanitizeBackupIdentifier(classroomId);
@@ -100,14 +78,12 @@ export async function uploadClassroomBackup(
     return;
   }
 
-  const token = await resolveCloudBackupToken();
+  const token = await resolveEntitlementToken();
   if (!token) {
     return;
   }
 
-  const deviceId = await deviceIdService.getDeviceId();
   const body: BackupUploadRequest = {
-    deviceId,
     classroomId: db.metadata.id,
     fileName: makeClassroomFileName(db.metadata.id),
     schemaVersion: DATABASE_VERSION,

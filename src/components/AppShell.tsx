@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { isPresentationMode, exitPresentationMode } = usePresentationMode();
 
   useEffect(() => {
-    if (isPresentationMode && !isPresentationPath(pathname)) {
+    if (isPresentationMode && pathname && !isPresentationPath(pathname)) {
       exitPresentationMode();
     }
   }, [pathname, isPresentationMode, exitPresentationMode]);

@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' https://*.workers.dev"
+      "csp": "default-src 'self'; img-src 'self' data: blob: https://lh3.googleusercontent.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://accounts.google.com; connect-src 'self' https://*.workers.dev https://accounts.google.com https://oauth2.googleapis.com"
     }
   },
   "bundle": {

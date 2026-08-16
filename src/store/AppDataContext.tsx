@@ -833,7 +833,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (!current) return false;
         const result = buildRedeemGiftUpdate(current, studentId, giftId);
         if ("error" in result) return false;
-        setData(result.next);
+        setData(() => result.next);
         return true;
       },
       saveRecognitionTitle: (title) =>

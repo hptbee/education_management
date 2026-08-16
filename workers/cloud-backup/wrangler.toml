@@ -7,6 +7,18 @@ binding = "BACKUP_BUCKET"
 bucket_name = "education-2302"
 preview_bucket_name = "education-2302"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "classroom-app"
+database_id = "4c53a22f-957b-4411-8ef0-a6673a5c17c7"
+migrations_dir = "migrations"
+
 [vars]
-# Optional shared secret for future auth (not required yet)
-# BACKUP_API_TOKEN = ""
+DEFAULT_TRIAL_DAYS = "30"
+# GOOGLE_CLIENT_ID = ""
+# INITIAL_ADMIN_GOOGLE_SUB = ""
+
+# Secrets (wrangler secret put):
+# ENTITLEMENT_PRIVATE_KEY — Ed25519 PKCS#8 PEM
+# GOOGLE_CLIENT_ID — same as app OAuth client
+# INITIAL_ADMIN_GOOGLE_SUB — optional bootstrap admin Google sub

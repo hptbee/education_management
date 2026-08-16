@@ -100,6 +100,8 @@ All feature data belongs to the currently active classroom database.
 
 Switching pages must NOT reset the active classroom.
 
+**Auth:** Google sign-in is required (`AccessGate` in `layout.tsx`). Local classrooms persist across lock/logout. See `docs/ACCOUNTS.md`.
+
 ---
 
 ## 6. PAGE IMPLEMENTATION RULE

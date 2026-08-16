@@ -1,10 +1,10 @@
 'use client'
 
-import { AlertTriangle, Crown, Database, UserCircle, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Crown, Database, UserCircle, UserCircle2, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SETTINGS_TABS } from './settings-flags'
 
-export type SettingsTab = 'profile' | 'roles' | 'data' | 'danger'
+export type SettingsTab = 'profile' | 'roles' | 'account' | 'data' | 'danger'
 
 const ALL_TAB_ITEMS: {
   id: SettingsTab
@@ -13,6 +13,7 @@ const ALL_TAB_ITEMS: {
   danger?: boolean
 }[] = [
   { id: 'profile', label: 'Hồ sơ', icon: UserCircle },
+  { id: 'account', label: 'Tài khoản', icon: UserCircle2 },
   { id: 'roles', label: 'Vai trò', icon: Crown },
   { id: 'data', label: 'Dữ liệu', icon: Database },
   { id: 'danger', label: 'Nguy hiểm', icon: AlertTriangle, danger: true },
