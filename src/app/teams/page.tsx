@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Users, Search, Shuffle, X } from 'lucide-react'
+import { Plus, Users, Search, Shuffle, X, Trophy } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import type { Team, Student } from '@/src/types/models'
@@ -16,7 +16,7 @@ import { RandomizeDialog } from './components/randomize-dialog'
 
 import { TeamCard } from './components/team-card'
 import { TeamRankingList } from './components/team-ranking-list'
-import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, useClassroomDialog } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
 
 export default function TeamsPage() {
   const { data, saveTeam, deleteTeam, saveStudent, saveStudents } = useAppData()
@@ -208,14 +208,14 @@ export default function TeamsPage() {
               className="classroom-search-field rounded-2xl py-2.5"
             />
             {searchQuery ? (
-              <button
+              <IconTouchButton
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                 aria-label="Xóa tìm kiếm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <X className="size-4" />
-              </button>
+              </IconTouchButton>
             ) : null}
           </div>
           {unassignedCount > 0 ? (
@@ -229,7 +229,7 @@ export default function TeamsPage() {
         <section>
           {sortedTeams.length === 0 ? (
             <EmptyState
-              emoji="🏆"
+              icon={Trophy}
               title={searchQuery ? 'Không tìm thấy nhóm nào' : 'Chưa có tổ nào'}
               description={
                 searchQuery

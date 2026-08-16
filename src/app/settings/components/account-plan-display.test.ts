@@ -11,6 +11,7 @@ import {
   INTERNAL_SUPPORTED_PLANS,
   PUBLIC_VISIBLE_PLANS,
   remainingDaysUntil,
+  TRIAL_DURATION_DAYS,
 } from './account-plan-display'
 
 describe('account-plan-display', () => {
@@ -20,13 +21,19 @@ describe('account-plan-display', () => {
     expect(getPublicComparisonPlans().map((p) => p.id)).toEqual(['trial', 'basic', 'premium'])
   })
 
+  it('advertises a 7-day trial in plan comparison', () => {
+    expect(TRIAL_DURATION_DAYS).toBe(7)
+    const trial = getPlanPresentation('trial')
+    expect(trial?.featureBullets[0]).toContain('7 ngày')
+  })
+
   it('maps plan to badge and display labels', () => {
     expect(getPlanBadgeLabel('trial')).toBe('GÓI DÙNG THỬ')
     expect(getPlanBadgeLabel('basic')).toBe('GÓI CƠ BẢN')
     expect(getPlanBadgeLabel('premium')).toBe('PREMIUM 1 NĂM')
     expect(getPlanBadgeLabel('lifetime')).toBe('GÓI TRỌN ĐỜI')
-    expect(getPlanDisplayName('premium')).toBe('⭐ Premium 1 năm')
-    expect(getPlanDisplayName('lifetime')).toBe('👑 Gói Trọn đời')
+    expect(getPlanDisplayName('premium')).toBe('Premium 1 năm')
+    expect(getPlanDisplayName('lifetime')).toBe('Gói Trọn đời')
   })
 
   it('keeps premium plan id while changing display name only', () => {

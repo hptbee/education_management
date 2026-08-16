@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { PencilLine, Star, Trash2 } from 'lucide-react'
+import { PencilLine, Sprout, Star, Trash2 } from 'lucide-react'
 import type { Recognition, Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
@@ -85,7 +85,7 @@ export function WallOfFameSection({
   if (recognitions.length === 0) {
     return (
       <EmptyState
-        emoji="🌱"
+        icon={Sprout}
         title="Chưa có lời tuyên dương nào"
         description="Hãy bắt đầu ghi nhận những điều tốt đẹp của các bạn nhé!"
         action={

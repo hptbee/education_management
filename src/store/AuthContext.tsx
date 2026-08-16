@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastTrustedIat: nextSession.lastTrustedIat,
         isOnline: isOnline(),
         serverDenied: denied,
+        licenseExpiresAt: nextSession.license?.expiresAt ?? null,
       });
       setAccessState(state);
     },
@@ -202,6 +203,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
+  }, [refreshSession]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible" || !isOnline()) return;
+      void refreshSession();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [refreshSession]);
 
   const value = useMemo<AuthContextValue>(

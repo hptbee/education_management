@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar, Rocket, School, Upload, User } from 'lucide-react'
+import { Calendar, BookOpen, Rocket, School, Upload, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
 import {
@@ -147,7 +147,7 @@ export function ClassroomSelectorScreen() {
       ) : (
         <div className="grid gap-6">
           <EmptyState
-            emoji="📚"
+            icon={BookOpen}
             title="Chưa có lớp học nào"
             description="Tạo lớp mới hoặc nhập dữ liệu JSON để bắt đầu."
             compact

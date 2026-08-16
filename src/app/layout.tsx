@@ -18,7 +18,6 @@ const baloo = Baloo_2({
 export const metadata: Metadata = {
   title: 'Quản lý lớp học',
   description: 'Hệ thống quản lý lớp học và tích điểm học sinh',
-  generator: 'v0.app',
 }
 
 export const viewport: Viewport = {
@@ -28,7 +27,7 @@ export const viewport: Viewport = {
 import { AppDataProvider } from '@/src/store/AppDataContext'
 import { AuthProvider } from '@/src/store/AuthContext'
 import { PresentationModeProvider } from '@/src/store/PresentationModeContext'
-import { ClassroomDialogProvider } from '@/src/components/classroom'
+import { ClassroomDialogProvider, ClassroomToaster } from '@/src/components/classroom'
 import { AppShell } from '@/src/components/AppShell'
 import { AccessGate } from '@/src/components/access-gate'
 import { ClassroomDocumentTitle } from '@/src/components/ClassroomDocumentTitle'
@@ -45,6 +44,7 @@ export default function RootLayout({
           <AppDataProvider>
             <PresentationModeProvider>
               <ClassroomDialogProvider>
+                <ClassroomToaster />
                 <AccessGate>
                   <ClassroomDocumentTitle />
                   <AppShell>{children}</AppShell>

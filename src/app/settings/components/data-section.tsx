@@ -3,7 +3,7 @@
 import { CloudDownload, Copy, Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
-import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomCard, useClassroomDialog } from '@/src/components/classroom'
 import { listCloudClassrooms, restoreCloudClassroom } from '@/src/auth/api'
 import { databaseService } from '@/src/database/database.service'
 import { isCloudBackupConfigured } from '@/src/database/backup/cloud-backup.service'
@@ -45,6 +45,7 @@ export function DataSection({
   onCloudBackupEnabledChange,
 }: DataSectionProps) {
   const { entitlement, permissions } = useAuth()
+  const { showConfirm } = useClassroomDialog()
   const [databases, setDatabases] = useState<DatabaseSummary[]>([])
   const [cloudConfigured, setCloudConfigured] = useState(false)
   const [cloudClassrooms, setCloudClassrooms] = useState<
@@ -78,8 +79,14 @@ export function DataSection({
 
   const handleRestoreFromCloud = async (classroomId: string) => {
     if (!entitlement) return
-    const confirmed = window.confirm(
+    const confirmed = await showConfirm(
       `Khôi phục lớp "${classroomId}" từ đám mây? Dữ liệu sẽ được nhập vào thiết bị này (không ghi đè lớp trùng mã).`,
+      {
+        title: 'Khôi phục từ đám mây',
+        confirmLabel: 'Khôi phục',
+        cancelLabel: 'Hủy bỏ',
+        variant: 'warning',
+      },
     )
     if (!confirmed) return
 
@@ -229,7 +236,7 @@ export function DataSection({
               </label>
             ) : showCloudUpgradeNote ? (
               <p className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Gói hiện tại không bao gồm sao lưu đám mây. Liên hệ quản trị viên để nâng cấp Premium.
+                Gói hiện tại không bao gồm sao lưu đám mây. Liên hệ quản trị viên để nâng cấp Premium 1 năm.
               </p>
             ) : (
               <p className="mt-3 text-sm font-semibold text-slate-500">

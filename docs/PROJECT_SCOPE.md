@@ -723,7 +723,8 @@ When a classroom is active, show four pill tabs:
 | Profile | Hồ sơ | Combined teacher + display class name; avatar auto-saves on file pick; home banner with preview; one **Lưu thay đổi** when text fields are dirty |
 | Roles | Vai trò | Classroom role catalog (FR-010c) |
 | Data | Dữ liệu | Switch class, create/import another, rename database + school year, duplicate, export JSON, open data folder (Tauri) |
-| Danger | Nguy hiểm | Delete classroom with typed name confirmation |
+
+**Nguy hiểm** (delete classroom) is implemented but not shown by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` is `false`).
 
 **Display name vs database rename:** Changing **Tên lớp (hiển thị)** on **Hồ sơ** updates UI labels only. **Đổi tên database** on **Dữ liệu** changes the stored database identity (file/folder name and school year metadata).
 
@@ -1699,7 +1700,7 @@ Classroom
     ├── Hồ sơ — identity & banner
     ├── Vai trò — role catalog
     ├── Dữ liệu — backup, switch class, rename DB
-    └── Nguy hiểm — delete class
+    └── Nguy hiểm — delete class (hidden unless `showDangerTab` is enabled)
 
 Activities
 ├── Tools (Lucky Wheel, Study Timer, Lucky Star)

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { IconTouchButton } from '@/src/components/classroom'
 
 interface StudentSearchPickerProps {
   students: Student[]
@@ -37,14 +38,14 @@ export function StudentSearchPicker({ students, selectedStudentId, onSelect }: S
           className="classroom-search-field rounded-2xl py-2.5"
         />
         {searchQuery ? (
-          <button
+          <IconTouchButton
             type="button"
             onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
             aria-label="Xóa tìm kiếm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
           >
             <X className="size-4" />
-          </button>
+          </IconTouchButton>
         ) : null}
       </div>
 

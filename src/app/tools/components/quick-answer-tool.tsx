@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, RotateCcw, Shuffle, X } from 'lucide-react'
+import { Check, Lightbulb, RotateCcw, Shuffle, X } from 'lucide-react'
 import type { PointAction, Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
 import { pickWithoutRepeat } from '@/src/utils/randomSelection'
+import { canAnimate } from '@/src/utils/motion'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
 
 const QUICK_ANSWER_ACTION: PointAction = {
@@ -18,10 +19,6 @@ const QUICK_ANSWER_ACTION: PointAction = {
 
 const SPIN_TICKS = 12
 const SPIN_INTERVAL_MS = 80
-
-function prefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
 
 export function QuickAnswerTool() {
   const { data, applyPoints } = useAppData()
@@ -57,7 +54,7 @@ export function QuickAnswerTool() {
       setSpinning(false)
     }
 
-    if (!animationsEnabled || prefersReducedMotion()) {
+    if (!canAnimate(animationsEnabled)) {
       complete()
       return
     }
@@ -116,7 +113,7 @@ export function QuickAnswerTool() {
       </header>
 
       {pool.length === 0 ? (
-        <EmptyState compact emoji="💡" title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
+        <EmptyState compact icon={Lightbulb} title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-gradient-to-b from-pastel-sky/40 to-white px-4 py-5">
           <div className="flex min-h-[160px] flex-1 flex-col items-center justify-center text-center" aria-live="polite">

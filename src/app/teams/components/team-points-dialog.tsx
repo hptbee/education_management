@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, Plus, Minus, Trophy } from 'lucide-react'
+import { IconTouchButton } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import type { Team } from '@/src/types/models'
 
@@ -49,9 +50,9 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
             <Trophy className="size-5 text-amber-500" />
             <h2 className="font-display text-lg font-extrabold text-slate-800">Điểm tổ — {team.name}</h2>
           </div>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <div className="p-5 flex flex-col gap-4">

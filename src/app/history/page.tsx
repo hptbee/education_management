@@ -131,7 +131,7 @@ export default function HistoryPage() {
 
         {filteredActivity.length === 0 ? (
           <EmptyState
-            emoji="📋"
+            icon={History}
             title={allActivity.length === 0 ? 'Chưa có hoạt động nào' : 'Không tìm thấy hoạt động'}
             description={
               allActivity.length === 0

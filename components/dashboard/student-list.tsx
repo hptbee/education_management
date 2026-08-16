@@ -1,12 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Users, Search, Star, ArrowRight, X } from 'lucide-react'
+import { Users, Search, Star, ArrowRight, X, Sprout } from 'lucide-react'
 import Link from 'next/link'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import type { Student, Team } from '@/src/types/models'
-import { ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { ClassroomCard, EmptyState, IconTouchButton } from '@/src/components/classroom'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 
 function StudentCard({
@@ -89,21 +89,21 @@ export function StudentList() {
           className="classroom-field py-2.5 pl-9 pr-10"
         />
         {searchQuery ? (
-          <button
+          <IconTouchButton
             type="button"
             onClick={() => setSearchQuery('')}
-            className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
             aria-label="Xóa tìm kiếm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
           >
             <X className="size-4" />
-          </button>
+          </IconTouchButton>
         ) : null}
       </div>
 
       {displayedStudents.length === 0 ? (
         <EmptyState
           compact
-          emoji={searchQuery ? '🔍' : '🌱'}
+          icon={searchQuery ? Search : Sprout}
           title={searchQuery ? 'Không tìm thấy học sinh' : 'Chưa có học sinh nào'}
           description={
             searchQuery

@@ -53,6 +53,7 @@ export function resolveAccessState(input: {
   lastTrustedIat: number;
   isOnline: boolean;
   serverDenied?: AccessState | null;
+  licenseExpiresAt?: string | null;
 }): AccessState {
   if (input.serverDenied) return input.serverDenied;
   if (!input.hasSession || !input.claims) return "AUTH_REQUIRED";
@@ -64,6 +65,13 @@ export function resolveAccessState(input: {
 
   if (input.claims.status === "disabled") return "ACCOUNT_DISABLED";
   if (input.claims.status === "suspended") return "ACCOUNT_SUSPENDED";
+
+  if (input.licenseExpiresAt) {
+    const expiryMs = Date.parse(input.licenseExpiresAt);
+    if (!Number.isNaN(expiryMs) && Date.now() >= expiryMs) {
+      return "LICENSE_EXPIRED";
+    }
+  }
 
   if (now <= input.claims.offlineValidUntil) {
     return input.isOnline ? "AUTHENTICATED_AND_ACTIVE" : "OFFLINE_GRACE";

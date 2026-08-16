@@ -1,8 +1,10 @@
+import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 interface EmptyStateProps {
-  emoji?: string
+  icon?: LucideIcon
+  iconClassName?: string
   imageSrc?: string
   imageAlt?: string
   title: string
@@ -13,7 +15,8 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  emoji,
+  icon: Icon,
+  iconClassName,
   imageSrc,
   imageAlt,
   title,
@@ -36,9 +39,15 @@ export function EmptyState({
           alt={imageAlt ?? ''}
           className={cn('mb-4 object-contain', compact ? 'h-24' : 'h-32')}
         />
-      ) : emoji ? (
-        <div className={cn('mb-4 select-none leading-none', compact ? 'text-4xl' : 'text-5xl')}>
-          {emoji}
+      ) : Icon ? (
+        <div
+          className={cn(
+            'mb-4 flex items-center justify-center rounded-2xl bg-pastel-sky text-brand shadow-sm',
+            compact ? 'size-14' : 'size-16',
+            iconClassName,
+          )}
+        >
+          <Icon className={compact ? 'size-7' : 'size-8'} aria-hidden />
         </div>
       ) : null}
 

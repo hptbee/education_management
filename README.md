@@ -23,7 +23,8 @@ The app is designed for a single classroom and focuses on student profiles, clas
 - **Local-first Desktop App**: Runs natively on Windows/macOS/Linux via Tauri.
 - **Classroom data stays local**: `ClassroomDatabase` JSON on disk (Tauri) or IndexedDB (web dev) is the source of truth for students, points, teams, etc.
 - **Google sign-in required**: Teachers authenticate via Google; the app receives a signed **entitlement** from the Cloudflare Worker.
-- **Optional cloud backup**: Per-class opt-in upload to R2 — not a replacement for local storage.
+- **7-day trial**: New teachers get a 7-day trial on first login (`DEFAULT_TRIAL_DAYS` on the Worker); upgrade to Basic or Premium 1 năm for continued access and cloud backup.
+- **Optional cloud backup**: Per-class opt-in upload to R2 (Premium / lifetime only) — not a replacement for local storage.
 - **JSON File Persistence**: Classroom data is stored in local JSON files via Tauri filesystem APIs.
 
 See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) for OAuth, Worker, D1, and entitlement setup.
@@ -105,7 +106,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
   - **Hồ sơ** — teacher name, display class name, avatar (auto-save on pick), home banner; single **Lưu thay đổi** for text fields
   - **Vai trò** — classroom role catalog
   - **Dữ liệu** — switch class, rename database / school year, duplicate, export JSON, open data folder (Tauri), opt-in cloud backup, restore from cloud
-  - **Nguy hiểm** — delete classroom (name confirmation)
+  - **Nguy hiểm** — delete classroom (implemented but hidden; set `SETTINGS_TABS.showDangerTab` to `true` in `settings-flags.ts` to enable)
 - Configurable classroom roles (e.g. class president, vice president)
 - Student management with search, import, and detailed profiles
 - Student badges on cards and profiles; award/toggle via **Tuyên dương → Huy hiệu** tab (catalog in **Danh mục**)

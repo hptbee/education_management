@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, type ReactNode } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { ClassroomButton } from './ClassroomButton'
+import { ClassroomSkeleton } from './ClassroomSkeleton'
 
 function InitErrorBanner({ onRetry }: { onRetry: () => void }) {
   const { initError } = useAppData()
@@ -37,7 +39,7 @@ export function AppDataShell({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-xl font-bold text-slate-500">Đang tải dữ liệu...</p>
+        <ClassroomSkeleton />
       </div>
     )
   }
@@ -55,7 +57,9 @@ export function AppDataShell({ children }: { children: ReactNode }) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="max-w-md rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-4xl">⚠️</p>
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-red-100 text-red-500">
+            <AlertTriangle className="size-7" aria-hidden />
+          </div>
           <h1 className="mt-3 font-display text-xl font-extrabold text-slate-800">Không thể tải dữ liệu</h1>
           <p className="mt-2 text-sm font-semibold text-slate-600">{initError}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -72,7 +76,7 @@ export function AppDataShell({ children }: { children: ReactNode }) {
   if (!data && !onSettings) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-xl font-bold text-slate-500">Đang chuyển đến cài đặt...</p>
+        <ClassroomSkeleton rows={2} />
       </div>
     )
   }

@@ -1,14 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Minus, Plus, Search, Star, X } from 'lucide-react'
+import { Minus, Plus, Search, Star, Users, X } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import type { Student } from '@/src/types/models'
 import { StudentPointsDialog, type PointsDialogMode } from './components/student-points-dialog'
 import { PointActionsCatalogSection } from './components/point-actions-catalog-section'
-import { PageHeader, ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, IconTouchButton } from '@/src/components/classroom'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 
 const RECENT_HISTORY_LIMIT = 8
@@ -67,7 +67,7 @@ export default function PointsPage() {
 
         {students.length === 0 ? (
           <EmptyState
-            emoji="🧑‍🎓"
+            icon={Users}
             title="Chưa có học sinh nào trong lớp"
             description="Hãy thêm học sinh trước khi tích điểm."
           />
@@ -83,14 +83,13 @@ export default function PointsPage() {
                 className="classroom-search-field rounded-2xl py-2.5"
               />
               {searchQuery ? (
-                <button
-                  type="button"
+                <IconTouchButton
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
                   aria-label="Xóa tìm kiếm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
                 >
                   <X className="size-4" />
-                </button>
+                </IconTouchButton>
               ) : null}
             </div>
 
@@ -135,14 +134,14 @@ export default function PointsPage() {
                         <button
                           type="button"
                           onClick={() => openDialog(student, 'add')}
-                          className="flex min-h-10 items-center gap-1.5 rounded-xl bg-emerald-100 px-3.5 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-200"
+                          className="flex min-h-11 items-center gap-1.5 rounded-xl bg-emerald-100 px-3.5 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
                         >
                           <Plus className="size-3.5" /> Cộng
                         </button>
                         <button
                           type="button"
                           onClick={() => openDialog(student, 'subtract')}
-                          className="flex min-h-10 items-center gap-1.5 rounded-xl bg-pastel-pink px-3.5 py-2 text-xs font-bold text-rose-800 transition hover:bg-rose-100"
+                          className="flex min-h-11 items-center gap-1.5 rounded-xl bg-pastel-pink px-3.5 py-2 text-xs font-bold text-rose-800 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
                         >
                           <Minus className="size-3.5" /> Trừ
                         </button>

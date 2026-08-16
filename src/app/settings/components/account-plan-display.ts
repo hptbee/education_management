@@ -1,5 +1,8 @@
 import type { LicensePlan } from '@/src/auth/types'
 
+/** Must match Worker `DEFAULT_TRIAL_DAYS` (see workers/cloud-backup/wrangler.toml). */
+export const TRIAL_DURATION_DAYS = 7
+
 export const INTERNAL_SUPPORTED_PLANS = ['trial', 'basic', 'premium', 'lifetime'] as const
 export const PUBLIC_VISIBLE_PLANS = ['trial', 'basic', 'premium'] as const
 
@@ -20,47 +23,47 @@ export interface PlanPresentation {
 const PLAN_PRESENTATIONS: Record<LicensePlan, PlanPresentation> = {
   trial: {
     id: 'trial',
-    displayName: '🌱 Dùng thử',
+    displayName: 'Dùng thử',
     badgeLabel: 'GÓI DÙNG THỬ',
     visibleInComparison: true,
     featureBullets: [
-      '✨ Trải nghiệm ứng dụng trong 7 ngày',
-      '🚫 Chưa bao gồm sao lưu đám mây',
+      `Trải nghiệm ứng dụng trong ${TRIAL_DURATION_DAYS} ngày`,
+      'Chưa bao gồm sao lưu đám mây',
     ],
   },
   basic: {
     id: 'basic',
-    displayName: '🌸 Gói Cơ bản',
+    displayName: 'Gói Cơ bản',
     badgeLabel: 'GÓI CƠ BẢN',
     visibleInComparison: true,
     featureBullets: [
-      '✨ Sử dụng đầy đủ ứng dụng',
-      '🚫 Không bao gồm sao lưu đám mây',
+      'Sử dụng đầy đủ ứng dụng',
+      'Không bao gồm sao lưu đám mây',
     ],
   },
   premium: {
     id: 'premium',
-    displayName: '⭐ Premium 1 năm',
+    displayName: 'Premium 1 năm',
     badgeLabel: 'PREMIUM 1 NĂM',
     visibleInComparison: true,
     featureBullets: [
-      '✨ Sử dụng đầy đủ ứng dụng',
-      '☁️ Sao lưu dữ liệu đám mây',
-      '🛡️ Bảo vệ dữ liệu khi đổi hoặc mất máy',
-      '📅 Sử dụng trong 1 năm',
+      'Sử dụng đầy đủ ứng dụng',
+      'Sao lưu dữ liệu đám mây',
+      'Bảo vệ dữ liệu khi đổi hoặc mất máy',
+      'Sử dụng trong 1 năm',
     ],
   },
   lifetime: {
     id: 'lifetime',
-    displayName: '👑 Gói Trọn đời',
+    displayName: 'Gói Trọn đời',
     badgeLabel: 'GÓI TRỌN ĐỜI',
     visibleInComparison: false,
     featureBullets: [
-      '♾️ Sử dụng không giới hạn thời gian',
-      '☁️ Sao lưu dữ liệu đám mây đang khả dụng',
+      'Sử dụng không giới hạn thời gian',
+      'Sao lưu dữ liệu đám mây đang khả dụng',
     ],
-    unlimitedUsageLine: '♾️ Sử dụng không giới hạn thời gian',
-    cloudAvailableLine: '☁️ Sao lưu dữ liệu đám mây đang khả dụng',
+    unlimitedUsageLine: 'Sử dụng không giới hạn thời gian',
+    cloudAvailableLine: 'Sao lưu dữ liệu đám mây đang khả dụng',
   },
 }
 

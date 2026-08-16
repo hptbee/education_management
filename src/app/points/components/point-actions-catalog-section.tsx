@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { PencilLine, Plus, Trash2 } from 'lucide-react'
 import type { PointAction } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
+import { IconTouchButton } from '@/src/components/classroom'
 import { createId } from '@/src/utils/id'
 
 function PointActionFormDialog({
@@ -240,12 +241,12 @@ function ActionRow({
           <p className="text-xs font-semibold text-slate-400">Đang ẩn</p>
         ) : null}
       </div>
-      <button onClick={onEdit} className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-brand-purple">
+      <IconTouchButton onClick={onEdit} aria-label="Sửa hành động" className="rounded-lg text-slate-400 hover:bg-white hover:text-brand-purple">
         <PencilLine className="size-4" />
-      </button>
-      <button onClick={onDelete} className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-rose-500">
+      </IconTouchButton>
+      <IconTouchButton onClick={onDelete} aria-label="Xóa hành động" className="rounded-lg text-slate-400 hover:bg-white hover:text-rose-500">
         <Trash2 className="size-4" />
-      </button>
+      </IconTouchButton>
     </div>
   )
 }

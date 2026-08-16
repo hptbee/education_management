@@ -8,9 +8,12 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Fallback when `DEFAULT_TRIAL_DAYS` env var is missing or invalid. */
+export const DEFAULT_TRIAL_DAYS_FALLBACK = 7;
+
 export function defaultTrialDays(env: Env): number {
-  const parsed = Number(env.DEFAULT_TRIAL_DAYS ?? "7");
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+  const parsed = Number(env.DEFAULT_TRIAL_DAYS ?? String(DEFAULT_TRIAL_DAYS_FALLBACK));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TRIAL_DAYS_FALLBACK;
 }
 
 export async function findUserByGoogleSub(db: D1Database, googleSub: string): Promise<DbUser | null> {

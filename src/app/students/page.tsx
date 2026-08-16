@@ -16,7 +16,7 @@ import { StudentFormModal } from './components/student-form-modal'
 import { StudentDetailsModal } from './components/student-details-modal'
 import { DeleteConfirmModal } from './components/delete-confirm-modal'
 import { ImportModal } from './components/import-modal'
-import { PageHeader, EmptyState, ClassroomButton, ClassroomCard } from '@/src/components/classroom'
+import { PageHeader, EmptyState, ClassroomButton, ClassroomCard, IconTouchButton } from '@/src/components/classroom'
 
 // ─── Summary Card ────────────────────────────────────────────────────────────
 function SummaryCard({
@@ -50,7 +50,7 @@ function StudentsEmptyState({
   if (filtered) {
     return (
       <EmptyState
-        emoji="🔍"
+        icon={Search}
         title="Không tìm thấy học sinh nào"
         description="Thử thay đổi từ khóa hoặc bỏ bộ lọc"
       />
@@ -280,14 +280,14 @@ export default function StudentsPage() {
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
               {searchQuery ? (
-                <button
+                <IconTouchButton
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                   aria-label="Xóa tìm kiếm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                 >
                   <X className="size-4" />
-                </button>
+                </IconTouchButton>
               ) : null}
             </div>
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Disc3 } from 'lucide-react'
+import { Disc3, Sparkles } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { LuckyWheelDialog } from './lucky-wheel-dialog'
 import { WheelPreview } from './named-wheel'
@@ -31,7 +31,7 @@ export function LuckyWheelTool() {
         {students.length === 0 ? (
           <EmptyState
             compact
-            emoji="🎡"
+            icon={Sparkles}
             title="Chưa có học sinh"
             description="Thêm học sinh để bắt đầu quay vòng may mắn."
           />

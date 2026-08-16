@@ -28,7 +28,7 @@ export function TeamCompetition() {
           <li>
             <EmptyState
               compact
-              emoji="🏆"
+              icon={Trophy}
               title="Chưa có tổ nào"
               description="Tạo tổ để bắt đầu thi đua trong lớp nhé!"
               action={

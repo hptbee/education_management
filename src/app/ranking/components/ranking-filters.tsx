@@ -5,6 +5,7 @@ import type { Team } from '@/src/types/models'
 import type { RankingPeriod } from '@/src/utils/ranking'
 import { RANKING_PERIOD_LABELS } from '@/src/utils/ranking'
 import type { RankingMode } from './ranking-mode-toggle'
+import { IconTouchButton } from '@/src/components/classroom'
 import { cn } from '@/lib/utils'
 
 export interface RankingFilterState {
@@ -94,14 +95,14 @@ export function RankingFilters({
             className="classroom-search-field"
           />
           {searchQuery ? (
-            <button
+            <IconTouchButton
               type="button"
               onClick={() => onSearchChange('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               aria-label="Xóa tìm kiếm"
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             >
               <X className="size-4" />
-            </button>
+            </IconTouchButton>
           ) : null}
         </div>
       ) : null}

@@ -5,7 +5,7 @@ import { X, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle } 
 import * as XLSX from 'xlsx'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
-import { useClassroomDialog } from '@/src/components/classroom'
+import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
 
 interface ImportModalProps {
   isOpen: boolean
@@ -234,9 +234,9 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
           <h2 className="font-display text-xl font-extrabold text-slate-800">
             Nhập danh sách từ Excel
           </h2>
-          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">

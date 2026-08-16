@@ -6,17 +6,15 @@ import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
 import { pickWithoutRepeat } from '@/src/utils/randomSelection'
+import { canAnimate } from '@/src/utils/motion'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
 
 const STAR_SLOTS = 16
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 export function LuckyStarTool() {
   const { data } = useAppData()
   const animationsEnabled = data?.appSettings.animationsEnabled ?? true
+  const allowMotion = canAnimate(animationsEnabled)
   const students = data?.students ?? []
 
   const [bag, setBag] = useState<string[]>([])
@@ -78,7 +76,7 @@ export function LuckyStarTool() {
       </header>
 
       {pool.length === 0 ? (
-        <EmptyState compact emoji="⭐" title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
+        <EmptyState compact icon={Star} title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           {lastReveal ? (
@@ -109,7 +107,7 @@ export function LuckyStarTool() {
                     student
                       ? 'border-amber-200 bg-amber-50'
                       : 'border-amber-100 bg-gradient-to-br from-amber-100 to-yellow-50 hover:border-amber-300 hover:shadow-md disabled:opacity-40'
-                  } ${animationsEnabled && !prefersReducedMotion() && isHidden ? 'motion-safe-hover' : ''}`}
+                  } ${allowMotion && isHidden ? 'motion-safe-hover' : ''}`}
                   aria-label={student ? student.name : `Ngôi sao ${index + 1}`}
                 >
                   {student ? (

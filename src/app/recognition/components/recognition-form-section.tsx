@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Minus, PartyPopper, Plus, Star } from 'lucide-react'
+import { Minus, PartyPopper, Plus, Star, Users } from 'lucide-react'
 import type { ClassroomRole, Recognition, RecognitionTitle, Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { createId } from '@/src/utils/id'
@@ -103,7 +103,7 @@ export function RecognitionFormSection({
   if (students.length === 0) {
     return (
       <EmptyState
-        emoji="🧑‍🎓"
+        icon={Users}
         title="Chưa có học sinh nào trong lớp"
         description="Hãy thêm học sinh trước khi tuyên dương."
       />

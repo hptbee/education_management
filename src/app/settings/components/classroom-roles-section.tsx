@@ -63,7 +63,7 @@ function RoleFormDialog({
               value={icon}
               onChange={(e) => setIcon(e.target.value)}
               maxLength={4}
-              className="w-20 rounded-xl border border-slate-200 px-3 py-2.5 text-center text-2xl outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="classroom-field w-20 px-3 text-center text-2xl"
             />
           </div>
           <div>
@@ -73,7 +73,7 @@ function RoleFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ví dụ: Thủ quỹ"
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="classroom-field px-4"
             />
           </div>
           <div>
@@ -82,7 +82,7 @@ function RoleFormDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="classroom-field px-4"
             />
           </div>
           <div className="flex justify-end gap-2">

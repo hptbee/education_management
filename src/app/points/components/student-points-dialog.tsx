@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import type { PointAction, PointHistorySource, Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
+import { IconTouchButton } from '@/src/components/classroom'
 import { createId } from '@/src/utils/id'
 
 export type PointsDialogMode = 'add' | 'subtract'
@@ -106,13 +107,14 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
       <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 className="font-display text-lg font-extrabold text-slate-800">{title}</h2>
-          <button
+          <IconTouchButton
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-rose-400 transition hover:bg-rose-50 hover:text-rose-600"
+            aria-label="Đóng"
+            className="text-rose-400 hover:bg-rose-50 hover:text-rose-600"
           >
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 overflow-y-auto p-5 scrollbar-thin">

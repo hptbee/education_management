@@ -1,5 +1,6 @@
 'use client'
 
+import { Search } from 'lucide-react'
 import type { ClassroomRole, Team } from '@/src/types/models'
 import type { RankedStudent } from '@/src/utils/ranking'
 import { EmptyState } from '@/src/components/classroom'
@@ -22,7 +23,7 @@ export function RankingList({
 }) {
   if (entries.length === 0) {
     return (
-      <EmptyState compact emoji="🔍" title={emptyTitle} description={emptyDescription} />
+      <EmptyState compact icon={Search} title={emptyTitle} description={emptyDescription} />
     )
   }
 

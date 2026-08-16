@@ -105,7 +105,7 @@ export function Sidebar() {
         {navSections.map((section) => (
           <div key={section.label ?? section.items[0]?.href} className="flex flex-col gap-0.5">
             {section.label ? (
-              <p className="px-3 pb-1 pt-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+              <p className="px-3 pb-1 pt-1 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-400">
                 {section.label}
               </p>
             ) : null}

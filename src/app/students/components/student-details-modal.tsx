@@ -7,6 +7,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
 import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { getStudentBadges } from '@/src/utils/badges'
+import { IconTouchButton } from '@/src/components/classroom'
 import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
 import {
   ACTIVITY_KIND_EMOJI,
@@ -53,9 +54,9 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
           <h2 className="font-display text-xl font-extrabold text-slate-800">
             Hồ sơ học sinh
           </h2>
-          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">

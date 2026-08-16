@@ -1,23 +1,21 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { RotateCcw, Shuffle } from 'lucide-react'
+import { Dices, RotateCcw, Shuffle } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
 import { pickWithoutRepeat } from '@/src/utils/randomSelection'
+import { canAnimate } from '@/src/utils/motion'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
 
 const PREVIEW_LIMIT = 6
 const SPIN_TICKS = 14
 const SPIN_INTERVAL_MS = 90
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 export function RandomStudentTool() {
   const { data } = useAppData()
+  const animationsEnabled = data?.appSettings.animationsEnabled ?? true
   const students = data?.students ?? []
 
   const [bag, setBag] = useState<string[]>([])
@@ -63,7 +61,7 @@ export function RandomStudentTool() {
       setSpinning(false)
     }
 
-    if (prefersReducedMotion()) {
+    if (!canAnimate(animationsEnabled)) {
       complete()
       return
     }
@@ -80,7 +78,7 @@ export function RandomStudentTool() {
     }, SPIN_INTERVAL_MS)
 
     return () => window.clearInterval(interval)
-  }, [spinning, pool])
+  }, [spinning, pool, animationsEnabled])
 
   const startRound = () => {
     if (pool.length === 0 || spinning) return
@@ -119,7 +117,7 @@ export function RandomStudentTool() {
       </header>
 
       {pool.length === 0 ? (
-        <EmptyState compact emoji="🎲" title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
+        <EmptyState compact icon={Dices} title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-gradient-to-b from-pastel-lavender/50 via-white to-pastel-peach/40 px-4 py-5">
           <div

@@ -5,6 +5,7 @@ import {
   createLicense,
   createTrialLicense,
   createUser,
+  DEFAULT_TRIAL_DAYS_FALLBACK,
   defaultTrialDays,
   findActiveLicense,
   findLicenseById,
@@ -32,8 +33,10 @@ describe("db helpers", () => {
 
   it("parses default trial days", () => {
     const env = makeTestEnv(new MockD1(), "", "");
+    expect(DEFAULT_TRIAL_DAYS_FALLBACK).toBe(7);
     expect(defaultTrialDays(env)).toBe(7);
     expect(defaultTrialDays({ ...env, DEFAULT_TRIAL_DAYS: "14" })).toBe(14);
+    expect(defaultTrialDays({ ...env, DEFAULT_TRIAL_DAYS: "invalid" })).toBe(7);
   });
 });
 
@@ -71,8 +74,16 @@ describe("db users and licenses", () => {
     const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
     const db = mockDb as unknown as D1Database;
     const user = await createUser(db, { sub: "trial-user" }, "teacher");
+    const before = Date.now();
     const license = await createTrialLicense(db, user.id, env);
+    const after = Date.now();
     expect(license.plan).toBe("trial");
+    expect(license.expires_at).not.toBeNull();
+    const expiresMs = new Date(license.expires_at!).getTime();
+    const minMs = before + DEFAULT_TRIAL_DAYS_FALLBACK * 24 * 60 * 60 * 1000;
+    const maxMs = after + DEFAULT_TRIAL_DAYS_FALLBACK * 24 * 60 * 60 * 1000;
+    expect(expiresMs).toBeGreaterThanOrEqual(minMs - 1000);
+    expect(expiresMs).toBeLessThanOrEqual(maxMs + 1000);
     const active = await findActiveLicense(db, user.id);
     expect(active?.id).toBe(license.id);
     const nextVersion = await bumpLicenseVersion(db, user.id);

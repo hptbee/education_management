@@ -7,7 +7,7 @@ import { createId } from '@/src/utils/id'
 import { getStudentAvatar } from '@/src/utils/student'
 import { readStudentAvatarImage } from '@/src/utils/images'
 import { useAppData } from '@/src/store/AppDataContext'
-import { useClassroomDialog } from '@/src/components/classroom'
+import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -103,9 +103,9 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
           <h2 className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa học sinh' : 'Thêm học sinh mới'}
           </h2>
-          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
@@ -155,15 +155,15 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Họ và tên *</label>
-                  <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" placeholder="Ví dụ: Nguyễn Văn A" />
+                  <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} type="text" className="classroom-field px-4" placeholder="Ví dụ: Nguyễn Văn A" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Ngày sinh</label>
-                  <input value={formData.dateOfBirth || ''} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} type="date" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                  <input value={formData.dateOfBirth || ''} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} type="date" className="classroom-field px-4" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Giới tính</label>
-                  <select value={formData.gender || 'unknown'} onChange={e => setFormData({...formData, gender: e.target.value as any})} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple">
+                  <select value={formData.gender || 'unknown'} onChange={e => setFormData({...formData, gender: e.target.value as any})} className="classroom-field px-4">
                     <option value="unknown">Chưa rõ</option>
                     <option value="male">Nam</option>
                     <option value="female">Nữ</option>
@@ -172,11 +172,11 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Quê quán</label>
-                  <input value={formData.hometown || ''} onChange={e => setFormData({...formData, hometown: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" placeholder="Ví dụ: Hà Nội" />
+                  <input value={formData.hometown || ''} onChange={e => setFormData({...formData, hometown: e.target.value})} type="text" className="classroom-field px-4" placeholder="Ví dụ: Hà Nội" />
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Địa chỉ</label>
-                  <input value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" placeholder="Ví dụ: Quận 1, TP. HCM" />
+                  <input value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} type="text" className="classroom-field px-4" placeholder="Ví dụ: Quận 1, TP. HCM" />
                 </div>
               </div>
             </section>
@@ -187,7 +187,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Lớp cũ</label>
-                  <input value={formData.previousClass || ''} onChange={e => setFormData({...formData, previousClass: e.target.value})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                  <input value={formData.previousClass || ''} onChange={e => setFormData({...formData, previousClass: e.target.value})} type="text" className="classroom-field px-4" />
                 </div>
                 <div className="col-span-2">
                   <label className="mb-2 block text-sm font-bold text-slate-700">Vai trò trong lớp</label>
@@ -223,7 +223,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Thành tích / Ghi chú</label>
-                  <textarea value={formData.potentialNote || ''} onChange={e => setFormData({...formData, potentialNote: e.target.value})} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" rows={2} />
+                  <textarea value={formData.potentialNote || ''} onChange={e => setFormData({...formData, potentialNote: e.target.value})} className="classroom-field px-4" rows={2} />
                 </div>
               </div>
             </section>
@@ -234,11 +234,11 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Họ tên phụ huynh</label>
-                  <input value={formData.parent?.fullName || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, fullName: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                  <input value={formData.parent?.fullName || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, fullName: e.target.value }})} type="text" className="classroom-field px-4" />
                 </div>
                 <div className="col-span-2 md:col-span-1">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Số điện thoại di động</label>
-                  <input value={formData.parent?.phoneNumber || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, phoneNumber: e.target.value }})} type="text" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple" />
+                  <input value={formData.parent?.phoneNumber || ''} onChange={e => setFormData({...formData, parent: { ...formData.parent, phoneNumber: e.target.value }})} type="text" className="classroom-field px-4" />
                 </div>
               </div>
             </section>

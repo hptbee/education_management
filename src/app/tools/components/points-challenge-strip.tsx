@@ -41,7 +41,7 @@ export function PointsChallengeStrip() {
       {topStudents.length === 0 ? (
         <EmptyState
           compact
-          emoji="🏅"
+          icon={Trophy}
           title="Chưa có học sinh"
           description="Tích điểm để xem bảng thử thách tại đây."
         />

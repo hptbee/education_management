@@ -4,11 +4,9 @@ import {
   AppWindow,
   CircleCheck,
   Cloud,
-  Crown,
   Hourglass,
   LogOut,
   Sparkles,
-  Sprout,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { LicensePlan } from '@/src/auth/types'
@@ -35,21 +33,6 @@ function formatDateFromUnix(seconds: number | null): string {
     month: '2-digit',
     year: 'numeric',
   })
-}
-
-function PlanIcon({ plan }: { plan: LicensePlan | string | undefined }) {
-  switch (plan) {
-    case 'trial':
-      return <Sprout className="size-4" aria-hidden />
-    case 'basic':
-      return <AppWindow className="size-4" aria-hidden />
-    case 'premium':
-      return <Sparkles className="size-4" aria-hidden />
-    case 'lifetime':
-      return <Crown className="size-4" aria-hidden />
-    default:
-      return <AppWindow className="size-4" aria-hidden />
-  }
 }
 
 function PlanBenefitsDialog({
@@ -191,7 +174,6 @@ export function AccountSection() {
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-pastel-yellow px-3 py-1 text-xs font-extrabold tracking-wide text-amber-900">
-                <PlanIcon plan={license?.plan} />
                 {planDisplayName}
               </span>
               {isLifetime ? (
@@ -240,7 +222,12 @@ export function AccountSection() {
               </div>
             </div>
 
-            <ClassroomButton variant="outline" size="sm" onClick={() => setBenefitsOpen(true)}>
+            <ClassroomButton
+              variant="secondary"
+              className="mt-1 min-h-11 px-4"
+              onClick={() => setBenefitsOpen(true)}
+            >
+              <Sparkles className="size-4" aria-hidden />
               Xem quyền lợi
             </ClassroomButton>
           </div>
@@ -289,7 +276,7 @@ export function AccountSection() {
               Đã xác minh: {new Date(lastVerifiedAt).toLocaleString('vi-VN')}
             </p>
           ) : null}
-          {offlineValidUntil ? (
+          {isOfflineGrace && offlineValidUntil ? (
             <p className="text-xs font-semibold text-slate-400">
               Cần xác minh lại trước: {formatDateFromUnix(offlineValidUntil)}
             </p>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Crown, MonitorPlay } from 'lucide-react'
+import { Crown, MonitorPlay, Users } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { usePresentationMode } from '@/src/store/PresentationModeContext'
@@ -107,7 +107,7 @@ export default function RankingPage() {
       <PresentationChrome title="Bảng xếp hạng" subtitle="Thành tích và điểm số của các bạn trong lớp">
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
           {students.length === 0 ? (
-            <EmptyState emoji="🧑‍🎓" title="Chưa có học sinh để xếp hạng" />
+            <EmptyState icon={Users} title="Chưa có học sinh để xếp hạng" />
           ) : (
             <>
               {rankedStudents.length > 0 ? (
@@ -166,7 +166,7 @@ export default function RankingPage() {
         {mode === 'students' ? (
           students.length === 0 ? (
             <EmptyState
-              emoji="🧑‍🎓"
+              icon={Users}
               title="Chưa có học sinh để xếp hạng"
               description="Hãy thêm học sinh vào lớp trước khi xem bảng xếp hạng."
             />

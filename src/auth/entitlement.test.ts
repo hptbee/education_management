@@ -102,6 +102,33 @@ describe("resolveAccessState", () => {
       }),
     ).toBe("LICENSE_EXPIRED");
   });
+
+  it("locks when license expires even within offline grace", () => {
+    const pastExpiry = new Date(Date.now() - 60_000).toISOString();
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: baseClaims,
+        issuedAt: Math.floor(Date.now() / 1000),
+        lastTrustedIat: Math.floor(Date.now() / 1000),
+        isOnline: false,
+        licenseExpiresAt: pastExpiry,
+      }),
+    ).toBe("LICENSE_EXPIRED");
+  });
+
+  it("allows lifetime license with null expiry during offline grace", () => {
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: baseClaims,
+        issuedAt: Math.floor(Date.now() / 1000),
+        lastTrustedIat: Math.floor(Date.now() / 1000),
+        isOnline: false,
+        licenseExpiresAt: null,
+      }),
+    ).toBe("OFFLINE_GRACE");
+  });
 });
 
 describe("mapApiCodeToAccessState", () => {

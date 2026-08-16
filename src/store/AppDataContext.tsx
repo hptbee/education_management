@@ -37,6 +37,7 @@ import {
   cloudBackupScheduler,
   type CloudBackupState,
 } from "../database/backup/cloud-backup.service";
+import { toastError, toastSuccess } from "../utils/toast";
 
 export type { RecognizeStudentsInput };
 
@@ -115,8 +116,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const clearSaveError = () => setSaveError(null);
 
+  const prevCloudBackupRef = useRef<CloudBackupState>("disabled");
+
   useEffect(() => {
-    const unsubscribe = cloudBackupScheduler.subscribe((state) => {
+    const unsubscribe = cloudBackupScheduler.subscribe((state, error) => {
+      const prev = prevCloudBackupRef.current;
+      if (state === "synced" && prev !== "synced") {
+        toastSuccess("Đã sao lưu đám mây thành công");
+      } else if (state === "failed" && prev !== "failed") {
+        toastError(error ?? "Sao lưu đám mây thất bại");
+      }
+      prevCloudBackupRef.current = state;
       setCloudBackupState(state);
     });
     cloudBackupScheduler.startPeriodicRetry();

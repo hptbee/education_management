@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { X, ArrowRight } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
+import { IconTouchButton } from '@/src/components/classroom'
 
 interface MoveStudentDialogProps {
   isOpen: boolean
@@ -37,9 +38,9 @@ export function MoveStudentDialog({ isOpen, onClose, onMove, student, teams }: M
       <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 className="font-display text-xl font-extrabold text-slate-800">Chuyển tổ</h2>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <div className="p-5 flex flex-col gap-4">

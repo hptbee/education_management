@@ -10,10 +10,23 @@ import { isTauri } from "@/src/database/tauri-fs.service";
 
 const session: StoredAuthSession = {
   entitlement: "token",
-  user: { id: "usr_1", email: "a@example.com", displayName: "A", role: "teacher", status: "active" },
-  license: { plan: "trial", status: "active", expiresAt: null },
-  issuedAt: 1,
-  expiresAt: 999,
+  user: {
+    id: "usr_1",
+    email: "a@example.com",
+    displayName: "A",
+    avatarUrl: null,
+    role: "teacher",
+    status: "active",
+  },
+  license: {
+    id: "lic_1",
+    plan: "trial",
+    status: "active",
+    startsAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: null,
+  },
+  lastVerifiedAt: "2026-01-01T00:00:00.000Z",
+  lastTrustedIat: 1,
 };
 
 describe("secure-storage web", () => {

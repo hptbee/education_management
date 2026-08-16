@@ -53,6 +53,7 @@ describe("studentHasBadge", () => {
 describe("normalizeBadgesOnDatabase", () => {
   it("creates default badges when missing", () => {
     const normalized = normalizeBadgesOnDatabase({ students: [] });
-    expect(normalized.badges.length).toBeGreaterThan(0);
+    const badges = (normalized as unknown as { badges: Badge[] }).badges;
+    expect(badges.length).toBeGreaterThan(0);
   });
 });

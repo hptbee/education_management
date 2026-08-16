@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { X, Search, Check } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
+import { IconTouchButton } from '@/src/components/classroom'
 
 interface AssignStudentsDialogProps {
   isOpen: boolean
@@ -55,9 +56,9 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
             <h2 className="font-display text-xl font-extrabold text-slate-800">Thêm học sinh</h2>
             <p className="text-xs font-semibold text-slate-400">vào {team.avatar} {team.name}</p>
           </div>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <div className="p-4">

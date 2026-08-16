@@ -20,7 +20,7 @@ export function TeamRankingList({
     return (
       <EmptyState
         compact
-        emoji="🏆"
+        icon={Trophy}
         title="Chưa có tổ nào"
         description="Tạo tổ trong mục Tổ / Nhóm để bắt đầu thi đua."
       />

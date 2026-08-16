@@ -183,11 +183,11 @@
   }
 
   .classroom-field {
-    @apply w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20;
+    @apply w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20;
   }
 
   .classroom-search-field {
-    @apply w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20;
+    @apply w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20;
   }
 
   .classroom-shell {
@@ -213,6 +213,10 @@
   @media (prefers-reduced-motion: reduce) {
     .motion-safe-hover:hover {
       transform: none !important;
+    }
+
+    .animate-spin {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
     }
   }
 }

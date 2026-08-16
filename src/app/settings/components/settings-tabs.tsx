@@ -21,13 +21,19 @@ const ALL_TAB_ITEMS: {
 
 function getVisibleTabs() {
   return ALL_TAB_ITEMS.filter((tab) => {
-    if (SETTINGS_TABS.mergeProfileAndRoles && (tab.id === 'profile' || tab.id === 'roles')) {
-      return false
-    }
+    if (SETTINGS_TABS.mergeProfileAndRoles && tab.id === 'roles') return false
     if (tab.id === 'data' && !SETTINGS_TABS.showDataTab) return false
     if (tab.id === 'danger' && !SETTINGS_TABS.showDangerTab) return false
     return true
   })
+}
+
+export function parseSettingsTab(value: string | null): SettingsTab {
+  const visibleIds = getVisibleTabs().map((tab) => tab.id)
+  if (value && visibleIds.includes(value as SettingsTab)) {
+    return value as SettingsTab
+  }
+  return 'account'
 }
 
 

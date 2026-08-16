@@ -1,40 +1,51 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { ClassroomButton, ClassroomCard } from "@/src/components/classroom";
+import { AlertTriangle, Sprout, WifiOff, type LucideIcon } from "lucide-react";
+import { ClassroomButton, ClassroomCard, ClassroomSkeleton } from "@/src/components/classroom";
 import { useAuth } from "@/src/store/AuthContext";
 import { getGoogleClientId } from "@/src/auth/api";
 import type { AccessState } from "@/src/auth/types";
 import { isTauri } from "@/src/database/tauri-fs.service";
 
-const MESSAGES: Record<AccessState, { title: string; body: string; emoji: string }> = {
+type GateMessage = {
+  title: string;
+  body: string;
+  icon: LucideIcon;
+  iconWrap: string;
+};
+
+const MESSAGES: Partial<Record<AccessState, GateMessage>> = {
   AUTH_REQUIRED: {
-    emoji: "🌸",
+    icon: Sprout,
+    iconWrap: "bg-brand-soft text-brand",
     title: "Chào cô giáo!",
     body: "Vui lòng đăng nhập bằng Google để sử dụng ứng dụng.",
   },
   ONLINE_VERIFICATION_REQUIRED: {
-    emoji: "🌸",
+    icon: WifiOff,
+    iconWrap: "bg-amber-100 text-amber-600",
     title: "Ứng dụng cần xác minh",
     body: "Vui lòng kết nối Internet để tiếp tục.",
   },
   LICENSE_EXPIRED: {
-    emoji: "⚠️",
+    icon: AlertTriangle,
+    iconWrap: "bg-amber-100 text-amber-600",
     title: "Gói sử dụng đã hết hạn",
     body: "Gói sử dụng của cô đã hết hạn. Vui lòng liên hệ quản trị viên.",
   },
   ACCOUNT_DISABLED: {
-    emoji: "⚠️",
+    icon: AlertTriangle,
+    iconWrap: "bg-red-100 text-red-500",
     title: "Tài khoản hiện không khả dụng",
     body: "Tài khoản của cô hiện đã bị tạm ngưng. Vui lòng liên hệ quản trị viên.",
   },
   ACCOUNT_SUSPENDED: {
-    emoji: "⚠️",
+    icon: AlertTriangle,
+    iconWrap: "bg-red-100 text-red-500",
     title: "Tài khoản hiện không khả dụng",
     body: "Tài khoản của cô hiện đã bị tạm ngưng. Vui lòng liên hệ quản trị viên.",
   },
-  AUTHENTICATED_AND_ACTIVE: { emoji: "", title: "", body: "" },
-  OFFLINE_GRACE: { emoji: "", title: "", body: "" },
 };
 
 function GoogleSignInButton({ onCredential }: { onCredential: (idToken: string) => void }) {
@@ -91,7 +102,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-page">
-        <p className="text-sm font-semibold text-slate-500">Đang kiểm tra quyền truy cập...</p>
+        <ClassroomSkeleton />
       </div>
     );
   }
@@ -101,11 +112,16 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
   }
 
   const message = MESSAGES[accessState];
+  if (!message) return <>{children}</>;
+
+  const Icon = message.icon;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page p-6">
       <ClassroomCard className="w-full max-w-md text-center">
-        <p className="text-4xl">{message.emoji}</p>
+        <div className={`mx-auto flex size-14 items-center justify-center rounded-2xl ${message.iconWrap}`}>
+          <Icon className="size-7" aria-hidden />
+        </div>
         <h1 className="mt-4 font-display text-2xl font-black text-slate-800">{message.title}</h1>
         <p className="mt-2 text-sm font-semibold text-slate-500">{message.body}</p>
 

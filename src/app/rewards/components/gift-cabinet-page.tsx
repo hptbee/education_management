@@ -15,8 +15,9 @@ import {
 import type { Gift } from "@/src/types/models";
 import { GiftCard } from "./gift-card";
 import { GiftFormDialog } from "./gift-form-dialog";
-import { GiftPresentationView } from "./gift-presentation-view";
 import { GiftRedeemDialog } from "./gift-redeem-dialog";
+import { GiftPresentationView } from "./gift-presentation-view";
+import { toastSuccess } from '@/src/utils/toast'
 import { buildRedeemGiftUpdate } from "@/src/utils/gifts";
 
 export function GiftCabinetPage() {
@@ -75,7 +76,7 @@ export function GiftCabinetPage() {
       return;
     }
     setRedeemGiftTarget(null);
-    await showAlert("Đã đổi quà thành công!");
+    toastSuccess('Đã đổi quà thành công!');
   };
 
   const handleDelete = async (gift: Gift) => {
@@ -145,7 +146,7 @@ export function GiftCabinetPage() {
 
         {gifts.length === 0 ? (
           <EmptyState
-            emoji="🎁"
+            icon={GiftIcon}
             title="Tủ quà đang chờ cô giáo bổ sung!"
             description="Thêm ảnh và mô tả quà tặng để học sinh cùng ngắm nhìn."
             action={

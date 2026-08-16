@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X, Plus, Star, ArrowLeftRight, UserMinus, History, Crown, Shield } from 'lucide-react'
 import type { Student, Team, TeamScoreHistory } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
+import { IconTouchButton } from '@/src/components/classroom'
 import { AssignStudentsDialog } from './assign-students-dialog'
 import { MoveStudentDialog } from './move-student-dialog'
 import {
@@ -64,9 +65,9 @@ export function TeamDetails({
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </div>
 
         {/* Quick actions */}

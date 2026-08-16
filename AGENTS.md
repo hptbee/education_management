@@ -44,7 +44,7 @@ Inspect:
 | `/recognition` | Recognition ceremony, badge roster, title catalog, Wall of Fame |
 | `/ranking` | Student & team rankings |
 | `/history` | Activity history |
-| `/settings` | Classroom selector; in-class settings (Tài khoản, Hồ sơ, Vai trò, Dữ liệu, Nguy hiểm) |
+| `/settings` | Classroom selector; in-class settings (Tài khoản, Hồ sơ, Vai trò, Dữ liệu) |
 
 ## Settings (`/settings`)
 
@@ -56,13 +56,16 @@ Route: `src/app/settings/page.tsx`. When `data` is null, render `ClassroomSelect
 | Hồ sơ | `profile-section.tsx` | Teacher name, display class name, avatar, home banner |
 | Vai trò | `classroom-roles-section.tsx` | Role catalog CRUD |
 | Dữ liệu | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder, cloud backup opt-in, cloud restore |
-| Nguy hiểm | inline in `settings-page.tsx` | Delete classroom |
+
+**Nguy hiểm** (delete classroom) exists in `settings-page.tsx` but is hidden by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` — currently `false`).
 
 Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.tsx`.
 
 **Auth shell:** `AuthProvider` → `AppDataProvider` → `AccessGate` → `AppShell` in `src/app/layout.tsx`. Lock screens hide Sidebar (same pattern as presentation mode). Never delete local classrooms on lock/logout.
 
 **Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity.
+
+**Trial license:** First Google login auto-creates a **7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan.
 
 ## Recognition (`/recognition`)
 

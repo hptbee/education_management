@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { Team } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
+import { IconTouchButton } from '@/src/components/classroom'
 import { EmojiIconPicker } from '@/src/components/EmojiIconPicker'
 import { TEAM_EMOJI_OPTIONS } from '@/src/utils/emojiIcons'
 
@@ -67,9 +68,9 @@ export function TeamFormDialog({ isOpen, onClose, onSave, initialData }: TeamFor
           <h2 className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa tổ' : 'Tạo tổ mới'}
           </h2>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+          <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <form id="team-form" onSubmit={handleSubmit} className="p-5 flex flex-col gap-5">

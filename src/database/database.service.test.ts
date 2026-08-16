@@ -97,7 +97,7 @@ describe("DatabaseService", () => {
 
   it("rejects missing array fields on import", async () => {
     const { service } = makeService();
-    const db = createEmptyDatabase(makeSettings()) as Record<string, unknown>;
+    const db = createEmptyDatabase(makeSettings()) as unknown as Record<string, unknown>;
     delete db.students;
     await expect(service.importDatabaseFromJson(db)).rejects.toThrow(/students/);
   });

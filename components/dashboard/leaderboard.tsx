@@ -37,7 +37,7 @@ export function Leaderboard() {
           <li>
             <EmptyState
               compact
-              emoji="⭐"
+              icon={Star}
               title="Chưa có dữ liệu xếp hạng"
               description="Tích điểm cho học sinh để bảng xếp hạng hiển thị tại đây."
             />

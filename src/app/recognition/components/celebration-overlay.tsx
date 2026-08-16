@@ -7,6 +7,7 @@ import { PartyPopper, Sparkles, Star, X } from 'lucide-react'
 import type { Recognition, Student } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
 import { dedupeRecognitionsByStudent } from '@/src/utils/recognition'
+import { canAnimate } from '@/src/utils/motion'
 import { ClassroomButton } from '@/src/components/classroom'
 
 interface CelebrationOverlayProps {
@@ -179,24 +180,21 @@ export function CelebrationOverlay({
 
   const isMulti = items.length > 1
   const current = items[stepIndex]
-  const prefersReducedMotion =
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-  const canAnimate = animationsEnabled && !prefersReducedMotion
+  const allowMotion = canAnimate(animationsEnabled)
 
   useEffect(() => {
-    if (!canAnimate) return
+    if (!allowMotion) return
     launchFireworksBurst()
     launchFireworkStream()
-  }, [stepIndex, showFinale, canAnimate])
+  }, [stepIndex, showFinale, allowMotion])
 
   useEffect(() => {
-    if (!canAnimate) return
+    if (!allowMotion) return
     const interval = window.setInterval(() => {
       launchFireworksBurst()
     }, 2800)
     return () => window.clearInterval(interval)
-  }, [canAnimate])
+  }, [allowMotion])
 
   if (items.length === 0) return null
 
@@ -207,14 +205,14 @@ export function CelebrationOverlay({
     return (
       <motion.div
         key={item.recognition.id}
-        initial={canAnimate ? { scale: 0.88, opacity: 0 } : false}
+        initial={allowMotion ? { scale: 0.88, opacity: 0 } : false}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.45, ease: 'easeOut' }}
         className="relative flex flex-col items-center text-center"
       >
         <motion.div
           className="mb-4 flex items-center gap-2 text-amber-500"
-          animate={canAnimate ? { scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] } : undefined}
+          animate={allowMotion ? { scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] } : undefined}
           transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
         >
           <Sparkles className="size-5" />
@@ -224,11 +222,11 @@ export function CelebrationOverlay({
 
         <motion.div
           className="relative mb-6 flex size-20 items-center justify-center rounded-full bg-pastel-yellow shadow-lg ring-4 ring-white"
-          animate={canAnimate ? { rotate: [0, -8, 8, 0], scale: [1, 1.08, 1] } : undefined}
+          animate={allowMotion ? { rotate: [0, -8, 8, 0], scale: [1, 1.08, 1] } : undefined}
           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
         >
           <PartyPopper className="size-10 text-amber-600" />
-          {canAnimate ? (
+          {allowMotion ? (
             <motion.span
               className="absolute inset-0 rounded-full ring-4 ring-amber-300/60"
               animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
@@ -240,7 +238,7 @@ export function CelebrationOverlay({
         <motion.p
           className="text-lg font-extrabold uppercase tracking-wide text-brand"
           animate={
-            canAnimate
+            allowMotion
               ? {
                   opacity: [1, 0.45, 1],
                   textShadow: [
@@ -258,10 +256,10 @@ export function CelebrationOverlay({
 
         <motion.div
           className="relative mt-6"
-          animate={canAnimate ? { scale: [1, 1.04, 1] } : undefined}
+          animate={allowMotion ? { scale: [1, 1.04, 1] } : undefined}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
         >
-          {canAnimate ? (
+          {allowMotion ? (
             <>
               <motion.span
                 className={`absolute inset-0 rounded-full bg-amber-300/40 blur-md ${large ? 'size-32' : 'size-24'}`}
@@ -288,7 +286,7 @@ export function CelebrationOverlay({
           className={`mt-6 font-display font-black text-slate-800 ${
             large ? 'text-4xl sm:text-5xl' : 'text-3xl'
           }`}
-          initial={canAnimate ? { y: 12, opacity: 0 } : false}
+          initial={allowMotion ? { y: 12, opacity: 0 } : false}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
@@ -298,7 +296,7 @@ export function CelebrationOverlay({
         <motion.p
           className="mt-4 flex items-center gap-2 text-xl font-extrabold text-amber-800 sm:text-2xl"
           animate={
-            canAnimate
+            allowMotion
               ? {
                   scale: [1, 1.05, 1],
                   color: ['#92400e', '#b45309', '#92400e'],
@@ -308,14 +306,14 @@ export function CelebrationOverlay({
           transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut' }}
         >
           <motion.span
-            animate={canAnimate ? { rotate: [0, 12, -12, 0] } : undefined}
+            animate={allowMotion ? { rotate: [0, 12, -12, 0] } : undefined}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
             {item.recognition.titleIcon ?? '🌟'}
           </motion.span>
           <span className="uppercase">{item.recognition.title}</span>
           <motion.span
-            animate={canAnimate ? { rotate: [0, -12, 12, 0] } : undefined}
+            animate={allowMotion ? { rotate: [0, -12, 12, 0] } : undefined}
             transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
           >
             {item.recognition.titleIcon ?? '🌟'}
@@ -325,7 +323,7 @@ export function CelebrationOverlay({
         {item.recognition.message ? (
           <motion.p
             className="mt-6 max-w-lg text-lg font-semibold leading-relaxed text-slate-600 sm:text-xl"
-            initial={canAnimate ? { opacity: 0 } : false}
+            initial={allowMotion ? { opacity: 0 } : false}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
@@ -336,7 +334,7 @@ export function CelebrationOverlay({
         {item.recognition.awardedPoints && item.recognition.awardedPoints > 0 ? (
           <motion.p
             className="mt-6 flex items-center gap-2 rounded-full bg-pastel-yellow px-5 py-2 text-lg font-extrabold text-amber-800"
-            animate={canAnimate ? { scale: [1, 1.06, 1], boxShadow: ['0 0 0 rgba(251,191,36,0)', '0 0 20px rgba(251,191,36,0.5)', '0 0 0 rgba(251,191,36,0)'] } : undefined}
+            animate={allowMotion ? { scale: [1, 1.06, 1], boxShadow: ['0 0 0 rgba(251,191,36,0)', '0 0 20px rgba(251,191,36,0.5)', '0 0 0 rgba(251,191,36,0)'] } : undefined}
             transition={{ duration: 1.4, repeat: Infinity }}
           >
             <Star className="size-5 fill-star text-star" />
@@ -347,7 +345,7 @@ export function CelebrationOverlay({
         {item.recognition.awardedBadgeId ? (
           <motion.p
             className="mt-4 flex items-center gap-2 rounded-full bg-brand-soft px-5 py-2 text-base font-extrabold text-brand-dark"
-            animate={canAnimate ? { opacity: [0.85, 1, 0.85] } : undefined}
+            animate={allowMotion ? { opacity: [0.85, 1, 0.85] } : undefined}
             transition={{ duration: 1.2, repeat: Infinity }}
           >
             🏅 Nhận huy hiệu:{' '}
@@ -361,7 +359,7 @@ export function CelebrationOverlay({
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-gradient-to-b from-pastel-sky via-white to-pastel-pink">
-      {canAnimate ? <CelebrationBackgroundEffects /> : null}
+      {allowMotion ? <CelebrationBackgroundEffects /> : null}
 
       <button
         type="button"
@@ -377,9 +375,9 @@ export function CelebrationOverlay({
           {isMulti && !showFinale ? (
             <motion.div
               key={`step-${stepIndex}`}
-              initial={canAnimate ? { opacity: 0, y: 20 } : false}
+              initial={allowMotion ? { opacity: 0, y: 20 } : false}
               animate={{ opacity: 1, y: 0 }}
-              exit={canAnimate ? { opacity: 0, y: -20 } : undefined}
+              exit={allowMotion ? { opacity: 0, y: -20 } : undefined}
               className="w-full max-w-2xl"
             >
               {stepIndex === 0 ? (
@@ -392,13 +390,13 @@ export function CelebrationOverlay({
           ) : isMulti && showFinale ? (
             <motion.div
               key="finale"
-              initial={canAnimate ? { opacity: 0, scale: 0.95 } : false}
+              initial={allowMotion ? { opacity: 0, scale: 0.95 } : false}
               animate={{ opacity: 1, scale: 1 }}
               className="w-full max-w-3xl text-center"
             >
               <motion.h2
                 className="font-display text-3xl font-black text-slate-800 sm:text-4xl"
-                animate={canAnimate ? { scale: [1, 1.03, 1] } : undefined}
+                animate={allowMotion ? { scale: [1, 1.03, 1] } : undefined}
                 transition={{ duration: 1.5, repeat: Infinity }}
               >
                 🎉 Cả lớp cùng chúc mừng các bạn!
@@ -410,7 +408,7 @@ export function CelebrationOverlay({
                   return (
                     <motion.div
                       key={item.recognition.id}
-                      initial={canAnimate ? { opacity: 0, y: 16 } : false}
+                      initial={allowMotion ? { opacity: 0, y: 16 } : false}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.08 }}
                       className="flex flex-col items-center rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-sky-100"

@@ -2,7 +2,8 @@
 
 import { motion } from 'framer-motion'
 import { AlertTriangle, Settings, Sparkles } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Field, Input } from '@/src/components/ui'
 import { ClassroomButton, ClassroomCard, PageHeader } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
@@ -11,7 +12,7 @@ import { DataSection } from './data-section'
 import { ProfileSection } from './profile-section'
 import { AccountSection } from './account-section'
 import { SETTINGS_TABS } from './settings-flags'
-import { SettingsTabs, type SettingsTab } from './settings-tabs'
+import { SettingsTabs, parseSettingsTab, type SettingsTab } from './settings-tabs'
 
 export function SettingsPage() {
   const {
@@ -25,7 +26,26 @@ export function SettingsPage() {
     closeDatabase,
     switchDatabase,
   } = useAppData()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('account')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const activeTab = useMemo(
+    () => parseSettingsTab(searchParams?.get('tab') ?? null),
+    [searchParams],
+  )
+  const setActiveTab = useCallback(
+    (tab: SettingsTab) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? '')
+      if (tab === 'account') {
+        params.delete('tab')
+      } else {
+        params.set('tab', tab)
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname ?? '/settings'}?${qs}` : (pathname ?? '/settings'))
+    },
+    [pathname, router, searchParams],
+  )
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -151,8 +171,7 @@ export function SettingsPage() {
     }
   }
 
-  const showProfileSection =
-    SETTINGS_TABS.mergeProfileAndRoles || activeTab === 'profile'
+  const showProfileSection = activeTab === 'profile'
   const showRolesSection =
     !SETTINGS_TABS.mergeProfileAndRoles && activeTab === 'roles'
 

@@ -160,7 +160,7 @@ Legacy `backups/<device-id>/...` is **no longer written**. Pre-account backups a
 
 | Plan | `appAccess` | `cloudBackup` | Typical expiry |
 |---|---|---|---|
-| **trial** | yes | no | 7 days on first login |
+| **trial** | yes | no | **7 days** on first login (`DEFAULT_TRIAL_DAYS = 7`) |
 | **basic** | yes | no | Admin-assigned |
 | **premium** | yes | yes | Admin-assigned |
 | **lifetime** | yes | yes | No expiry |

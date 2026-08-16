@@ -23,7 +23,8 @@ import {
 } from '@/src/utils/pickerSession'
 import { NamedWheel } from './named-wheel'
 import { PickerConfigPanel } from './picker-config-panel'
-import { useClassroomDialog } from '@/src/components/classroom'
+import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
+import { canAnimate } from '@/src/utils/motion'
 
 const LIST_REVEAL_DELAY_MS = 3000
 const LIST_HIDE_DURATION_MS = 450
@@ -39,6 +40,8 @@ interface LuckyWheelDialogProps {
 export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWheelDialogProps) {
   const { data, setWheelStudentBag, recordLuckyWheelSelection } = useAppData()
   const { showConfirm } = useClassroomDialog()
+  const animationsEnabled = data?.appSettings.animationsEnabled ?? true
+  const allowMotion = canAnimate(animationsEnabled)
   const bagRef = useRef<string[]>([])
   bagRef.current = data?.wheelStudentBag ?? []
 
@@ -247,6 +250,22 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
       setShowStudentList(false)
       setWinner(null)
 
+      const finishSpin = () => {
+        setWinner(target)
+        setIsSpinning(false)
+        if (allowMotion) {
+          confetti({ particleCount: 120, spread: 90, origin: { y: 0.45 } })
+        }
+        onComplete()
+      }
+
+      if (!allowMotion) {
+        setIsPreparing(false)
+        setRotation((current) => getWinnerRotation(current, winnerIndex, wheelPool.length, 0))
+        finishSpin()
+        return
+      }
+
       hideTimeoutRef.current = setTimeout(() => {
         const plan = createRandomSpinPlan()
         setSpinPlan(plan)
@@ -255,14 +274,11 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
         setRotation((current) => getWinnerRotation(current, winnerIndex, wheelPool.length, plan.extraTurns))
 
         spinTimeoutRef.current = setTimeout(() => {
-          setWinner(target)
-          setIsSpinning(false)
-          confetti({ particleCount: 120, spread: 90, origin: { y: 0.45 } })
-          onComplete()
+          finishSpin()
         }, plan.durationMs)
       }, LIST_HIDE_DURATION_MS)
     },
-    [clearTimers, wheelStudents],
+    [clearTimers, wheelStudents, allowMotion],
   )
 
   const recordSessionPick = useCallback((studentId: string) => {
@@ -309,7 +325,9 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
           setIsBatchActive(false)
           recordLuckyWheelSelection(updated.map((student) => student.id))
           revealTimeoutRef.current = setTimeout(() => setShowStudentList(true), LIST_REVEAL_DELAY_MS)
-          confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 } })
+          if (allowMotion) {
+            confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 } })
+          }
           return
         }
 
@@ -318,7 +336,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
         }, MULTIPLE_AUTO_ADVANCE_MS)
       })
     },
-    [recordSessionPick, runSpinToStudent, students, updateBagForStudent, recordLuckyWheelSelection],
+    [recordSessionPick, runSpinToStudent, students, updateBagForStudent, recordLuckyWheelSelection, allowMotion],
   )
 
   const startMultipleBatch = () => {
@@ -430,13 +448,13 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
             <h2 className="font-display text-xl font-extrabold text-slate-800">Vòng quay may mắn</h2>
             <p className="text-xs font-semibold text-slate-500">Chọn học sinh và quay để chọn ngẫu nhiên</p>
           </div>
-          <button
-            type="button"
+          <IconTouchButton
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Đóng"
+            className="text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
             <X className="size-5" />
-          </button>
+          </IconTouchButton>
         </header>
 
         <div className="flex min-h-0 flex-1">
@@ -444,10 +462,10 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
             {showStudentList ? (
               <motion.aside
                 key="student-list"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 300, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.45, ease: 'easeInOut' }}
+                initial={allowMotion ? { width: 0, opacity: 0 } : false}
+                animate={allowMotion ? { width: 300, opacity: 1 } : { width: 300, opacity: 1 }}
+                exit={allowMotion ? { width: 0, opacity: 0 } : undefined}
+                transition={allowMotion ? { duration: 0.45, ease: 'easeInOut' } : { duration: 0 }}
                 className="h-full shrink-0 overflow-hidden border-r border-slate-100"
               >
                 <div className="flex h-full w-[300px] flex-col overflow-y-auto bg-slate-50/70 p-3 scrollbar-thin">
@@ -526,11 +544,18 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
 
           <div className="flex min-w-0 flex-1 flex-col items-center justify-center bg-gradient-to-b from-pastel-sky/50 via-white to-pastel-pink/30 px-6 py-4">
             <motion.div
-              animate={{
-                width: showStudentList ? 380 : 620,
-                height: showStudentList ? 380 : 620,
-              }}
-              transition={{ duration: 0.45, ease: 'easeInOut' }}
+              animate={
+                allowMotion
+                  ? {
+                      width: showStudentList ? 380 : 620,
+                      height: showStudentList ? 380 : 620,
+                    }
+                  : {
+                      width: showStudentList ? 380 : 620,
+                      height: showStudentList ? 380 : 620,
+                    }
+              }
+              transition={allowMotion ? { duration: 0.45, ease: 'easeInOut' } : { duration: 0 }}
               className="relative"
             >
               <NamedWheel
@@ -624,8 +649,8 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
                   poolStudents.length === 0 ||
                   multipleComplete
                 }
-                whileTap={{ scale: isBusy ? 1 : 0.97 }}
-                className="mt-3 w-full max-w-xs rounded-2xl bg-brand-purple py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-brand-purple-dark disabled:opacity-50"
+                whileTap={{ scale: isBusy || !allowMotion ? 1 : 0.97 }}
+                className="mt-3 w-full max-w-xs rounded-2xl bg-brand-purple py-3 text-sm font-extrabold text-white shadow-md transition hover:bg-brand-purple-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50"
               >
                 {primaryLabel}
               </motion.button>

@@ -6,15 +6,12 @@ import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
 import { pickWithoutRepeat } from '@/src/utils/randomSelection'
+import { canAnimate } from '@/src/utils/motion'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
 
 const CYCLE_TICKS = 24
 const FAST_INTERVAL_MS = 60
 const SLOW_INTERVAL_MS = 180
-
-function prefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
 
 export function WhoIsNextTool() {
   const { data } = useAppData()
@@ -50,7 +47,7 @@ export function WhoIsNextTool() {
       setCycling(false)
     }
 
-    if (!animationsEnabled || prefersReducedMotion()) {
+    if (!canAnimate(animationsEnabled)) {
       complete()
       return
     }
@@ -97,7 +94,7 @@ export function WhoIsNextTool() {
       </header>
 
       {pool.length === 0 ? (
-        <EmptyState compact emoji="👋" title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
+        <EmptyState compact icon={Users} title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-gradient-to-b from-pastel-lavender/50 to-pastel-peach/30 px-4 py-5">
           <div
