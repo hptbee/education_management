@@ -203,6 +203,6 @@ export function makeTestEnv(
     GOOGLE_CLIENT_ID: "test-client-id",
     ENTITLEMENT_PRIVATE_KEY: privateKeyPem,
     ENTITLEMENT_PUBLIC_KEY: publicKeyPem,
-    DEFAULT_TRIAL_DAYS: "30",
+    DEFAULT_TRIAL_DAYS: "7",
   };
 }

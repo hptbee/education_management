@@ -143,8 +143,37 @@ describe("CloudBackupScheduler", () => {
     scheduler.subscribe((state) => states.push(state));
 
     scheduler.scheduleAfterLocalSave(makeDb());
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await scheduler.flushPending();
 
     expect(states).toContain("failed");
+  });
+
+  it("does not enter pending when entitlement lacks cloudBackup permission", async () => {
+    vi.mocked(verifyEntitlementToken).mockResolvedValueOnce({
+      claims: {
+        userId: "usr_test",
+        role: "teacher",
+        plan: "trial",
+        status: "active",
+        permissions: { appAccess: true, cloudBackup: false },
+        licenseVersion: 1,
+        offlineValidUntil: Math.floor(Date.now() / 1000) + 3600,
+      },
+      issuedAt: Math.floor(Date.now() / 1000),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const fetchMock = vi.fn();
+    const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);
+    const states: string[] = [];
+    scheduler.subscribe((state) => states.push(state));
+
+    scheduler.scheduleAfterLocalSave(makeDb(true));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(states).not.toContain("pending");
+    expect(states).toContain("disabled");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

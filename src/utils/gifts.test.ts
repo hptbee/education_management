@@ -174,4 +174,24 @@ describe("buildRedeemGiftUpdate", () => {
     const result = buildRedeemGiftUpdate(db, "student-1", "gift-1");
     expect(result).toEqual({ error: "inactive" });
   });
+
+  it("returns not-found for missing student or gift", () => {
+    const db = minimalDb([baseGift], [baseStudent]);
+    expect(buildRedeemGiftUpdate(db, "missing-student", "gift-1")).toEqual({ error: "not-found" });
+    expect(buildRedeemGiftUpdate(db, "student-1", "missing-gift")).toEqual({ error: "not-found" });
+  });
+
+  it("redeems when points exactly equal requiredPoints (ends at zero)", () => {
+    const exactGift: Gift = { ...baseGift, requiredPoints: 20 };
+    const exactStudent: Student = { ...baseStudent, points: 20 };
+    const db = minimalDb([exactGift], [exactStudent]);
+    const result = buildRedeemGiftUpdate(db, "student-1", "gift-1");
+    expect("next" in result).toBe(true);
+    if (!("next" in result)) return;
+
+    expect(result.next.students[0].points).toBe(0);
+    expect(result.next.students[0].totalRewards).toBe(1);
+    expect(result.next.rewardHistory[0].pointsSpent).toBe(20);
+    expect(result.next.pointHistory[0].points).toBe(-20);
+  });
 });

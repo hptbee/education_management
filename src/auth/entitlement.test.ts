@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { resolveAccessState } from "./entitlement";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as jose from "jose";
+import { mapApiCodeToAccessState, resolveAccessState, verifyEntitlementToken } from "./entitlement";
 import type { EntitlementClaims } from "./types";
 
 const baseClaims: EntitlementClaims = {
@@ -50,5 +51,110 @@ describe("resolveAccessState", () => {
         isOnline: false,
       }),
     ).toBe("ONLINE_VERIFICATION_REQUIRED");
+  });
+
+  it("returns ACCOUNT_DISABLED for disabled status", () => {
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: { ...baseClaims, status: "disabled" },
+        issuedAt: Math.floor(Date.now() / 1000),
+        lastTrustedIat: Math.floor(Date.now() / 1000),
+        isOnline: true,
+      }),
+    ).toBe("ACCOUNT_DISABLED");
+  });
+
+  it("returns ACCOUNT_SUSPENDED for suspended status", () => {
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: { ...baseClaims, status: "suspended" },
+        issuedAt: Math.floor(Date.now() / 1000),
+        lastTrustedIat: Math.floor(Date.now() / 1000),
+        isOnline: true,
+      }),
+    ).toBe("ACCOUNT_SUSPENDED");
+  });
+
+  it("requires verification on clock rollback", () => {
+    const now = Math.floor(Date.now() / 1000);
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: baseClaims,
+        issuedAt: now,
+        lastTrustedIat: now + 3600,
+        isOnline: true,
+      }),
+    ).toBe("ONLINE_VERIFICATION_REQUIRED");
+  });
+
+  it("honors serverDenied override", () => {
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: baseClaims,
+        issuedAt: Math.floor(Date.now() / 1000),
+        lastTrustedIat: Math.floor(Date.now() / 1000),
+        isOnline: true,
+        serverDenied: "LICENSE_EXPIRED",
+      }),
+    ).toBe("LICENSE_EXPIRED");
+  });
+});
+
+describe("mapApiCodeToAccessState", () => {
+  it("maps known API codes", () => {
+    expect(mapApiCodeToAccessState("ACCOUNT_DISABLED")).toBe("ACCOUNT_DISABLED");
+    expect(mapApiCodeToAccessState("LICENSE_EXPIRED")).toBe("LICENSE_EXPIRED");
+  });
+
+  it("returns null for unknown codes", () => {
+    expect(mapApiCodeToAccessState("UNKNOWN")).toBeNull();
+  });
+});
+
+describe("verifyEntitlementToken", () => {
+  const originalEnv = process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY;
+
+  afterEach(() => {
+    if (originalEnv) {
+      process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = originalEnv;
+    } else {
+      delete process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY;
+    }
+    vi.useRealTimers();
+  });
+
+  it("verifies a signed entitlement token", async () => {
+    const { privateKey, publicKey } = await jose.generateKeyPair("EdDSA", { extractable: true });
+    const publicKeyPem = await jose.exportSPKI(publicKey);
+    process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = publicKeyPem;
+
+    const now = Math.floor(Date.now() / 1000);
+    const token = await new jose.SignJWT({
+      userId: "usr_1",
+      role: "teacher",
+      plan: "trial",
+      status: "active",
+      permissions: { appAccess: true, cloudBackup: false },
+      licenseVersion: 1,
+      offlineValidUntil: now + 86400,
+    })
+      .setProtectedHeader({ alg: "EdDSA" })
+      .setIssuedAt(now)
+      .setExpirationTime(now + 3600)
+      .sign(privateKey);
+
+    const verified = await verifyEntitlementToken(token);
+    expect(verified?.claims.userId).toBe("usr_1");
+    expect(verified?.claims.permissions.appAccess).toBe(true);
+  });
+
+  it("returns null for invalid token", async () => {
+    const { publicKey } = await jose.generateKeyPair("EdDSA", { extractable: true });
+    process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = await jose.exportSPKI(publicKey);
+    expect(await verifyEntitlementToken("not-a-jwt")).toBeNull();
   });
 });
