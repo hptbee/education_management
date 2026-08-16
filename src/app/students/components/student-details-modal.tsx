@@ -7,7 +7,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
 import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { getStudentBadges } from '@/src/utils/badges'
-import { IconTouchButton } from '@/src/components/classroom'
+import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
 import {
   ACTIVITY_KIND_EMOJI,
@@ -23,6 +23,7 @@ interface StudentDetailsModalProps {
 
 export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetailsModalProps) {
   const { data } = useAppData()
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
 
   if (!isOpen || !student) return null
 
@@ -49,9 +50,16 @@ export function StudentDetailsModal({ isOpen, onClose, student }: StudentDetails
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="student-details-title"
+        tabIndex={-1}
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl"
+      >
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
-          <h2 className="font-display text-xl font-extrabold text-slate-800">
+          <h2 id="student-details-title" className="font-display text-xl font-extrabold text-slate-800">
             Hồ sơ học sinh
           </h2>
           <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">

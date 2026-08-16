@@ -7,7 +7,7 @@ import { createId } from '@/src/utils/id'
 import { getStudentAvatar } from '@/src/utils/student'
 import { readStudentAvatarImage } from '@/src/utils/images'
 import { useAppData } from '@/src/store/AppDataContext'
-import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
+import { useClassroomDialog, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -49,6 +49,8 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
       }
     }
   }, [isOpen, initialData])
+
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
 
   if (!isOpen) return null
 
@@ -98,9 +100,16 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="student-form-title"
+        tabIndex={-1}
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl"
+      >
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
-          <h2 className="font-display text-xl font-extrabold text-slate-800">
+          <h2 id="student-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa học sinh' : 'Thêm học sinh mới'}
           </h2>
           <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100 hover:text-slate-600">

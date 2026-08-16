@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import type { Gift } from "@/src/types/models";
-import { ClassroomButton } from "@/src/components/classroom";
+import { ClassroomButton, useModalFocusTrap } from "@/src/components/classroom";
 import { classroomAssetService, GIFT_IMAGE } from "@/src/database/assets/classroom-asset.service";
 import { useGiftImageUrl } from "@/src/hooks/useGiftImageUrl";
 import { createId } from "@/src/utils/id";
@@ -35,6 +35,7 @@ export function GiftFormDialog({
   const nameRef = useRef<HTMLInputElement>(null);
 
   const existingImageUrl = useGiftImageUrl(classroomId, !pendingFile ? imagePath : undefined);
+  const dialogRef = useModalFocusTrap(isOpen, onClose);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -78,9 +79,11 @@ export function GiftFormDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="gift-form-title"
+        tabIndex={-1}
         className="w-full max-w-lg rounded-3xl bg-white shadow-2xl"
       >
         <header className="border-b border-sky-50 p-5">

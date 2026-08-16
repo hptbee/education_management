@@ -65,7 +65,24 @@ Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.ts
 
 **Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity (tab hidden by default — same pattern as **Nguy hiểm**).
 
-**Trial license:** First Google login auto-creates a **one-time 7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Expired trials are **not** renewed on later logins — admin `POST /admin/licenses` restores access. Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan. Redeploy the Worker after license-logic changes.
+**Trial license:** First Google login auto-creates a **one-time 7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **zero license rows** also get that one-time trial. If any license row exists (including expired), do **not** remint — admin `POST /admin/licenses` restores access. Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan. Redeploy the Worker after license-logic changes.
+
+## Ranking (`/ranking`)
+
+Presentation mode follows the current `mode`: students show podium + list; teams show `TeamRankingList` (empty-team copy if none). Do not open `StudentDetailsModal` in presentation.
+
+## Persistence (desktop)
+
+- Classroom JSON lives in `classrooms/*.json`; `index.json` is reconciled against those files so an orphan classroom is not hidden after a crash between file write and index write.
+- IndexedDB → JSON migration is complete only after `indexeddb-migration.complete` is written. Missing marker resumes remaining IDs without overwriting existing JSON.
+- Async gift save/delete: `commitData(next)` then `await persistNow()` — never write a stale snapshot back into `dataRef` after `await`.
+- Entitlement: OS keychain. Legacy `entitlement.sec` is migrated once; fail closed if the keyring write fails (do not return plaintext).
+
+## Dialogs
+
+CRUD/scoring overlays use `useModalFocusTrap` plus `role="dialog"`, `aria-modal`, labelled heading, and `tabIndex={-1}`. Pattern: `gift-redeem-dialog.tsx`. Leave `lucky-wheel-dialog.tsx` without a keyboard trap unless explicitly requested.
+
+Auth JSON (`POST /auth/google`) and admin JSON bodies are bounded to ~64 KB (`readJsonWithLimit`). Backup PUT stays on the 25 MB reader. `listCloudClassrooms` throws on non-2xx.
 
 ## Recognition (`/recognition`)
 

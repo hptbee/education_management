@@ -178,6 +178,8 @@ fn save_entitlement(app: AppHandle, payload: String) -> Result<(), String> {
 
 #[tauri::command]
 fn load_entitlement(app: AppHandle) -> Result<Option<String>, String> {
+  // Prefer keyring. If empty, migrate entitlement.sec into keyring and delete the file.
+  // Fail closed: if keyring set fails, do not return plaintext from the file.
   if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
     if let Ok(value) = entry.get_password() {
       if !value.trim().is_empty() {
@@ -188,14 +190,24 @@ fn load_entitlement(app: AppHandle) -> Result<Option<String>, String> {
 
   let data_dir = get_data_dir(&app)?;
   let path = data_dir.join("entitlement.sec");
-  if path.exists() {
-  let value = std::fs::read_to_string(&path)
-      .map_err(|e| format!("Failed to read entitlement: {}", e))?;
-    if !value.trim().is_empty() {
-      return Ok(Some(value));
-    }
+  if !path.exists() {
+    return Ok(None);
   }
-  Ok(None)
+
+  let legacy = std::fs::read_to_string(&path)
+    .map_err(|e| format!("Failed to read entitlement: {}", e))?;
+  if legacy.trim().is_empty() {
+    return Ok(None);
+  }
+
+  let entry = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER)
+    .map_err(|e| format!("Failed to access secure storage: {}", e))?;
+  entry
+    .set_password(&legacy)
+    .map_err(|e| format!("Failed to migrate entitlement to secure storage: {}", e))?;
+
+  let _ = std::fs::remove_file(&path);
+  Ok(Some(legacy))
 }
 
 #[tauri::command]
@@ -558,6 +570,9 @@ pub fn run() {
 
 #[cfg(test)]
 mod path_tests {
+    // Entitlement keyring migrate/fail-closed (`load_entitlement`) is not covered here:
+    // these tests have no keyring crate fixture. Fail-closed means: if `entitlement.sec`
+    // exists and `keyring::Entry::set_password` fails, do not return the file contents.
     use super::*;
     use std::fs;
     use std::sync::{Mutex, OnceLock};

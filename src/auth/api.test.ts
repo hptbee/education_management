@@ -79,6 +79,15 @@ describe("api fetch wrappers", () => {
     expect(list.length).toBe(1);
   });
 
+  it("throws when cloud classroom list fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ ok: false, error: "Forbidden" }),
+    } as Response);
+    await expect(listCloudClassrooms("token")).rejects.toThrow("Forbidden");
+  });
+
   it("restores cloud classroom", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,

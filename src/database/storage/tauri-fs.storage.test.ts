@@ -217,6 +217,33 @@ describe("TauriFsClassroomStorage", () => {
     expect(list[0].id).toBe(db.metadata.id);
   });
 
+  it("reconciles orphan classroom JSON into a valid index", async () => {
+    const fs = new MemoryFileStorageAdapter();
+    const orphan = makeDb("3A", "2026-2027");
+    const indexed = makeDb("2/7", "2026-2027");
+    const dataDir = await fs.getDataDirectory();
+    const orphanFile = makeClassroomFileName(orphan.metadata.id);
+    await fs.writeTextFile(
+      fs.joinPath(dataDir, "classrooms", orphanFile),
+      JSON.stringify(orphan, null, 2),
+    );
+
+    const storage = new TauriFsClassroomStorage(fs);
+    await storage.save(indexed);
+    const root = await fs.getDataDirectory();
+    const indexPath = fs.joinPath(root, "index.json");
+    const indexText = await fs.readTextFile(indexPath);
+    const index = JSON.parse(indexText) as { classrooms: { id: string }[] };
+    index.classrooms = index.classrooms.filter((entry) => entry.id !== orphan.metadata.id);
+    await fs.writeTextFile(indexPath, JSON.stringify(index, null, 2));
+
+    const list = await storage.list();
+    expect(list.map((entry) => entry.id).sort()).toEqual(
+      [indexed.metadata.id, orphan.metadata.id].sort(),
+    );
+    expect(await storage.load(orphan.metadata.id)).not.toBeNull();
+  });
+
   it("recovers corrupt index on save and setActiveClassroomId", async () => {
     const fs = new MemoryFileStorageAdapter();
     const storage = new TauriFsClassroomStorage(fs);

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { PencilLine, Sprout, Star, Trash2 } from 'lucide-react'
 import type { Recognition, Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
@@ -10,7 +10,7 @@ import {
   formatRecognitionRelativeDate,
   type RecognitionTimeFilter,
 } from '@/src/utils/recognition'
-import { ClassroomButton, EmptyState } from '@/src/components/classroom'
+import { ClassroomButton, EmptyState, useModalFocusTrap } from '@/src/components/classroom'
 
 interface WallOfFameSectionProps {
   students: Student[]
@@ -36,6 +36,10 @@ export function WallOfFameSection({
   const [detailTarget, setDetailTarget] = useState<Recognition | null>(null)
   const [editMessage, setEditMessage] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Recognition | null>(null)
+  const closeDetail = useCallback(() => setDetailTarget(null), [])
+  const cancelDelete = useCallback(() => setDeleteTarget(null), [])
+  const detailDialogRef = useModalFocusTrap(detailTarget !== null, closeDetail)
+  const deleteDialogRef = useModalFocusTrap(deleteTarget !== null, cancelDelete)
 
   const filtered = useMemo(() => {
     let list = filterRecognitionsByTime(recognitions, timeFilter)
@@ -236,14 +240,21 @@ export function WallOfFameSection({
 
       {!presentation && detailTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
+          <div
+            ref={detailDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="recognition-detail-title"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-3xl bg-white shadow-2xl"
+          >
             <header className="border-b border-slate-100 p-5 text-center">
               <img
                 src={getAvatar(detailTarget)}
                 alt=""
                 className="mx-auto size-20 rounded-full object-cover ring-4 ring-pastel-sky"
               />
-              <h3 className="mt-3 font-display text-xl font-black text-slate-800">
+              <h3 id="recognition-detail-title" className="mt-3 font-display text-xl font-black text-slate-800">
                 {getDisplayName(detailTarget)}
               </h3>
               <p className="mt-1 text-sm font-extrabold text-amber-800">
@@ -297,8 +308,15 @@ export function WallOfFameSection({
 
       {!presentation && deleteTarget ? (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-black text-rose-600">Xóa bản ghi tuyên dương?</h3>
+          <div
+            ref={deleteDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-recognition-title"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+          >
+            <h3 id="delete-recognition-title" className="text-lg font-black text-rose-600">Xóa bản ghi tuyên dương?</h3>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               Bản ghi tuyên dương cho <strong>{getDisplayName(deleteTarget)}</strong> sẽ bị xóa.
               {deleteTarget.awardedPoints && deleteTarget.awardedPoints > 0 ? (
@@ -310,7 +328,7 @@ export function WallOfFameSection({
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={cancelDelete}
                 className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100"
               >
                 Hủy

@@ -1,6 +1,7 @@
 'use client'
 
 import { Shuffle, AlertCircle } from 'lucide-react'
+import { useModalFocusTrap } from '@/src/components/classroom'
 
 interface RandomizeDialogProps {
   isOpen: boolean
@@ -11,16 +12,25 @@ interface RandomizeDialogProps {
 }
 
 export function RandomizeDialog({ isOpen, onClose, onConfirm, unassignedCount, teamCount }: RandomizeDialogProps) {
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
+
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 text-left shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="randomize-title"
+        tabIndex={-1}
+        className="w-full max-w-md rounded-3xl bg-white p-6 text-left shadow-2xl"
+      >
         <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-brand-purple/10 text-brand-purple">
           <Shuffle className="size-6" />
         </div>
 
-        <h3 className="font-display text-xl font-black text-slate-800">
+        <h3 id="randomize-title" className="font-display text-xl font-black text-slate-800">
           Chia nhóm ngẫu nhiên
         </h3>
 

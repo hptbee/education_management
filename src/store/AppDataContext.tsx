@@ -247,32 +247,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const persistSnapshot = useCallback(async (next: ClassroomDatabase): Promise<boolean> => {
-    setLocalSaveStatus("saving");
-    try {
-      const saved = await databaseService.saveDatabase(next);
-      lastPersistedRef.current = saved;
-      dataRef.current = saved;
-      setDataState(saved);
-      setLocalSaveStatus("saved");
-      setSaveError(null);
-      try {
-        await backupMetadataService.recordLocalSave(saved.metadata.id, saved.metadata.updatedAt);
-      } catch (error) {
-        console.warn("[AppDataProvider] backup metadata failed:", error);
-      }
-      cloudBackupScheduler.scheduleAfterLocalSave(saved);
-      return true;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
-      console.error("[AppDataProvider] persistSnapshot failed:", error);
-      setLocalSaveStatus("error");
-      setSaveError(message);
-      return false;
-    }
-  }, []);
-
   const persistNow = useCallback(async (): Promise<boolean> => {
     if (!dataRef.current) return true;
 
@@ -835,7 +809,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           metadata: { ...current.metadata, updatedAt: now },
         };
 
-        const persisted = await persistSnapshot(next);
+        commitData(next);
+        const persisted = await persistNow();
         if (!persisted) {
           throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
         }
@@ -859,7 +834,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           metadata: { ...current.metadata, updatedAt: now },
         };
 
-        const persisted = await persistSnapshot(next);
+        commitData(next);
+        const persisted = await persistNow();
         if (!persisted) {
           throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
         }
@@ -1022,7 +998,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, persistNow, persistSnapshot],
+    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, persistNow],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

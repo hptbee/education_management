@@ -72,24 +72,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await recomputeAccess(stored, null);
 
       if (stored && isOnline()) {
-        const refreshed = await refreshEntitlement(stored.entitlement);
-        if (refreshed.ok) {
-          const verified = await verifyEntitlementToken(refreshed.entitlement);
-          const next: StoredAuthSession = {
-            entitlement: refreshed.entitlement,
-            user: refreshed.user,
-            license: refreshed.license,
-            lastVerifiedAt: new Date().toISOString(),
-            lastTrustedIat: verified?.issuedAt ?? Math.floor(Date.now() / 1000),
-          };
-          await saveAuthSession(next);
-          setSession(next);
-          setServerDenied(null);
-          await recomputeAccess(next, null);
-        } else {
-          const denied = mapApiCodeToAccessState(refreshed.code);
-          setServerDenied(denied);
-          await recomputeAccess(stored, denied);
+        try {
+          const refreshed = await refreshEntitlement(stored.entitlement);
+          if (refreshed.ok) {
+            const verified = await verifyEntitlementToken(refreshed.entitlement);
+            const next: StoredAuthSession = {
+              entitlement: refreshed.entitlement,
+              user: refreshed.user,
+              license: refreshed.license,
+              lastVerifiedAt: new Date().toISOString(),
+              lastTrustedIat: verified?.issuedAt ?? Math.floor(Date.now() / 1000),
+            };
+            await saveAuthSession(next);
+            setSession(next);
+            setServerDenied(null);
+            await recomputeAccess(next, null);
+          } else {
+            const denied = mapApiCodeToAccessState(refreshed.code);
+            setServerDenied(denied);
+            await recomputeAccess(stored, denied);
+          }
+        } catch (error) {
+          console.warn("[AuthProvider] bootstrap refresh persist failed:", error);
+          await recomputeAccess(stored, serverDenied);
         }
       }
     } finally {
@@ -162,10 +167,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastVerifiedAt: new Date().toISOString(),
         lastTrustedIat: verified?.issuedAt ?? Math.floor(Date.now() / 1000),
       };
-      await saveAuthSession(next);
-      setSession(next);
-      setServerDenied(null);
-      await recomputeAccess(next, null);
+      try {
+        await saveAuthSession(next);
+        setSession(next);
+        setServerDenied(null);
+        await recomputeAccess(next, null);
+      } catch (error) {
+        console.warn("[AuthProvider] refreshSession persist failed:", error);
+        await recomputeAccess(session, serverDenied);
+      }
       return;
     }
 
@@ -183,9 +193,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       license: me.license,
       lastVerifiedAt: new Date().toISOString(),
     };
-    await saveAuthSession(next);
-    setSession(next);
-    await recomputeAccess(next, serverDenied);
+    try {
+      await saveAuthSession(next);
+      setSession(next);
+      await recomputeAccess(next, serverDenied);
+    } catch (error) {
+      console.warn("[AuthProvider] refreshSession me persist failed:", error);
+      await recomputeAccess(session, serverDenied);
+    }
   }, [recomputeAccess, serverDenied, session]);
 
   const logout = useCallback(async () => {

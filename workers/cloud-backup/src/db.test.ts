@@ -123,6 +123,20 @@ describe("db users and licenses", () => {
     expect(again.user.google_sub).toBe("existing");
   });
 
+  it("heals missing trial for existing user with zero license rows", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    const db = mockDb as unknown as D1Database;
+    const user = await createUser(db, { sub: "orphan-user" }, "teacher");
+    mockDb.licenses.length = 0;
+
+    const result = await findOrCreateUserFromGoogle(db, env, { sub: "orphan-user" });
+    expect(result.user.id).toBe(user.id);
+    expect(result.license?.plan).toBe("trial");
+    expect(mockDb.licenses.filter((license) => license.user_id === user.id)).toHaveLength(1);
+  });
+
   it("does not mint a second trial after the first expires", async () => {
     const { privateKeyPem, publicKeyPem } = await generateTestKeys();
     const mockDb = new MockD1();

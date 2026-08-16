@@ -39,6 +39,8 @@ export interface IndexFile {
 
 export const EMPTY_INDEX: IndexFile = { version: 1, activeClassroomId: null, classrooms: [] };
 
+export const MIGRATION_COMPLETE_MARKER = "indexeddb-migration.complete";
+
 function entryFromDatabase(db: ClassroomDatabase, fileName: string): ClassroomIndexEntry {
   return {
     id: db.metadata.id,
@@ -70,6 +72,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
   private dataDir = "";
   private classroomsDir = "";
   private indexPath = "";
+  private migrationMarkerPath = "";
   private initialized = false;
   private readonly fs: FileStorageAdapter;
 
@@ -88,6 +91,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     this.dataDir = await this.fs.getDataDirectory();
     this.classroomsDir = this.fs.joinPath(this.dataDir, "classrooms");
     this.indexPath = this.fs.joinPath(this.dataDir, "index.json");
+    this.migrationMarkerPath = this.fs.joinPath(this.dataDir, MIGRATION_COMPLETE_MARKER);
 
     await this.fs.ensureDir(this.dataDir);
     await this.fs.ensureDir(this.classroomsDir);
@@ -130,15 +134,40 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     return parseIndexFile(text);
   }
 
+  private async reconcileIndex(index: IndexFile): Promise<IndexFile> {
+    const rebuilt = await this.rebuildIndexFromClassrooms();
+    const knownIds = new Set(index.classrooms.map((entry) => entry.id));
+    let changed = false;
+
+    for (const entry of rebuilt.classrooms) {
+      if (knownIds.has(entry.id)) continue;
+      index.classrooms.push(entry);
+      knownIds.add(entry.id);
+      changed = true;
+    }
+
+    if (changed) {
+      await this.writeIndex(index);
+    }
+
+    return index;
+  }
+
   private async readIndexWithRecovery(): Promise<IndexFile> {
     try {
-      return await this.readIndex();
+      const index = await this.readIndex();
+      return await this.reconcileIndex(index);
     } catch {
       const rebuilt = await this.rebuildIndexFromClassrooms();
+      const index: IndexFile = {
+        version: 1,
+        activeClassroomId: null,
+        classrooms: rebuilt.classrooms,
+      };
       if (rebuilt.classrooms.length > 0) {
-        await this.writeIndex(rebuilt);
+        await this.writeIndex(index);
       }
-      return rebuilt;
+      return index;
     }
   }
 
@@ -283,6 +312,16 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
   async isInitialized(): Promise<boolean> {
     await this.initialize();
     return this.fs.fileExists(this.indexPath);
+  }
+
+  async isMigrationComplete(): Promise<boolean> {
+    await this.initialize();
+    return this.fs.fileExists(this.migrationMarkerPath);
+  }
+
+  async markMigrationComplete(): Promise<void> {
+    await this.initialize();
+    await this.fs.writeTextFile(this.migrationMarkerPath, new Date().toISOString());
   }
 
   /** Returns the data directory path for the "open folder" feature */

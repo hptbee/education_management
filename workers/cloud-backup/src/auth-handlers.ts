@@ -8,7 +8,7 @@ import {
   signEntitlement,
   verifyEntitlement,
 } from "./entitlement";
-import { errorResponse, jsonResponse, readBearerToken } from "./http";
+import { errorResponse, jsonResponse, readBearerToken, readJsonWithLimit } from "./http";
 import { defaultGoogleVerifier, type GoogleVerifier } from "./google";
 
 export async function handleAuthGoogle(
@@ -16,12 +16,17 @@ export async function handleAuthGoogle(
   env: Env,
   verifyGoogle: GoogleVerifier = (input) => defaultGoogleVerifier(env.GOOGLE_CLIENT_ID, input),
 ): Promise<Response> {
-  const body = (await request.json()) as {
+  let body: {
     idToken?: string;
     code?: string;
     codeVerifier?: string;
     redirectUri?: string;
   };
+  try {
+    body = await readJsonWithLimit(request);
+  } catch {
+    return errorResponse("VALIDATION_ERROR", "Invalid request body", 400);
+  }
 
   let profile;
   try {

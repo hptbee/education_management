@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Crown, PencilLine, Plus, Trash2 } from 'lucide-react'
 import type { ClassroomRole } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { createId } from '@/src/utils/id'
-import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomCard, useModalFocusTrap } from '@/src/components/classroom'
 import { cn } from '@/lib/utils'
 
 function RoleFormDialog({
@@ -31,13 +31,22 @@ function RoleFormDialog({
     }
   }, [isOpen, initialData])
 
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
+
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="role-form-title"
+        tabIndex={-1}
+        className="w-full max-w-md rounded-3xl bg-white shadow-2xl"
+      >
         <header className="border-b border-slate-100 p-5">
-          <h2 className="font-display text-xl font-extrabold text-slate-800">
+          <h2 id="role-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
           </h2>
         </header>
@@ -102,6 +111,8 @@ export function ClassroomRolesSection({ embedded = false }: { embedded?: boolean
   const [formOpen, setFormOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<ClassroomRole | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ClassroomRole | null>(null)
+  const cancelDelete = useCallback(() => setDeleteTarget(null), [])
+  const deleteDialogRef = useModalFocusTrap(deleteTarget !== null, cancelDelete)
 
   const roles = data?.classroomRoles ?? []
 
@@ -186,13 +197,20 @@ export function ClassroomRolesSection({ embedded = false }: { embedded?: boolean
 
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="font-display text-lg font-extrabold text-rose-600">Xóa vai trò?</h3>
+          <div
+            ref={deleteDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-role-title"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+          >
+            <h3 id="delete-role-title" className="font-display text-lg font-extrabold text-rose-600">Xóa vai trò?</h3>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               Vai trò <strong>{deleteTarget.name}</strong> sẽ bị xóa khỏi lớp và gỡ khỏi tất cả học sinh đang được gán.
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <ClassroomButton variant="ghost" onClick={() => setDeleteTarget(null)}>
+              <ClassroomButton variant="ghost" onClick={cancelDelete}>
                 Hủy
               </ClassroomButton>
               <ClassroomButton

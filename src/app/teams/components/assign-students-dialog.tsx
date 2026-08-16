@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { X, Search, Check } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
-import { IconTouchButton } from '@/src/components/classroom'
+import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface AssignStudentsDialogProps {
   isOpen: boolean
@@ -31,6 +31,8 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
     return allStudents.filter(s => s.teamId !== team.id && s.name.toLowerCase().includes(search.toLowerCase()))
   }, [allStudents, team, search])
 
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
+
   if (!isOpen || !team) return null
 
   const toggle = (id: string) => {
@@ -50,10 +52,17 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="assign-students-title"
+        tabIndex={-1}
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl"
+      >
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <div>
-            <h2 className="font-display text-xl font-extrabold text-slate-800">Thêm học sinh</h2>
+            <h2 id="assign-students-title" className="font-display text-xl font-extrabold text-slate-800">Thêm học sinh</h2>
             <p className="text-xs font-semibold text-slate-400">vào {team.avatar} {team.name}</p>
           </div>
           <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">

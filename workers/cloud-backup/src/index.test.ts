@@ -48,6 +48,24 @@ describe("auth and entitlement", () => {
     expect(verified.claims.permissions.cloudBackup).toBe(false);
   });
 
+  it("rejects oversized /auth/google body", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    const oversized = "x".repeat(65 * 1024);
+
+    const response = await handleAuthGoogle(
+      new Request("https://example.com/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: oversized,
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("refreshes entitlement when only private key is configured on worker", async () => {
     const { privateKeyPem, publicKeyPem } = await generateTestKeys();
     const mockDb = new MockD1();

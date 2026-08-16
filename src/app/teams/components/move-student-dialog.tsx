@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { X, ArrowRight } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
-import { IconTouchButton } from '@/src/components/classroom'
+import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface MoveStudentDialogProps {
   isOpen: boolean
@@ -22,6 +22,8 @@ export function MoveStudentDialog({ isOpen, onClose, onMove, student, teams }: M
     setSelectedTeamId(student.teamId ?? 'none')
   }, [isOpen, student])
 
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
+
   if (!isOpen || !student) return null
 
   const currentTeam = teams.find(t => t.id === student.teamId)
@@ -35,9 +37,16 @@ export function MoveStudentDialog({ isOpen, onClose, onMove, student, teams }: M
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="move-student-title"
+        tabIndex={-1}
+        className="w-full max-w-sm rounded-3xl bg-white shadow-2xl"
+      >
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
-          <h2 className="font-display text-xl font-extrabold text-slate-800">Chuyển tổ</h2>
+          <h2 id="move-student-title" className="font-display text-xl font-extrabold text-slate-800">Chuyển tổ</h2>
           <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">
             <X className="size-5" />
           </IconTouchButton>

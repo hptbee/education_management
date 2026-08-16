@@ -1253,6 +1253,8 @@ Display:
 - Score
 - Member count
 
+`/ranking` presentation mode follows the current student vs teams toggle: student podium/list, or `TeamRankingList` (empty-team copy if none). Do not open student-detail modals in presentation.
+
 ---
 
 # FR-010 — Lucky Wheel
@@ -1681,8 +1683,8 @@ Prioritize:
 - Quick Answer result
 - Who Is Next result
 - Recognition
-- Student leaderboard
-- Team leaderboard
+- Student leaderboard (`/ranking` student mode)
+- Team leaderboard (`/ranking` teams mode — `TeamRankingList`, not the student podium)
 
 ---
 
@@ -1917,6 +1919,18 @@ The application should not silently pretend that data was saved.
 ---
 
 # 10. Data Persistence
+
+## 10.0 Current implementation (desktop)
+
+Classroom JSON is the source of truth. On Tauri:
+
+- Each classroom is `classrooms/{id}.json`
+- `index.json` lists classrooms and `activeClassroomId`
+- A **valid** index is still reconciled against `classrooms/*.json`: orphan files are added, the index is persisted if the set changed, and `activeClassroomId` is kept. Recovery is not limited to a missing/corrupt index.
+- IndexedDB → JSON migration writes `indexeddb-migration.complete` only after every IDB classroom is verified (including the empty case). If the marker is missing, copy IDB classrooms whose ids are **not** already loadable from JSON. Never overwrite existing JSON.
+- Gift save/delete flush via `commitData` then `persistNow` so an in-flight write cannot replace a later edit with a stale snapshot.
+
+Web dev still uses IndexedDB for classroom JSON.
 
 ## 10.1 Storage Strategy
 
@@ -2267,6 +2281,7 @@ Basic accessibility requirements:
 - Important actions should not rely only on color
 - Destructive actions require confirmation
 - Forms should display validation errors clearly
+- CRUD/scoring dialogs trap focus (`useModalFocusTrap`) with `role="dialog"`, `aria-modal`, and a labelled heading. Lucky Wheel is excluded from this keyboard trap unless explicitly requested.
 
 Do not over-engineer a full accessibility system for Version 1, but do not ignore basic usability.
 
@@ -2455,7 +2470,8 @@ The Version 1 product is considered functionally complete when the teacher can:
 - [ ] Display Lucky Wheel fullscreen-friendly
 - [ ] Display games fullscreen-friendly
 - [ ] Display recognition fullscreen-friendly
-- [ ] Display leaderboards clearly
+- [ ] Display student leaderboard clearly
+- [ ] Display team leaderboard clearly in presentation when ranking mode is teams
 
 ## Data
 

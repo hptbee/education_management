@@ -25,5 +25,7 @@ export interface ClassroomDatabaseStorage {
   getActiveClassroomId?(): Promise<string | null>;
   ensureEmptyIndex?(): Promise<void>;
   isInitialized?(): Promise<boolean>;
+  isMigrationComplete?(): Promise<boolean>;
+  markMigrationComplete?(): Promise<void>;
   getDataDirectory?(): Promise<string>;
 }

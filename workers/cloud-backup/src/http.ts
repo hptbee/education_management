@@ -28,6 +28,7 @@ export function readBearerToken(request: Request): string | null {
 }
 
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
+export const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 export async function readBodyWithLimit(request: Request): Promise<string> {
   const contentLength = request.headers.get("content-length");
@@ -40,4 +41,18 @@ export async function readBodyWithLimit(request: Request): Promise<string> {
     throw new Error("Payload too large");
   }
   return text;
+}
+
+export async function readJsonWithLimit<T = unknown>(request: Request): Promise<T> {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength && Number(contentLength) > MAX_JSON_BODY_BYTES) {
+    throw new Error("Payload too large");
+  }
+
+  const text = await request.text();
+  if (text.length > MAX_JSON_BODY_BYTES) {
+    throw new Error("Payload too large");
+  }
+
+  return JSON.parse(text) as T;
 }

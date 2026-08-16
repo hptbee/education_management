@@ -10,7 +10,7 @@ import {
   updateUserRole,
   updateUserStatus,
 } from "./db";
-import { errorResponse, jsonResponse } from "./http";
+import { errorResponse, jsonResponse, readJsonWithLimit } from "./http";
 import type { Env, LicensePlan, UserRole, UserStatus } from "./types";
 
 async function requireAdmin(request: Request, env: Env) {
@@ -52,7 +52,12 @@ export async function handleAdminPatchUser(
   const auth = await requireAdmin(request, env);
   if ("error" in auth) return auth.error;
 
-  const body = (await request.json()) as { status?: UserStatus; role?: UserRole };
+  let body: { status?: UserStatus; role?: UserRole };
+  try {
+    body = await readJsonWithLimit(request);
+  } catch {
+    return errorResponse("VALIDATION_ERROR", "Invalid request body", 400);
+  }
   let user = await findUserById(env.DB, userId);
   if (!user) {
     return errorResponse("NOT_FOUND", "User not found", 404);
@@ -96,12 +101,17 @@ export async function handleAdminCreateLicense(request: Request, env: Env): Prom
   const auth = await requireAdmin(request, env);
   if ("error" in auth) return auth.error;
 
-  const body = (await request.json()) as {
+  let body: {
     userId: string;
     plan: LicensePlan;
     startsAt?: string;
     expiresAt?: string | null;
   };
+  try {
+    body = await readJsonWithLimit(request);
+  } catch {
+    return errorResponse("VALIDATION_ERROR", "Invalid request body", 400);
+  }
 
   if (!body.userId || !body.plan) {
     return errorResponse("VALIDATION_ERROR", "userId and plan are required", 400);
@@ -131,11 +141,16 @@ export async function handleAdminPatchLicense(
   const auth = await requireAdmin(request, env);
   if ("error" in auth) return auth.error;
 
-  const body = (await request.json()) as {
+  let body: {
     plan?: LicensePlan;
     status?: "active" | "expired" | "disabled" | "cancelled";
     expiresAt?: string | null;
   };
+  try {
+    body = await readJsonWithLimit(request);
+  } catch {
+    return errorResponse("VALIDATION_ERROR", "Invalid request body", 400);
+  }
 
   const license = await updateLicense(env.DB, licenseId, {
     plan: body.plan,

@@ -23,7 +23,7 @@ The app is designed for a single classroom and focuses on student profiles, clas
 - **Local-first Desktop App**: Runs natively on Windows/macOS/Linux via Tauri.
 - **Classroom data stays local**: `ClassroomDatabase` JSON on disk (Tauri) or IndexedDB (web dev) is the source of truth for students, points, teams, etc.
 - **Google sign-in required**: Teachers authenticate via Google; the app receives a signed **entitlement** from the Cloudflare Worker.
-- **7-day trial**: New teachers get a 7-day trial on first login (`DEFAULT_TRIAL_DAYS` on the Worker); upgrade to Basic or Premium 1 năm for continued access and cloud backup.
+- **7-day trial**: New Google accounts get a one-time 7-day trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **no license rows** also receive that one-time trial. Expired trials are not reminted. Upgrade to Basic or Premium 1 năm for continued access and cloud backup.
 - **Optional cloud backup**: Per-class opt-in upload to R2 (Premium / lifetime only) — not a replacement for local storage.
 - **JSON File Persistence**: Classroom data is stored in local JSON files via Tauri filesystem APIs.
 
@@ -92,10 +92,12 @@ If the workflow fails with "Resource not accessible by integration", enable **Re
 
 ## Persistence Migration
 
-The application has been migrated from a web-based `localStorage`/`IndexedDB` setup to a native desktop architecture using **Tauri**. 
-- The source of truth for your data is now local JSON files located in your operating system's `AppData` directory. 
-- You can access these files directly through **Cài đặt** (Settings) → **Dữ liệu** tab → **Mở thư mục** (Open Data Folder). Tauri desktop only.
-- On first launch of the Tauri app, it will automatically migrate any existing data from IndexedDB into the new JSON filesystem format safely.
+The application has been migrated from a web-based `localStorage`/`IndexedDB` setup to a native desktop architecture using **Tauri**.
+
+- The source of truth for classroom data is local JSON files in the OS app-data directory (`classrooms/*.json` plus `index.json`).
+- A valid `index.json` is still reconciled against `classrooms/*.json` so a classroom file is not hidden if the index write was interrupted.
+- IndexedDB → JSON migration writes `indexeddb-migration.complete` only after every IDB classroom is verified. If the marker is missing, remaining IDs are copied without overwriting JSON that already exists.
+- The **Dữ liệu** settings tab (open data folder, cloud restore, rename DB) is implemented but **hidden** by default (`SETTINGS_TABS.showDataTab`).
 
 ## Current Features
 
@@ -105,7 +107,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
   - **Tài khoản** — Google account, plan, verification status, logout; first-login cloud backup prompt
   - **Hồ sơ** — teacher name, display class name, avatar (auto-save on pick), home banner; single **Lưu thay đổi** for text fields
   - **Vai trò** — classroom role catalog
-  - **Dữ liệu** — switch class, rename database / school year, duplicate, export JSON, open data folder (Tauri), opt-in cloud backup, restore from cloud
+  - **Dữ liệu** — switch class, rename database / school year, duplicate, export JSON, open data folder (Tauri), opt-in cloud backup, restore from cloud (**hidden** unless `SETTINGS_TABS.showDataTab` is `true`)
   - **Nguy hiểm** — delete classroom (implemented but hidden; set `SETTINGS_TABS.showDangerTab` to `true` in `settings-flags.ts` to enable)
 - Configurable classroom roles (e.g. class president, vice president)
 - Student management with search, import, and detailed profiles
@@ -121,7 +123,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 ### Teams
 - Team creation and scoring
 - Team leader and vice-leader assignment
-- Projector-friendly team ranking
+- Projector-friendly student and team ranking (`/ranking` presentation follows the current student/teams mode)
 
 ### Activities & Tools (`/tools`)
 - **Lucky Wheel** — fair random student selection with animated wheel, student checklist, randomized spin duration, and confetti
@@ -136,7 +138,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - Local image uploads (stored as base64 strings in the JSON database)
 - Export / Import JSON database backups
 - **Cloud backup** (opt-in per class; requires **premium** or **lifetime** plan) — automatic upload to R2 after local save when signed in
-- **Cloud restore** — list and import classrooms from teacher's cloud account (Settings → Dữ liệu)
+- **Cloud restore** — list and import classrooms from the teacher's cloud account (Settings → Dữ liệu when that tab is enabled). Cloud list HTTP errors surface as errors instead of an empty list.
 - Duplicate databases for new school years
 
 ## Design System

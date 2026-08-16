@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { PencilLine, Plus, Trash2 } from 'lucide-react'
 import type { RecognitionTitle } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { createId } from '@/src/utils/id'
 import { EmojiIconPicker } from '@/src/components/EmojiIconPicker'
 import { RECOGNITION_EMOJI_OPTIONS } from '@/src/utils/recognition'
-import { ClassroomButton } from '@/src/components/classroom'
+import { ClassroomButton, useModalFocusTrap } from '@/src/components/classroom'
 
 function TitleFormDialog({
   isOpen,
@@ -34,13 +34,22 @@ function TitleFormDialog({
     }
   }, [isOpen, initialData])
 
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
+
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="title-form-title"
+        tabIndex={-1}
+        className="w-full max-w-md rounded-3xl bg-white shadow-2xl"
+      >
         <header className="border-b border-slate-100 p-5">
-          <h2 className="font-display text-xl font-extrabold text-slate-800">
+          <h2 id="title-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa danh hiệu' : 'Thêm danh hiệu mới'}
           </h2>
         </header>
@@ -114,6 +123,8 @@ export function TitleCatalogSection() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingTitle, setEditingTitle] = useState<RecognitionTitle | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<RecognitionTitle | null>(null)
+  const cancelDelete = useCallback(() => setDeleteTarget(null), [])
+  const deleteDialogRef = useModalFocusTrap(deleteTarget !== null, cancelDelete)
 
   const titles = data?.recognitionTitles ?? []
   const recognitions = data?.recognitions ?? []
@@ -207,8 +218,15 @@ export function TitleCatalogSection() {
 
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-black text-rose-600">
+          <div
+            ref={deleteDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-title-title"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+          >
+            <h3 id="delete-title-title" className="text-lg font-black text-rose-600">
               {recognitions.some((r) => r.titleId === deleteTarget.id)
                 ? 'Tắt danh hiệu?'
                 : 'Xóa danh hiệu?'}
@@ -227,7 +245,7 @@ export function TitleCatalogSection() {
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={cancelDelete}
                 className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100"
               >
                 Hủy

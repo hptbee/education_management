@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import type { PointAction, PointHistorySource, Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { IconTouchButton } from '@/src/components/classroom'
+import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 import { createId } from '@/src/utils/id'
 
 export type PointsDialogMode = 'add' | 'subtract'
@@ -38,6 +38,8 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
       setSelectedActionId(null)
     }
   }, [isOpen, student?.id, mode])
+
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
 
   if (!isOpen || !student) return null
 
@@ -104,9 +106,16 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="student-points-title"
+        tabIndex={-1}
+        className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl"
+      >
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
-          <h2 className="font-display text-lg font-extrabold text-slate-800">{title}</h2>
+          <h2 id="student-points-title" className="font-display text-lg font-extrabold text-slate-800">{title}</h2>
           <IconTouchButton
             type="button"
             onClick={onClose}

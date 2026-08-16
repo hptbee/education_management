@@ -30,7 +30,7 @@ Classroom JSON remains local-first in the app. This Worker does **not** replace 
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/auth/google` | `{ code, codeVerifier, redirectUri }` (PKCE) or `{ idToken }` |
+| `POST` | `/auth/google` | `{ code, codeVerifier, redirectUri }` (PKCE) or `{ idToken }` — JSON ≤ 64 KB |
 | `GET` | `/me` | Bearer entitlement → fresh user + license from D1 |
 | `POST` | `/auth/refresh` | Bearer → re-issue JWT if license still valid |
 | `POST` | `/auth/logout` | `204` (stateless; client deletes local entitlement) |
@@ -71,6 +71,7 @@ workers/cloud-backup/
 │   ├── admin-handlers.ts
 │   ├── entitlement.ts
 │   ├── google.ts
+│   ├── http.ts            # CORS, JSON/body limits
 │   ├── db.ts
 │   └── index.test.ts
 └── wrangler.toml
@@ -117,7 +118,7 @@ npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB   # optional
 
 | Var | Default | Purpose |
 |---|---|---|
-| `DEFAULT_TRIAL_DAYS` | `7` | Auto-trial length for new teachers |
+| `DEFAULT_TRIAL_DAYS` | `7` | Auto-trial length for new teachers and existing users with zero license rows |
 
 Generate Ed25519 keys:
 
@@ -160,12 +161,14 @@ Legacy `backups/<device-id>/...` is **no longer written**. Pre-account backups a
 
 | Plan | `appAccess` | `cloudBackup` | Typical expiry |
 |---|---|---|---|
-| **trial** | yes | no | **7 days** on first login (`DEFAULT_TRIAL_DAYS = 7`) |
+| **trial** | yes | no | **7 days** on first login, or when an existing user has **zero** license rows (`DEFAULT_TRIAL_DAYS = 7`) |
 | **basic** | yes | no | Admin-assigned |
 | **premium** | yes | yes | Admin-assigned |
 | **lifetime** | yes | yes | No expiry |
 
 `permissionsForPlan()` in [`src/entitlement.ts`](src/entitlement.ts) is the source of truth. Backup routes use `requireCloudBackup`; admin routes use `requireAuth` only.
+
+`findOrCreateUserFromGoogle` mints a one-time trial for new users and for existing users with **no** license rows. Any existing license row (including expired) is never reminted.
 
 ---
 
@@ -174,7 +177,8 @@ Legacy `backups/<device-id>/...` is **no longer written**. Pre-account backups a
 - R2 + D1 credentials stay in Cloudflare (Worker bindings only).
 - Backup routes require a valid **signed entitlement** JWT.
 - Legacy shared `BACKUP_API_TOKEN` / `CLOUD_BACKUP_TOKEN` are **removed**.
-- PUT body limit: **25 MB**; `payload` must be a JSON object.
+- PUT backup body limit: **25 MB** (`readBodyWithLimit`); `payload` must be a JSON object.
+- Auth and admin JSON body limit: **64 KB** (`readJsonWithLimit` on `POST /auth/google` and admin JSON handlers).
 - Upload ownership comes from JWT `userId` only — client cannot spoof another user's prefix.
 - Client uploads only when teacher opts in per class (`cloudBackupEnabled`).
 
@@ -188,7 +192,7 @@ From **repository root** (Vitest includes this package):
 npm test
 ```
 
-Worker-only file: `src/index.test.ts` — auth, entitlement, backup ownership, admin 403.
+Worker-only files: `src/index.test.ts` (auth, entitlement, backup ownership, admin 403, oversized `/auth/google` body), `src/db.test.ts` (trial once / heal zero-license users), `src/http.test.ts` (25 MB backup / 64 KB JSON limits).
 
 ---
 

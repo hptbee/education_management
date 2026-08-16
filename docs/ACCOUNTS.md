@@ -107,7 +107,7 @@ Rotating keys invalidates existing entitlements — teachers must sign in again.
 
 | Plan | `appAccess` | `cloudBackup` | Typical expiry |
 |---|---|---|---|
-| **trial** | yes | no | **7 days** (`DEFAULT_TRIAL_DAYS = 7` in `wrangler.toml`) on **first** Google login only |
+| **trial** | yes | no | **7 days** (`DEFAULT_TRIAL_DAYS = 7` in `wrangler.toml`) on **first** Google login, or when an existing user has **zero** license rows |
 | **basic** | yes | no | Set by admin |
 | **premium** | yes | yes | Set by admin |
 | **lifetime** | yes | yes | None (`expires_at` null) |
@@ -116,7 +116,7 @@ Teacher-facing plan comparison in **Cài đặt → Tài khoản** shows **Dùng
 
 Changing `DEFAULT_TRIAL_DAYS` affects **new** trial licenses only. Teachers who already have a trial row in D1 keep their stored `expires_at` until an admin updates the license.
 
-**Trial is once per Google account.** If a trial expires, later logins return `LICENSE_EXPIRED` until an admin issues a new license via `POST /admin/licenses`. Redeploy the Worker after changing trial or backup validation logic.
+**Trial is once per Google account.** `findOrCreateUserFromGoogle` mints a trial only when the user is new **or** the user exists and `listLicensesForUser` is empty. If any license row exists (including an expired trial), later logins do **not** remint — they return `LICENSE_EXPIRED` until an admin issues a new license via `POST /admin/licenses`. Redeploy the Worker after changing trial or backup validation logic.
 
 Permissions are embedded in the signed entitlement JWT and re-derived from D1 on each Worker request. When an admin changes a teacher's plan, the teacher must **refresh** (or wait for auto-refresh when online) to get updated permissions in the app.
 
@@ -166,7 +166,7 @@ Legacy `backups/{deviceId}/...` objects are **not** migrated automatically.
 
 ### Restore
 
-**Cài đặt → Dữ liệu → Khôi phục từ đám mây** — lists cloud classrooms; confirm before import.
+**Cài đặt → Dữ liệu → Khôi phục từ đám mây** — lists cloud classrooms; confirm before import. Non-2xx list responses throw a parsed Worker error (empty list only when HTTP 200 returns no classrooms). The **Dữ liệu** tab is hidden by default (`SETTINGS_TABS.showDataTab`).
 
 ---
 
@@ -178,7 +178,7 @@ Base URL: `https://classroom-cloud-backup.phuontun-01.workers.dev`
 
 | Method | Path | Body / headers |
 |---|---|---|
-| `POST` | `/auth/google` | `{ idToken }` or `{ code, codeVerifier, redirectUri }` |
+| `POST` | `/auth/google` | `{ idToken }` or `{ code, codeVerifier, redirectUri }` (JSON body ≤ 64 KB) |
 | `GET` | `/me` | `Authorization: Bearer <entitlement>` |
 | `POST` | `/auth/refresh` | `Authorization: Bearer <entitlement>` |
 | `POST` | `/auth/logout` | (no body; client clears local entitlement) |
@@ -188,7 +188,7 @@ Base URL: `https://classroom-cloud-backup.phuontun-01.workers.dev`
 | Method | Path | Notes |
 |---|---|---|
 | `PUT` | `/backup` | Classroom JSON wrapper; ownership from JWT `userId` |
-| `GET` | `/classrooms` | List user's backups |
+| `GET` | `/classrooms` | List user's backups; non-2xx is an error, not an empty list |
 | `GET` | `/restore/:classroomId` | Download backup JSON |
 
 ### Admin (requires `role=admin` in entitlement + active D1 user)
@@ -196,10 +196,10 @@ Base URL: `https://classroom-cloud-backup.phuontun-01.workers.dev`
 | Method | Path |
 |---|---|
 | `GET` | `/admin/users` |
-| `PATCH` | `/admin/users/:userId` — `{ status?, role? }` |
+| `PATCH` | `/admin/users/:userId` — `{ status?, role? }` (JSON ≤ 64 KB) |
 | `GET` | `/admin/licenses?userId=` |
-| `POST` | `/admin/licenses` |
-| `PATCH` | `/admin/licenses/:licenseId` |
+| `POST` | `/admin/licenses` (JSON ≤ 64 KB) |
+| `PATCH` | `/admin/licenses/:licenseId` (JSON ≤ 64 KB) |
 
 Errors: `{ ok: false, code, error }` — codes include `AUTH_REQUIRED`, `ACCOUNT_DISABLED`, `ACCOUNT_SUSPENDED`, `LICENSE_EXPIRED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATION_ERROR`.
 
@@ -250,8 +250,10 @@ There is **no admin UI** in the app — API + docs only.
 
 | Platform | Storage | Notes |
 |---|---|---|
-| Tauri | OS keychain (`keyring`) | Fallback: `entitlement.sec` in app data dir |
+| Tauri | OS keychain (`keyring`) | Legacy `entitlement.sec` is migrated into the keyring once, then deleted. If the keyring write fails, the file contents are **not** returned — the teacher must sign in again. |
 | Web dev | `sessionStorage` | Weaker; dev-only |
+
+Session refresh (`bootstrap` / `refreshSession`) keeps the previous session if `saveAuthSession` fails; it logs and does not throw from `online` / `visibilitychange` handlers.
 
 Never store entitlements in classroom JSON, IndexedDB, `localStorage`, or settings files.
 
@@ -267,6 +269,9 @@ Never store entitlements in classroom JSON, IndexedDB, `localStorage`, or settin
 | Google `no registered origin` | Web client missing JavaScript origin for your dev URL |
 | Cloud backup skipped | Not signed in, no entitlement, or per-class opt-in disabled |
 | `LICENSE_EXPIRED` on first login | D1 migration not applied, or trial license creation failed |
+| `POST /auth/google` **400** Invalid request body | JSON larger than 64 KB, or malformed JSON |
+| Cloud classroom list looks empty after an error | Older clients treated non-2xx as `[]`; current app throws and **Dữ liệu** shows `cloudError` |
+| Login required after a keyring error | `entitlement.sec` is not used as a plaintext fallback after a failed keyring migrate |
 
 Run Worker tests from repo root:
 

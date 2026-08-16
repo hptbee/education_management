@@ -250,6 +250,12 @@ export async function findOrCreateUserFromGoogle(
   await updateUserProfile(db, user.id, profile);
   user = (await findUserById(db, user.id))!;
 
+  const licenses = await listLicensesForUser(db, user.id);
+  if (licenses.length === 0) {
+    const trial = await createTrialLicense(db, user.id, env);
+    return { user, license: trial };
+  }
+
   const license = await findActiveLicense(db, user.id);
   return { user, license };
 }

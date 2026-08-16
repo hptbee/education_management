@@ -75,8 +75,17 @@ export async function listCloudClassrooms(entitlement: string): Promise<CloudCla
     headers: { Authorization: `Bearer ${entitlement}` },
   });
 
-  if (!response.ok) return [];
-  const json = (await response.json()) as { classrooms?: CloudClassroomSummary[] };
+  const json = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    code?: string;
+    error?: string;
+    classrooms?: CloudClassroomSummary[];
+  };
+
+  if (!response.ok) {
+    throw new Error(json.error || `Không tải được danh sách lớp trên đám mây (${response.status}).`);
+  }
+
   return json.classrooms ?? [];
 }
 

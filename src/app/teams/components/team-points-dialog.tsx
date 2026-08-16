@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X, Plus, Minus, Trophy } from 'lucide-react'
-import { IconTouchButton } from '@/src/components/classroom'
+import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import type { Team } from '@/src/types/models'
 
@@ -19,6 +19,8 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
   const [customAmount, setCustomAmount] = useState('')
   const [note, setNote] = useState('')
   const [mode, setMode] = useState<'add' | 'subtract'>('add')
+
+  const dialogRef = useModalFocusTrap(isOpen, onClose)
 
   if (!isOpen || !team) return null
 
@@ -44,11 +46,18 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="team-points-title"
+        tabIndex={-1}
+        className="w-full max-w-sm rounded-3xl bg-white shadow-2xl"
+      >
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <div className="flex items-center gap-2">
             <Trophy className="size-5 text-amber-500" />
-            <h2 className="font-display text-lg font-extrabold text-slate-800">Điểm tổ — {team.name}</h2>
+            <h2 id="team-points-title" className="font-display text-lg font-extrabold text-slate-800">Điểm tổ — {team.name}</h2>
           </div>
           <IconTouchButton onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:bg-slate-100">
             <X className="size-5" />

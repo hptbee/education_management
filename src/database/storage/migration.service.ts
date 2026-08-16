@@ -6,7 +6,8 @@
  *
  * Safety guarantees:
  * - IndexedDB data is NEVER deleted (serves as backup).
- * - Migration only runs if the JSON index file does NOT already exist.
+ * - Migration resumes until `indexeddb-migration.complete` is written.
+ * - Existing JSON classrooms are never overwritten.
  * - If any error occurs, migration is NOT marked as complete.
  * - Migration result (ok / error) is returned to the caller.
  */
@@ -24,8 +25,7 @@ export interface MigrationResult {
 export async function migrateIndexedDbToJson(
   tauriStorage: TauriFsClassroomStorage,
 ): Promise<MigrationResult> {
-  const alreadyInitialized = await tauriStorage.isInitialized();
-  if (alreadyInitialized) {
+  if (await tauriStorage.isMigrationComplete?.()) {
     return { status: "skipped" };
   }
 
@@ -35,32 +35,37 @@ export async function migrateIndexedDbToJson(
 
     if (summaries.length === 0) {
       await tauriStorage.ensureEmptyIndex();
+      await tauriStorage.markMigrationComplete?.();
       return { status: "completed", migratedCount: 0 };
     }
 
     const migrated: ClassroomDatabase[] = [];
     for (const summary of summaries) {
+      const existing = await tauriStorage.load(summary.id);
+      if (existing) continue;
+
       const db = await indexedDb.load(summary.id);
-      if (db) {
-        migrated.push(db);
-      }
-    }
+      if (!db) continue;
 
-    for (const db of migrated) {
       await tauriStorage.save(db);
+      migrated.push(db);
     }
 
-    for (const db of migrated) {
-      const loaded = await tauriStorage.load(db.metadata.id);
+    for (const summary of summaries) {
+      const loaded = await tauriStorage.load(summary.id);
       if (!loaded) {
-        throw new Error(`Verification failed: database ${db.metadata.id} could not be read back.`);
+        throw new Error(`Verification failed: database ${summary.id} could not be read back.`);
       }
-      if (loaded.metadata.id !== db.metadata.id) {
-        throw new Error(`Verification failed: ID mismatch for ${db.metadata.id}.`);
+      if (loaded.metadata.id !== summary.id) {
+        throw new Error(`Verification failed: ID mismatch for ${summary.id}.`);
       }
     }
 
-    console.log(`[Migration] Successfully migrated ${migrated.length} classroom(s) from IndexedDB to JSON files.`);
+    await tauriStorage.markMigrationComplete?.();
+
+    console.log(
+      `[Migration] Successfully migrated ${migrated.length} classroom(s) from IndexedDB to JSON files.`,
+    );
     return { status: "completed", migratedCount: migrated.length };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

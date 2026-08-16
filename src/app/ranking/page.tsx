@@ -104,9 +104,28 @@ export default function RankingPage() {
 
   if (isPresentationMode) {
     return (
-      <PresentationChrome title="Bảng xếp hạng" subtitle="Thành tích và điểm số của các bạn trong lớp">
+      <PresentationChrome
+        title={mode === 'teams' ? 'Thi đua tổ' : 'Bảng xếp hạng'}
+        subtitle={
+          mode === 'teams'
+            ? 'Điểm thi đua các tổ trong lớp'
+            : 'Thành tích và điểm số của các bạn trong lớp'
+        }
+      >
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
-          {students.length === 0 ? (
+          {mode === 'teams' ? (
+            teams.length === 0 ? (
+              <EmptyState icon={Users} title="Chưa có tổ nào để xếp hạng" />
+            ) : (
+              <ClassroomCard>
+                <TeamRankingList
+                  entries={rankedTeams}
+                  allTeams={teams}
+                  memberCounts={memberCounts}
+                />
+              </ClassroomCard>
+            )
+          ) : students.length === 0 ? (
             <EmptyState icon={Users} title="Chưa có học sinh để xếp hạng" />
           ) : (
             <>
