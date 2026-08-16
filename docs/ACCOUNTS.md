@@ -107,10 +107,12 @@ Rotating keys invalidates existing entitlements — teachers must sign in again.
 
 | Plan | `appAccess` | `cloudBackup` | Typical expiry |
 |---|---|---|---|
-| **trial** | yes | yes | 30 days (`DEFAULT_TRIAL_DAYS`) on first login |
+| **trial** | yes | no | 7 days (`DEFAULT_TRIAL_DAYS`) on first login |
 | **basic** | yes | no | Set by admin |
 | **premium** | yes | yes | Set by admin |
 | **lifetime** | yes | yes | None (`expires_at` null) |
+
+Teacher-facing plan comparison in **Cài đặt → Tài khoản** shows **Dùng thử**, **Gói Cơ bản**, and **Premium 1 năm** only. The `lifetime` plan remains fully supported for existing licenses but is not advertised as an upgrade option.
 
 Permissions are embedded in the signed entitlement JWT and re-derived from D1 on each Worker request. When an admin changes a teacher's plan, the teacher must **refresh** (or wait for auto-refresh when online) to get updated permissions in the app.
 

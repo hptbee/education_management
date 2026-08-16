@@ -14,9 +14,9 @@ const TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 export function permissionsForPlan(plan: LicensePlan): EntitlementPermissions {
   switch (plan) {
+    case "trial":
     case "basic":
       return { appAccess: true, cloudBackup: false };
-    case "trial":
     case "premium":
     case "lifetime":
       return { appAccess: true, cloudBackup: true };
@@ -40,6 +40,8 @@ export function accessErrorForLicense(license: DbLicense | null): ApiErrorCode |
 
 let cachedPrivateKeyPem: string | null = null;
 let cachedPrivateKey: CryptoKey | null = null;
+let cachedVerifyKeyPem: string | null = null;
+let cachedVerifyKey: CryptoKey | null = null;
 const publicKeyCache = new Map<string, CryptoKey>();
 
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
@@ -55,6 +57,35 @@ export async function importPublicKeyFromPem(pem: string): Promise<CryptoKey> {
   const key = await jose.importSPKI(pem, "EdDSA");
   publicKeyCache.set(pem, key);
   return key;
+}
+
+async function publicKeyFromPrivatePem(privatePem: string): Promise<CryptoKey> {
+  const privateKey = await jose.importPKCS8(privatePem, "EdDSA", { extractable: true });
+  const jwk = await jose.exportJWK(privateKey);
+  if (!jwk.x || !jwk.crv) {
+    throw new Error("Cannot derive public key from private key");
+  }
+  return jose.importJWK({ kty: "OKP", crv: jwk.crv, x: jwk.x }, "EdDSA");
+}
+
+async function getVerificationKey(env: Env): Promise<CryptoKey> {
+  const publicPem = env.ENTITLEMENT_PUBLIC_KEY?.trim();
+  if (publicPem) {
+    if (cachedVerifyKey && cachedVerifyKeyPem === publicPem) return cachedVerifyKey;
+    cachedVerifyKeyPem = publicPem;
+    cachedVerifyKey = await importPublicKeyFromPem(publicPem);
+    return cachedVerifyKey;
+  }
+
+  const privatePem = env.ENTITLEMENT_PRIVATE_KEY?.trim();
+  if (!privatePem) {
+    throw new Error("Missing entitlement signing keys");
+  }
+
+  if (cachedVerifyKey && cachedVerifyKeyPem === `private:${privatePem}`) return cachedVerifyKey;
+  cachedVerifyKeyPem = `private:${privatePem}`;
+  cachedVerifyKey = await publicKeyFromPrivatePem(privatePem);
+  return cachedVerifyKey;
 }
 
 export async function signEntitlement(
@@ -85,10 +116,12 @@ export async function signEntitlement(
 export async function verifyEntitlement(
   env: Env,
   token: string,
+  options?: { allowOfflineGraceExpiry?: boolean },
 ): Promise<{ claims: EntitlementClaims; issuedAt: number; expiresAt: number }> {
-  const publicKey = await importPublicKeyFromPem(env.ENTITLEMENT_PUBLIC_KEY);
+  const publicKey = await getVerificationKey(env);
   const { payload, protectedHeader } = await jose.jwtVerify(token, publicKey, {
     algorithms: ["EdDSA"],
+    clockTolerance: options?.allowOfflineGraceExpiry ? OFFLINE_GRACE_SECONDS : 60,
   });
 
   if (protectedHeader.alg !== "EdDSA") {

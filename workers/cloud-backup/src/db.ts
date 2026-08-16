@@ -9,8 +9,8 @@ export function nowIso(): string {
 }
 
 export function defaultTrialDays(env: Env): number {
-  const parsed = Number(env.DEFAULT_TRIAL_DAYS ?? "30");
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+  const parsed = Number(env.DEFAULT_TRIAL_DAYS ?? "7");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
 }
 
 export async function findUserByGoogleSub(db: D1Database, googleSub: string): Promise<DbUser | null> {

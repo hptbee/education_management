@@ -181,6 +181,20 @@ export class CloudBackupScheduler {
       return;
     }
 
+    void this.scheduleAfterLocalSaveIfAllowed(db);
+  }
+
+  private async scheduleAfterLocalSaveIfAllowed(db: ClassroomDatabase): Promise<void> {
+    if (!(await this.canUpload(db))) {
+      this.pendingDb = null;
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = null;
+      }
+      this.setState("disabled", null);
+      return;
+    }
+
     this.pendingDb = db;
     void backupMetadataService.recordCloudBackupPending(db.metadata.id);
     this.setState("pending", null);

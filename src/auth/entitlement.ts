@@ -2,6 +2,7 @@ import * as jose from "jose";
 import type { AccessState, EntitlementClaims } from "./types";
 
 const CLOCK_ROLLBACK_TOLERANCE_SECONDS = 5 * 60;
+const OFFLINE_GRACE_SECONDS = 30 * 24 * 60 * 60;
 
 let cachedPublicKey: CryptoKey | null = null;
 let cachedPublicKeyPem: string | null = null;
@@ -27,7 +28,10 @@ export async function verifyEntitlementToken(
   if (!publicKey) return null;
 
   try {
-    const { payload } = await jose.jwtVerify(token, publicKey, { algorithms: ["EdDSA"] });
+    const { payload } = await jose.jwtVerify(token, publicKey, {
+      algorithms: ["EdDSA"],
+      clockTolerance: OFFLINE_GRACE_SECONDS,
+    });
     const claims = payload as unknown as EntitlementClaims;
     if (!claims.userId || !claims.permissions?.appAccess) return null;
     claims.licenseVersion = Number(claims.licenseVersion);

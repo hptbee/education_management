@@ -14,7 +14,9 @@ database_id = "4c53a22f-957b-4411-8ef0-a6673a5c17c7"
 migrations_dir = "migrations"
 
 [vars]
-DEFAULT_TRIAL_DAYS = "30"
+DEFAULT_TRIAL_DAYS = "7"
+# Optional — worker derives verify key from ENTITLEMENT_PRIVATE_KEY if omitted
+ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASva/xyyJL7QpLnWAh3hH6hKb+1DY3GyT9N2ch63ou8c=\n-----END PUBLIC KEY-----"
 # GOOGLE_CLIENT_ID = ""
 # INITIAL_ADMIN_GOOGLE_SUB = ""
 

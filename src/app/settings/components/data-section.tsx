@@ -229,7 +229,7 @@ export function DataSection({
               </label>
             ) : showCloudUpgradeNote ? (
               <p className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Gói Cơ bản không bao gồm sao lưu đám mây. Liên hệ quản trị viên để nâng cấp Premium.
+                Gói hiện tại không bao gồm sao lưu đám mây. Liên hệ quản trị viên để nâng cấp Premium.
               </p>
             ) : (
               <p className="mt-3 text-sm font-semibold text-slate-500">

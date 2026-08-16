@@ -100,9 +100,14 @@ export async function handleAuthRefresh(request: Request, env: Env): Promise<Res
 
   let verified;
   try {
-    verified = await verifyEntitlement(env, token);
+    verified = await verifyEntitlement(env, token, { allowOfflineGraceExpiry: true });
   } catch {
     return errorResponse("AUTH_REQUIRED", "Invalid entitlement", 401);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (Number(verified.claims.offlineValidUntil) < now) {
+    return errorResponse("AUTH_REQUIRED", "Entitlement expired", 401);
   }
 
   const user = await findUserById(env.DB, verified.claims.userId);

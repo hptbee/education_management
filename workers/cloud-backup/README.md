@@ -117,7 +117,7 @@ npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB   # optional
 
 | Var | Default | Purpose |
 |---|---|---|
-| `DEFAULT_TRIAL_DAYS` | `30` | Auto-trial length for new teachers |
+| `DEFAULT_TRIAL_DAYS` | `7` | Auto-trial length for new teachers |
 
 Generate Ed25519 keys:
 
@@ -160,7 +160,7 @@ Legacy `backups/<device-id>/...` is **no longer written**. Pre-account backups a
 
 | Plan | `appAccess` | `cloudBackup` | Typical expiry |
 |---|---|---|---|
-| **trial** | yes | yes | 30 days on first login |
+| **trial** | yes | no | 7 days on first login |
 | **basic** | yes | no | Admin-assigned |
 | **premium** | yes | yes | Admin-assigned |
 | **lifetime** | yes | yes | No expiry |

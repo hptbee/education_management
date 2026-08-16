@@ -134,7 +134,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - Classroom tools (`/tools`; `/games` redirects here)
 - Local image uploads (stored as base64 strings in the JSON database)
 - Export / Import JSON database backups
-- **Cloud backup** (opt-in per class; requires **trial**, **premium**, or **lifetime** plan) — automatic upload to R2 after local save when signed in
+- **Cloud backup** (opt-in per class; requires **premium** or **lifetime** plan) — automatic upload to R2 after local save when signed in
 - **Cloud restore** — list and import classrooms from teacher's cloud account (Settings → Dữ liệu)
 - Duplicate databases for new school years
 
