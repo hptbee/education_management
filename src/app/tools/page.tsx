@@ -7,9 +7,6 @@ import { PresentationChrome } from '@/src/components/PresentationChrome'
 import { LuckyWheelTool } from './components/lucky-wheel-tool'
 import { StudyTimerTool } from './components/study-timer-tool'
 import { RandomStudentTool } from './components/random-student-tool'
-import { LuckyStarTool } from './components/lucky-star-tool'
-import { QuickAnswerTool } from './components/quick-answer-tool'
-import { WhoIsNextTool } from './components/who-is-next-tool'
 import { PointsChallengeStrip } from './components/points-challenge-strip'
 import { ClassroomButton, PageHeader } from '@/src/components/classroom'
 
@@ -28,13 +25,10 @@ export default function ToolsPage() {
   if (isPresentationMode) {
     return (
       <PresentationChrome title="Thử thách & Công cụ" subtitle="Hoạt động vui nhộn cho cả lớp">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 lg:grid-cols-3">
           <LuckyWheelTool />
           <StudyTimerTool />
           <RandomStudentTool />
-          <LuckyStarTool />
-          <QuickAnswerTool />
-          <WhoIsNextTool />
         </div>
       </PresentationChrome>
     )
@@ -47,7 +41,7 @@ export default function ToolsPage() {
           <PageHeader
             icon={Sparkles}
             title="Thử thách & Công cụ"
-            subtitle="Các công cụ vui nhộn để tổ chức hoạt động học tập trong lớp"
+            subtitle="Vòng quay, đồng hồ học tập và chọn học sinh ngẫu nhiên cho lớp học"
             className="flex-1"
             actions={
               <ClassroomButton variant="secondary" onClick={enterPresentationMode}>
@@ -66,9 +60,6 @@ export default function ToolsPage() {
           <LuckyWheelTool />
           <StudyTimerTool />
           <RandomStudentTool />
-          <LuckyStarTool />
-          <QuickAnswerTool />
-          <WhoIsNextTool />
         </div>
 
         <PointsChallengeStrip />
