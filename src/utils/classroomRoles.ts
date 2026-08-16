@@ -125,9 +125,10 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
         luckyWheelHistory: db.luckyWheelHistory ?? [],
         badgeAwardHistory: db.badgeAwardHistory ?? [],
         wheelStudentBag: db.wheelStudentBag ?? [],
-        appSettings: db.appSettings ?? {
-          soundEnabled: true,
-          animationsEnabled: true,
+        appSettings: {
+          soundEnabled: db.appSettings?.soundEnabled ?? true,
+          animationsEnabled: db.appSettings?.animationsEnabled ?? true,
+          cloudBackupEnabled: db.appSettings?.cloudBackupEnabled ?? false,
         },
       }),
     ),

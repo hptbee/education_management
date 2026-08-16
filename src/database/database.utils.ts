@@ -10,14 +10,25 @@ export function slugify(text: string): string {
     .replace(/-+/g, "-"); // remove consecutive hyphens
 }
 
+import { assertSafeClassroomId, isSafeClassroomId } from "./safeIdentifiers";
+
 export function generateDatabaseId(className: string, schoolYear: string): string {
   return `${slugify(className)}_${slugify(schoolYear)}`;
 }
 
 /** Human-readable classroom JSON filename for new databases. */
 export function makeClassroomFileName(databaseId: string): string {
-  return `Lop-${databaseId}.json`;
+  if (!isSafeClassroomId(databaseId)) {
+    throw new Error("Mã dữ liệu lớp không hợp lệ cho tên file.");
+  }
+  const base = `Lop-${databaseId}.json`;
+  if (base.includes("/") || base.includes("\\") || base.includes("..")) {
+    throw new Error("Tên file lớp học không hợp lệ.");
+  }
+  return base;
 }
+
+export { assertSafeClassroomId, isSafeClassroomId };
 
 export function generateExportFilename(className: string, schoolYear: string): string {
   return makeClassroomFileName(generateDatabaseId(className, schoolYear));

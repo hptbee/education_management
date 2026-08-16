@@ -42,6 +42,7 @@ Thumbs.db
 
 # Local tooling
 .mcp-servers.json
+.codebase-memory/
 
 # v0 / Vercel sandbox leftovers
 __v0_runtime_loader.js

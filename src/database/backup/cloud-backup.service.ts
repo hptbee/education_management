@@ -3,6 +3,8 @@ import { makeClassroomFileName } from "../database.utils";
 import { DATABASE_VERSION } from "../database.factory";
 import { deviceIdService } from "./device-id.service";
 import { backupMetadataService } from "./backup-metadata.service";
+import { isTauri } from "../tauri-fs.service";
+import { sanitizeBackupIdentifier } from "../safeIdentifiers";
 
 export interface BackupUploadRequest {
   deviceId: string;
@@ -20,21 +22,63 @@ export function getCloudBackupUrl(): string | null {
   return url || null;
 }
 
-export function getCloudBackupToken(): string | null {
+function getWebCloudBackupToken(): string | null {
   const token = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN?.trim();
   return token || null;
 }
 
-export function isCloudBackupEnabled(): boolean {
-  return Boolean(getCloudBackupUrl());
+let cachedCloudBackupToken: string | null | undefined;
+
+export async function resolveCloudBackupToken(): Promise<string | null> {
+  if (cachedCloudBackupToken !== undefined) {
+    return cachedCloudBackupToken;
+  }
+
+  if (isTauri()) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const token = await invoke<string | null>("get_cloud_backup_token");
+      cachedCloudBackupToken = token?.trim() || null;
+    } catch {
+      cachedCloudBackupToken = null;
+    }
+    return cachedCloudBackupToken;
+  }
+
+  cachedCloudBackupToken = getWebCloudBackupToken();
+  return cachedCloudBackupToken;
 }
 
-export function sanitizeBackupIdentifier(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > 128) return null;
-  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return null;
-  return trimmed;
+/** Sync token lookup for web builds (tests / dev). Tauri uses {@link resolveCloudBackupToken}. */
+export function getCloudBackupToken(): string | null {
+  return getWebCloudBackupToken();
 }
+
+export function isCloudBackupConfiguredSync(): boolean {
+  return Boolean(getCloudBackupUrl() && getCloudBackupToken());
+}
+
+export function resetCloudBackupTokenCache(): void {
+  cachedCloudBackupToken = undefined;
+}
+
+export async function isCloudBackupConfigured(): Promise<boolean> {
+  const url = getCloudBackupUrl();
+  if (!url) return false;
+  const token = await resolveCloudBackupToken();
+  return Boolean(token);
+}
+
+export function isCloudBackupEnabledForDatabase(db: ClassroomDatabase): boolean {
+  return Boolean(db.appSettings?.cloudBackupEnabled);
+}
+
+/** @deprecated Use isCloudBackupConfigured + isCloudBackupEnabledForDatabase */
+export function isCloudBackupEnabled(): boolean {
+  return isCloudBackupConfiguredSync();
+}
+
+export { sanitizeBackupIdentifier };
 
 export function buildBackupStorageKey(deviceId: string, classroomId: string): string {
   const safeDevice = sanitizeBackupIdentifier(deviceId);
@@ -52,6 +96,15 @@ export async function uploadClassroomBackup(
   const baseUrl = getCloudBackupUrl();
   if (!baseUrl) return;
 
+  if (!isCloudBackupEnabledForDatabase(db)) {
+    return;
+  }
+
+  const token = await resolveCloudBackupToken();
+  if (!token) {
+    return;
+  }
+
   const deviceId = await deviceIdService.getDeviceId();
   const body: BackupUploadRequest = {
     deviceId,
@@ -64,11 +117,8 @@ export async function uploadClassroomBackup(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   };
-  const token = getCloudBackupToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   const response = await fetchImpl(`${baseUrl.replace(/\/$/, "")}/backup`, {
     method: "PUT",
@@ -97,7 +147,7 @@ export class CloudBackupScheduler {
   private pendingDb: ClassroomDatabase | null = null;
   private uploading = false;
   private failureCount = 0;
-  private state: CloudBackupState = isCloudBackupEnabled() ? "idle" : "disabled";
+  private state: CloudBackupState = "disabled";
   private lastError: string | null = null;
   private listeners = new Set<BackupListener>();
 
@@ -121,8 +171,13 @@ export class CloudBackupScheduler {
     this.emit();
   }
 
+  private async canUpload(db: ClassroomDatabase): Promise<boolean> {
+    if (!isCloudBackupEnabledForDatabase(db)) return false;
+    return await isCloudBackupConfigured();
+  }
+
   startPeriodicRetry(): void {
-    if (!isCloudBackupEnabled() || this.periodicTimer) return;
+    if (this.periodicTimer) return;
     this.periodicTimer = setInterval(() => {
       if (this.pendingDb) {
         void this.flushPending();
@@ -140,7 +195,12 @@ export class CloudBackupScheduler {
   }
 
   scheduleAfterLocalSave(db: ClassroomDatabase): void {
-    if (!isCloudBackupEnabled()) {
+    if (!isCloudBackupEnabledForDatabase(db)) {
+      this.setState("disabled", null);
+      return;
+    }
+
+    if (!getCloudBackupUrl()) {
       this.setState("disabled", null);
       return;
     }
@@ -157,7 +217,10 @@ export class CloudBackupScheduler {
   }
 
   async checkStartupBackup(db: ClassroomDatabase): Promise<void> {
-    if (!isCloudBackupEnabled()) return;
+    if (!await this.canUpload(db)) {
+      this.setState("disabled", null);
+      return;
+    }
 
     const meta = await backupMetadataService.getClassroomMeta(db.metadata.id);
     const needsBackup =
@@ -172,9 +235,14 @@ export class CloudBackupScheduler {
   }
 
   async flushPending(): Promise<void> {
-    if (!isCloudBackupEnabled() || this.uploading || !this.pendingDb) return;
+    if (this.uploading || !this.pendingDb) return;
 
     const db = this.pendingDb;
+    if (!(await this.canUpload(db))) {
+      this.setState("disabled", null);
+      return;
+    }
+
     const uploadedId = db.metadata.id;
     const uploadedAt = db.metadata.updatedAt;
     this.uploading = true;

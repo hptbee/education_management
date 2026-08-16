@@ -30,19 +30,30 @@ npx wrangler login
 npx wrangler r2 bucket create classroom-backups
 ```
 
-4. Deploy:
+4. Set a **required** API token (fail-closed — uploads without a valid token are rejected):
+
+```bash
+npx wrangler secret put BACKUP_API_TOKEN
+```
+
+5. Deploy:
 
 ```bash
 npx wrangler deploy
 ```
 
-5. Copy the deployed Worker URL into the app `.env.local`:
+6. Copy the deployed Worker URL and token into the app environment:
 
 ```env
 NEXT_PUBLIC_CLOUD_BACKUP_URL=https://classroom-cloud-backup.<your-subdomain>.workers.dev
+NEXT_PUBLIC_CLOUD_BACKUP_TOKEN=<same-as-BACKUP_API_TOKEN>
 ```
 
-6. Restart the Tauri app (`npm run tauri:dev`).
+For Tauri desktop, also set `CLOUD_BACKUP_TOKEN` (not bundled in the client build).
+
+7. In the app: **Cài đặt → Dữ liệu** → enable **Tự động sao lưu lớp này lên đám mây** (opt-in per classroom).
+
+8. Restart the Tauri app (`npm run tauri:dev`) or Next dev server.
 
 ## R2 object layout
 
@@ -55,4 +66,6 @@ Identifiers are sanitized server-side. Client-controlled paths are never accepte
 ## Security notes
 
 - R2 credentials stay in Cloudflare (Worker binding only).
-- Optional future auth: set `BACKUP_API_TOKEN` in `wrangler.toml` / dashboard and send `Authorization: Bearer <token>` from the app.
+- `BACKUP_API_TOKEN` is **required** — missing or wrong token → `401`.
+- PUT body limit: 25 MB; `payload` must be a JSON object.
+- Client only uploads when URL + token are configured **and** the teacher opts in per classroom.

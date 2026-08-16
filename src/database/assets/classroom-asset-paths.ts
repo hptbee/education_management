@@ -1,4 +1,15 @@
+import { assertSafeClassroomId } from "../safeIdentifiers";
+
 const GIFT_IMAGE_PREFIX = "images/gifts/";
+
+function assertSafeRelativeAssetPath(relativePath: string): void {
+  if (!relativePath || relativePath.includes("..") || relativePath.includes("\\")) {
+    throw new Error("Đường dẫn tài nguyên không hợp lệ.");
+  }
+  if (relativePath.startsWith("/") || /^[a-zA-Z]:/.test(relativePath)) {
+    throw new Error("Đường dẫn tài nguyên không hợp lệ.");
+  }
+}
 
 export function giftImageRelativePath(giftId: string, extension: string): string {
   const safeExt = extension.replace(/^\./, "").toLowerCase() || "jpg";
@@ -30,6 +41,7 @@ export function extensionFromFileName(fileName: string): string {
 }
 
 export function classroomAssetRootRelative(classroomId: string): string {
+  assertSafeClassroomId(classroomId, "classroomId");
   return `classrooms/${classroomId}`;
 }
 
@@ -39,5 +51,7 @@ export function resolveClassroomAssetAbsolute(
   relativePath: string,
   joinPath: (...parts: string[]) => string,
 ): string {
+  assertSafeClassroomId(classroomId, "classroomId");
+  assertSafeRelativeAssetPath(relativePath);
   return joinPath(dataDir, "classrooms", classroomId, relativePath);
 }

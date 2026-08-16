@@ -12,6 +12,8 @@ export interface BackupUploadBody {
   payload: unknown;
 }
 
+const MAX_BACKUP_BODY_BYTES = 25 * 1024 * 1024;
+
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
@@ -70,16 +72,35 @@ function assertUploadBody(data: unknown): BackupUploadBody {
     throw new Error("Invalid schemaVersion");
   }
 
+  if (!record.payload || typeof record.payload !== "object") {
+    throw new Error("Invalid payload");
+  }
+
   return record as unknown as BackupUploadBody;
 }
 
 function requireBackupAuth(request: Request, env: Env): Response | null {
-  if (!env.BACKUP_API_TOKEN) return null;
+  if (!env.BACKUP_API_TOKEN?.trim()) {
+    return jsonResponse({ ok: false, error: "Backup API not configured" }, 401);
+  }
   const auth = request.headers.get("Authorization");
   if (auth !== `Bearer ${env.BACKUP_API_TOKEN}`) {
     return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
   }
   return null;
+}
+
+async function readBodyWithLimit(request: Request): Promise<string> {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength && Number(contentLength) > MAX_BACKUP_BODY_BYTES) {
+    throw new Error("Payload too large");
+  }
+
+  const text = await request.text();
+  if (text.length > MAX_BACKUP_BODY_BYTES) {
+    throw new Error("Payload too large");
+  }
+  return text;
 }
 
 export default {
@@ -95,10 +116,11 @@ export default {
         const authError = requireBackupAuth(request, env);
         if (authError) return authError;
 
-        const body = assertUploadBody(await request.json());
+        const raw = await readBodyWithLimit(request);
+        const body = assertUploadBody(JSON.parse(raw));
         const key = buildBackupStorageKey(body.deviceId, body.classroomId);
 
-        await env.BACKUP_BUCKET.put(key, JSON.stringify(body), {
+        await env.BACKUP_BUCKET.put(key, raw, {
           httpMetadata: { contentType: "application/json" },
           customMetadata: {
             classroomId: body.classroomId,

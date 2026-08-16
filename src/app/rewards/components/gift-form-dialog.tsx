@@ -25,6 +25,7 @@ export function GiftFormDialog({
 }: GiftFormDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [requiredPoints, setRequiredPoints] = useState("1");
   const [isActive, setIsActive] = useState(true);
   const [imagePath, setImagePath] = useState<string | undefined>();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -39,6 +40,7 @@ export function GiftFormDialog({
     if (!isOpen) return;
     setName(initialData?.name ?? "");
     setDescription(initialData?.description ?? "");
+    setRequiredPoints(String(initialData?.requiredPoints ?? 1));
     setIsActive(initialData?.isActive ?? true);
     setImagePath(initialData?.imagePath);
     setPendingFile(null);
@@ -94,6 +96,11 @@ export function GiftFormDialog({
           onSubmit={async (e) => {
             e.preventDefault();
             if (!name.trim()) return;
+            const parsedPoints = Number.parseInt(requiredPoints, 10);
+            if (!Number.isFinite(parsedPoints) || parsedPoints <= 0) {
+              setError("Điểm cần để đổi quà phải là số nguyên lớn hơn 0.");
+              return;
+            }
             setSaving(true);
             setError(null);
             try {
@@ -112,6 +119,7 @@ export function GiftFormDialog({
                     id: giftId,
                     name: name.trim(),
                     description: description.trim() || undefined,
+                    requiredPoints: parsedPoints,
                     imagePath: nextImagePath,
                     isActive,
                     createdAt: initialData?.createdAt ?? now,
@@ -194,6 +202,22 @@ export function GiftFormDialog({
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="Mô tả ngắn cho học sinh xem"
+              className="classroom-field px-4"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="gift-required-points" className="mb-1.5 block text-sm font-bold text-slate-700">
+              Điểm cần để đổi *
+            </label>
+            <input
+              id="gift-required-points"
+              type="number"
+              min={1}
+              step={1}
+              required
+              value={requiredPoints}
+              onChange={(e) => setRequiredPoints(e.target.value)}
               className="classroom-field px-4"
             />
           </div>

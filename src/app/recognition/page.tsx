@@ -1,11 +1,13 @@
 'use client'
 
 import { Suspense, useCallback, useMemo } from 'react'
-import { LayoutList, Medal, Sparkles, Star, Trophy } from 'lucide-react'
+import { LayoutList, Medal, MonitorPlay, Sparkles, Star, Trophy } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
-import { PageHeader } from '@/src/components/classroom'
+import { usePresentationMode } from '@/src/store/PresentationModeContext'
+import { PresentationChrome } from '@/src/components/PresentationChrome'
+import { ClassroomButton, PageHeader } from '@/src/components/classroom'
 import { BadgeRosterSection } from './components/badge-roster-section'
 import { RecognitionFormSection } from './components/recognition-form-section'
 import { TitleCatalogSection } from './components/title-catalog-section'
@@ -32,6 +34,7 @@ function parseTab(value: string | null): RecognitionTab {
 function RecognitionPageContent() {
   const { data } = useAppData()
   const { isLoaded } = useActiveClassroom()
+  const { isPresentationMode, enterPresentationMode } = usePresentationMode()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -65,6 +68,19 @@ function RecognitionPageContent() {
     )
   }
 
+  if (isPresentationMode) {
+    return (
+      <PresentationChrome title="Góc tuyên dương" subtitle="Những điều tốt đẹp của lớp">
+        <WallOfFameSection
+          students={students}
+          teams={teams}
+          onStartRecognition={() => setActiveTab('new')}
+          presentation
+        />
+      </PresentationChrome>
+    )
+  }
+
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
       <div className="mx-auto flex max-w-[1200px] flex-col gap-6 p-5 pb-10">
@@ -73,6 +89,11 @@ function RecognitionPageContent() {
           title="Tuyên dương"
           subtitle="Ghi nhận, khích lệ và tôn vinh những điều tốt đẹp của học sinh"
           iconClassName="from-amber-400 to-orange-500"
+          actions={
+            <ClassroomButton variant="secondary" onClick={enterPresentationMode}>
+              <MonitorPlay className="size-4" aria-hidden /> Trình chiếu
+            </ClassroomButton>
+          }
         />
 
         <div className="flex flex-wrap gap-2">

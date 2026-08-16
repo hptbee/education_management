@@ -16,9 +16,15 @@ interface WallOfFameSectionProps {
   students: Student[]
   teams: Team[]
   onStartRecognition: () => void
+  presentation?: boolean
 }
 
-export function WallOfFameSection({ students, teams, onStartRecognition }: WallOfFameSectionProps) {
+export function WallOfFameSection({
+  students,
+  teams,
+  onStartRecognition,
+  presentation = false,
+}: WallOfFameSectionProps) {
   const { data, updateRecognitionMessage, deleteRecognition } = useAppData()
   const recognitions = data?.recognitions ?? []
   const titles = data?.recognitionTitles ?? []
@@ -83,9 +89,11 @@ export function WallOfFameSection({ students, teams, onStartRecognition }: WallO
         title="Chưa có lời tuyên dương nào"
         description="Hãy bắt đầu ghi nhận những điều tốt đẹp của các bạn nhé!"
         action={
-          <ClassroomButton onClick={onStartRecognition}>
-            ✨ Tuyên dương đầu tiên
-          </ClassroomButton>
+          presentation ? undefined : (
+            <ClassroomButton onClick={onStartRecognition}>
+              ✨ Tuyên dương đầu tiên
+            </ClassroomButton>
+          )
         }
       />
     )
@@ -110,8 +118,9 @@ export function WallOfFameSection({ students, teams, onStartRecognition }: WallO
         ))}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <select
+      {!presentation ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <select
           value={studentFilter}
           onChange={(e) => setStudentFilter(e.target.value)}
           className="classroom-field px-4"
@@ -152,6 +161,7 @@ export function WallOfFameSection({ students, teams, onStartRecognition }: WallO
           ))}
         </select>
       </div>
+      ) : null}
 
       {filtered.length === 0 ? (
         <p className="rounded-2xl bg-brand-soft py-10 text-center text-sm font-semibold text-brand-dark">
@@ -159,44 +169,72 @@ export function WallOfFameSection({ students, teams, onStartRecognition }: WallO
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((rec) => (
-            <button
-              key={rec.id}
-              type="button"
-              onClick={() => openDetail(rec)}
-              className="flex flex-col items-center rounded-3xl border border-sky-100 bg-gradient-to-b from-white to-pastel-sky/40 p-5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-accent-pink/30 hover:shadow-md"
-            >
-              <span className="text-2xl">{rec.titleIcon ?? '🌟'}</span>
-              <img
-                src={getAvatar(rec)}
-                alt=""
-                className="mt-4 size-16 rounded-full object-cover ring-4 ring-white shadow-md"
-              />
-              <p className="mt-3 font-display text-base font-black text-slate-800">{getDisplayName(rec)}</p>
-              <p className="mt-1 text-sm font-extrabold text-amber-800">
-                🏆 {rec.title}
-              </p>
-              {rec.message ? (
-                <p className="mt-2 line-clamp-2 text-xs font-semibold text-slate-500">
-                  &ldquo;{rec.message}&rdquo;
+          {filtered.map((rec) => {
+            const cardClass =
+              'flex flex-col items-center rounded-3xl border border-sky-100 bg-gradient-to-b from-white to-pastel-sky/40 p-5 text-center shadow-sm'
+            const content = (
+              <>
+                <span className={presentation ? 'text-4xl' : 'text-2xl'}>{rec.titleIcon ?? '🌟'}</span>
+                <img
+                  src={getAvatar(rec)}
+                  alt=""
+                  className={`mt-4 rounded-full object-cover ring-4 ring-white shadow-md ${
+                    presentation ? 'size-24' : 'size-16'
+                  }`}
+                />
+                <p
+                  className={`mt-3 font-display font-black text-slate-800 ${
+                    presentation ? 'text-2xl' : 'text-base'
+                  }`}
+                >
+                  {getDisplayName(rec)}
                 </p>
-              ) : null}
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                <span className="text-[11px] font-semibold text-slate-400">
-                  📅 {formatRecognitionRelativeDate(rec.createdAt)}
-                </span>
-                {rec.awardedPoints && rec.awardedPoints > 0 ? (
-                  <span className="rounded-full bg-pastel-yellow px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
-                    ⭐ +{rec.awardedPoints}
-                  </span>
+                <p className={`mt-1 font-extrabold text-amber-800 ${presentation ? 'text-lg' : 'text-sm'}`}>
+                  🏆 {rec.title}
+                </p>
+                {rec.message ? (
+                  <p
+                    className={`mt-2 line-clamp-2 font-semibold text-slate-500 ${
+                      presentation ? 'text-base' : 'text-xs'
+                    }`}
+                  >
+                    &ldquo;{rec.message}&rdquo;
+                  </p>
                 ) : null}
-              </div>
-            </button>
-          ))}
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    📅 {formatRecognitionRelativeDate(rec.createdAt)}
+                  </span>
+                  {rec.awardedPoints && rec.awardedPoints > 0 ? (
+                    <span className="rounded-full bg-pastel-yellow px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
+                      ⭐ +{rec.awardedPoints}
+                    </span>
+                  ) : null}
+                </div>
+              </>
+            )
+            if (presentation) {
+              return (
+                <article key={rec.id} className={cardClass}>
+                  {content}
+                </article>
+              )
+            }
+            return (
+              <button
+                key={rec.id}
+                type="button"
+                onClick={() => openDetail(rec)}
+                className={`${cardClass} transition hover:-translate-y-0.5 hover:border-accent-pink/30 hover:shadow-md`}
+              >
+                {content}
+              </button>
+            )
+          })}
         </div>
       )}
 
-      {detailTarget ? (
+      {!presentation && detailTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
             <header className="border-b border-slate-100 p-5 text-center">
@@ -257,7 +295,7 @@ export function WallOfFameSection({ students, teams, onStartRecognition }: WallO
         </div>
       ) : null}
 
-      {deleteTarget ? (
+      {!presentation && deleteTarget ? (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
             <h3 className="text-lg font-black text-rose-600">Xóa bản ghi tuyên dương?</h3>

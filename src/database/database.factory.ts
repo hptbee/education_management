@@ -48,6 +48,7 @@ export function createEmptyDatabase(
     appSettings: {
       soundEnabled: true,
       animationsEnabled: true,
+      cloudBackupEnabled: false,
     },
   };
 }

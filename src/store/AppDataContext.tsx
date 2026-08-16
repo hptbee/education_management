@@ -14,6 +14,7 @@ import type {
   TeacherProfile,
   Team,
   TeamScoreHistory,
+  AppSettings,
 } from "../types/models";
 import { createId } from "../utils/id";
 import {
@@ -26,7 +27,7 @@ import { databaseService } from "../database/database.service";
 import { buildRecognizeStudentsUpdate, ensureBadgeForTitle, type RecognizeStudentsInput } from "../utils/recognition";
 import { capHistory } from "../utils/historyLimits";
 import { classroomAssetService } from "../database/assets/classroom-asset.service";
-import { normalizeGift } from "../utils/gifts";
+import { normalizeGift, buildRedeemGiftUpdate } from "../utils/gifts";
 import {
   clearLastClassroomId,
   setLastClassroomId,
@@ -34,7 +35,6 @@ import {
 import { backupMetadataService } from "../database/backup/backup-metadata.service";
 import {
   cloudBackupScheduler,
-  isCloudBackupEnabled,
   type CloudBackupState,
 } from "../database/backup/cloud-backup.service";
 
@@ -60,6 +60,7 @@ interface AppDataContextValue {
   duplicateDatabase: (newClassName: string, newSchoolYear: string, mode: "settings-only" | "full-copy") => Promise<void>;
   deleteDatabase: (id: string) => Promise<void>;
   updateClassroomSettings: (settings: ClassroomSettings) => void;
+  updateAppSettings: (updates: Partial<AppSettings>) => void;
   updateTeacherProfile: (teacher: Partial<Omit<TeacherProfile, "id" | "createdAt" | "updatedAt">>) => void;
   saveClassroomRole: (role: ClassroomRole) => void;
   deleteClassroomRole: (roleId: string) => void;
@@ -83,6 +84,7 @@ interface AppDataContextValue {
   ) => void;
   saveGift: (gift: Gift, options?: { previousImagePath?: string }) => Promise<void>;
   deleteGift: (giftId: string) => Promise<void>;
+  redeemGift: (studentId: string, giftId: string) => boolean;
   saveRecognitionTitle: (title: RecognitionTitle) => void;
   deleteRecognitionTitle: (titleId: string) => void;
   recognizeStudents: (input: RecognizeStudentsInput) => Recognition[];
@@ -103,9 +105,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [initError, setInitError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [localSaveStatus, setLocalSaveStatus] = useState<LocalSaveStatus>("saved");
-  const [cloudBackupState, setCloudBackupState] = useState<CloudBackupState>(
-    isCloudBackupEnabled() ? "idle" : "disabled",
-  );
+  const [cloudBackupState, setCloudBackupState] = useState<CloudBackupState>("disabled");
   const dataRef = useRef<ClassroomDatabase | null>(null);
   const lastPersistedRef = useRef<ClassroomDatabase | null>(null);
   const saveGenerationRef = useRef(0);
@@ -441,6 +441,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setData((current) => ({
           ...current,
           classroomSettings: { ...settings, updatedAt: new Date().toISOString() },
+        })),
+      updateAppSettings: (updates) =>
+        setData((current) => ({
+          ...current,
+          appSettings: { ...current.appSettings, ...updates },
         })),
       updateTeacherProfile: (teacherUpdates) =>
         setData((current) => ({
@@ -822,6 +827,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.warn("[deleteGift] failed to remove image file", error);
         }
+      },
+      redeemGift: (studentId, giftId) => {
+        const current = dataRef.current;
+        if (!current) return false;
+        const result = buildRedeemGiftUpdate(current, studentId, giftId);
+        if ("error" in result) return false;
+        setData(result.next);
+        return true;
       },
       saveRecognitionTitle: (title) =>
         setData((current) => {

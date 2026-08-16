@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
 import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
 import { databaseService } from '@/src/database/database.service'
+import { isCloudBackupConfigured } from '@/src/database/backup/cloud-backup.service'
 import type { ClassroomDatabase, DatabaseSummary } from '@/src/database/types'
 import { ClassroomList } from './classroom-list'
 
@@ -22,6 +23,7 @@ interface DataSectionProps {
   onOpenDataFolder: () => void
   onSwitchDatabase: (id: string) => void
   onCloseDatabase: () => void
+  onCloudBackupEnabledChange: (enabled: boolean) => void
 }
 
 export function DataSection({
@@ -38,8 +40,14 @@ export function DataSection({
   onOpenDataFolder,
   onSwitchDatabase,
   onCloseDatabase,
+  onCloudBackupEnabledChange,
 }: DataSectionProps) {
   const [databases, setDatabases] = useState<DatabaseSummary[]>([])
+  const [cloudConfigured, setCloudConfigured] = useState(false)
+
+  useEffect(() => {
+    void isCloudBackupConfigured().then(setCloudConfigured)
+  }, [data.metadata.id, data.appSettings.cloudBackupEnabled])
 
   useEffect(() => {
     void databaseService.listDatabases().then(setDatabases)
@@ -155,8 +163,25 @@ export function DataSection({
           <div>
             <h2 className="font-display text-lg font-extrabold text-slate-800">Sao lưu & thư mục</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Xuất JSON hoặc mở thư mục dữ liệu (Tauri). Ảnh quà tặng lưu riêng trong thư mục lớp — chưa được đưa vào sao lưu đám mây.
+              Xuất JSON hoặc mở thư mục dữ liệu (Tauri). Sao lưu đám mây là tùy chọn — chỉ gửi JSON lớp khi bật.
             </p>
+            {cloudConfigured ? (
+              <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-2xl border border-sky-100 bg-surface-soft px-4 py-3">
+                <input
+                  type="checkbox"
+                  className="size-5 rounded border-slate-300 text-brand focus:ring-brand"
+                  checked={data.appSettings.cloudBackupEnabled}
+                  onChange={(e) => onCloudBackupEnabledChange(e.target.checked)}
+                />
+                <span className="text-sm font-bold text-slate-700">
+                  Tự động sao lưu lớp này lên đám mây sau khi lưu cục bộ
+                </span>
+              </label>
+            ) : (
+              <p className="mt-3 text-sm font-semibold text-slate-500">
+                Sao lưu đám mây chưa cấu hình (cần URL Worker và mã bảo mật trong môi trường).
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <ClassroomButton variant="outline" onClick={onExport}>

@@ -10,6 +10,7 @@ interface GiftCardProps {
   classroomId: string;
   presentation?: boolean;
   onEdit?: () => void;
+  onRedeem?: () => void;
   onToggleActive?: () => void;
   onDelete?: () => void;
 }
@@ -19,6 +20,7 @@ export function GiftCard({
   classroomId,
   presentation = false,
   onEdit,
+  onRedeem,
   onToggleActive,
   onDelete,
 }: GiftCardProps) {
@@ -95,9 +97,22 @@ export function GiftCard({
         ) : (
           <p className="mt-0.5 text-sm font-semibold text-slate-400">Chưa có mô tả</p>
         )}
+        <p className="mt-2 text-sm font-extrabold text-brand">
+          {gift.requiredPoints} điểm
+        </p>
       </div>
 
       <div className="mt-3 flex items-center gap-2">
+        {onRedeem && gift.isActive ? (
+          <button
+            type="button"
+            onClick={onRedeem}
+            aria-label={`Đổi quà ${gift.name}`}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand px-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          >
+            Đổi quà
+          </button>
+        ) : null}
         {onEdit ? (
           <button
             type="button"

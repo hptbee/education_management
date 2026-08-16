@@ -116,6 +116,7 @@ export const defaultData: AppData = {
       id: "reward-sticker",
       name: "Bộ sticker",
       description: "Phần thưởng nhỏ xinh cho học sinh ngoan.",
+      requiredPoints: 5,
       isActive: true,
       createdAt: seedTimestamp,
       updatedAt: seedTimestamp,
@@ -124,6 +125,7 @@ export const defaultData: AppData = {
       id: "reward-gift",
       name: "Quà nhỏ",
       description: "Món quà lớp học dễ thương.",
+      requiredPoints: 10,
       isActive: true,
       createdAt: seedTimestamp,
       updatedAt: seedTimestamp,
@@ -132,6 +134,7 @@ export const defaultData: AppData = {
       id: "reward-privilege",
       name: "Quyền ưu tiên",
       description: "Được chọn vai trò hỗ trợ lớp.",
+      requiredPoints: 15,
       isActive: true,
       createdAt: seedTimestamp,
       updatedAt: seedTimestamp,
@@ -140,6 +143,7 @@ export const defaultData: AppData = {
       id: "reward-mystery",
       name: "Hộp bí mật",
       description: "Một món quà bất ngờ hấp dẫn.",
+      requiredPoints: 20,
       isActive: true,
       createdAt: seedTimestamp,
       updatedAt: seedTimestamp,
@@ -154,5 +158,6 @@ export const defaultData: AppData = {
   appSettings: {
     soundEnabled: true,
     animationsEnabled: true,
+    cloudBackupEnabled: false,
   },
 };

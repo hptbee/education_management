@@ -95,12 +95,14 @@ export interface PointHistory {
   note?: string;
 }
 
-/** Display-only gift in the classroom gift cabinet (persisted as `rewards` in JSON). */
+/** Gift in the classroom gift cabinet (persisted as `rewards` in JSON). */
 export interface Gift {
   id: string;
   name: string;
   imagePath?: string;
   description?: string;
+  /** Points required to redeem (integer &gt; 0). */
+  requiredPoints: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -175,6 +177,8 @@ export interface BadgeAwardHistory {
 export interface AppSettings {
   soundEnabled: boolean;
   animationsEnabled: boolean;
+  /** Opt-in automatic upload to Cloudflare Worker when URL + token are configured. */
+  cloudBackupEnabled: boolean;
 }
 
 export type LuckyWheelMode = "student" | "team" | "reward" | "activity";

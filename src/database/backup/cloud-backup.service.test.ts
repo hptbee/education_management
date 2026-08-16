@@ -3,6 +3,7 @@ import { createEmptyDatabase } from "../database.factory";
 import {
   CloudBackupScheduler,
   buildBackupStorageKey,
+  resetCloudBackupTokenCache,
   sanitizeBackupIdentifier,
   uploadClassroomBackup,
 } from "./cloud-backup.service";
@@ -25,8 +26,8 @@ vi.mock("./backup-metadata.service", () => ({
   },
 }));
 
-function makeDb() {
-  return createEmptyDatabase({
+function makeDb(cloudBackupEnabled = true) {
+  const db = createEmptyDatabase({
     className: "2/7",
     schoolYear: "2026-2027",
     teacher: {
@@ -36,6 +37,8 @@ function makeDb() {
       updatedAt: new Date().toISOString(),
     },
   });
+  db.appSettings.cloudBackupEnabled = cloudBackupEnabled;
+  return db;
 }
 
 describe("backup sanitization", () => {
@@ -54,21 +57,26 @@ describe("backup sanitization", () => {
 });
 
 describe("uploadClassroomBackup", () => {
-  const originalEnv = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
+  const originalUrl = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
+  const originalToken = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN;
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "test-token";
+    resetCloudBackupTokenCache();
   });
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalEnv;
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalUrl;
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = originalToken;
+    resetCloudBackupTokenCache();
     vi.clearAllMocks();
   });
 
-  it("uploads classroom JSON to worker", async () => {
+  it("uploads classroom JSON to worker when opt-in is enabled", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
-    await uploadClassroomBackup(makeDb(), fetchMock as unknown as typeof fetch);
+    await uploadClassroomBackup(makeDb(true), fetchMock as unknown as typeof fetch);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
@@ -77,18 +85,38 @@ describe("uploadClassroomBackup", () => {
     const body = JSON.parse(String(init?.body));
     expect(body.deviceId).toBe("device-test-123");
     expect(body.classroomId).toBe("2-7_2026-2027");
+    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer test-token");
+  });
+
+  it("skips upload when cloud backup opt-in is disabled", async () => {
+    const fetchMock = vi.fn();
+    await uploadClassroomBackup(makeDb(false), fetchMock as unknown as typeof fetch);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("skips upload when token is missing", async () => {
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "";
+    resetCloudBackupTokenCache();
+    const fetchMock = vi.fn();
+    await uploadClassroomBackup(makeDb(true), fetchMock as unknown as typeof fetch);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
 describe("CloudBackupScheduler", () => {
-  const originalEnv = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
+  const originalUrl = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
+  const originalToken = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN;
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "test-token";
+    resetCloudBackupTokenCache();
   });
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalEnv;
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalUrl;
+    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = originalToken;
+    resetCloudBackupTokenCache();
     vi.clearAllMocks();
   });
 
@@ -146,18 +174,5 @@ describe("CloudBackupScheduler", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(scheduler.getState()).toBe("synced");
-  });
-
-  it("sends Authorization header when token is configured", async () => {
-    const originalToken = process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN;
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = "secret-token";
-
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    await uploadClassroomBackup(makeDb(), fetchMock as unknown as typeof fetch);
-
-    const [, init] = fetchMock.mock.calls[0];
-    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer secret-token");
-
-    process.env.NEXT_PUBLIC_CLOUD_BACKUP_TOKEN = originalToken;
   });
 });

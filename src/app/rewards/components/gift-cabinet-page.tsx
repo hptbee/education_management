@@ -16,18 +16,22 @@ import type { Gift } from "@/src/types/models";
 import { GiftCard } from "./gift-card";
 import { GiftFormDialog } from "./gift-form-dialog";
 import { GiftPresentationView } from "./gift-presentation-view";
+import { GiftRedeemDialog } from "./gift-redeem-dialog";
+import { buildRedeemGiftUpdate } from "@/src/utils/gifts";
 
 export function GiftCabinetPage() {
-  const { data, saveGift, deleteGift } = useAppData();
+  const { data, saveGift, deleteGift, redeemGift } = useAppData();
   const { isLoaded } = useActiveClassroom();
   const { showConfirm, showAlert } = useClassroomDialog();
   const { isPresentationMode, enterPresentationMode } = usePresentationMode();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingGift, setEditingGift] = useState<Gift | null>(null);
+  const [redeemGiftTarget, setRedeemGiftTarget] = useState<Gift | null>(null);
 
   const classroomId = data?.metadata.id ?? "";
   const gifts = data?.rewards ?? [];
+  const students = data?.students ?? [];
 
   const { visibleGifts, hiddenGifts } = useMemo(() => {
     const visible: Gift[] = [];
@@ -50,6 +54,28 @@ export function GiftCabinetPage() {
     } catch (err) {
       await showAlert(err instanceof Error ? err.message : "Không thể lưu quà.", { variant: "error" });
     }
+  };
+
+  const handleRedeemConfirm = async (studentId: string) => {
+    if (!redeemGiftTarget || !data) return;
+    const preview = buildRedeemGiftUpdate(data, studentId, redeemGiftTarget.id);
+    if ("error" in preview) {
+      const message =
+        preview.error === "insufficient-points"
+          ? "Không đủ điểm."
+          : preview.error === "inactive"
+            ? "Quà này không còn được trưng bày."
+            : "Không thể đổi quà.";
+      await showAlert(message, { variant: "error" });
+      return;
+    }
+    const ok = redeemGift(studentId, redeemGiftTarget.id);
+    if (!ok) {
+      await showAlert("Không thể đổi quà.", { variant: "error" });
+      return;
+    }
+    setRedeemGiftTarget(null);
+    await showAlert("Đã đổi quà thành công!");
   };
 
   const handleDelete = async (gift: Gift) => {
@@ -78,6 +104,7 @@ export function GiftCabinetPage() {
             setFormOpen(true);
           }}
           onToggleActive={() => void handleToggleActive(gift)}
+          onRedeem={() => setRedeemGiftTarget(gift)}
           onDelete={() => void handleDelete(gift)}
         />
       ))}
@@ -102,7 +129,7 @@ export function GiftCabinetPage() {
         <PageHeader
           icon={GiftIcon}
           title="Tủ quà"
-          subtitle="Trưng bày quà tặng cho học sinh xem — không cần đổi điểm"
+          subtitle="Trưng bày và đổi quà bằng điểm tích lũy của học sinh"
           iconClassName="from-rose-400 to-pink-500"
           actions={
             <div className="flex flex-wrap items-center gap-2">
@@ -168,6 +195,15 @@ export function GiftCabinetPage() {
         onSave={async (gift, options) => {
           await saveGift(gift, options);
         }}
+      />
+
+      <GiftRedeemDialog
+        isOpen={Boolean(redeemGiftTarget)}
+        gift={redeemGiftTarget}
+        students={students}
+        classroomId={classroomId}
+        onClose={() => setRedeemGiftTarget(null)}
+        onConfirm={(studentId) => void handleRedeemConfirm(studentId)}
       />
     </div>
   );

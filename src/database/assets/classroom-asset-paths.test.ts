@@ -33,4 +33,18 @@ describe("classroom-asset-paths", () => {
     expect(absolute).toBe("C:/data/classrooms/2-7_2026-2027/images/gifts/gift-1.jpg");
     expect(absolute.startsWith("C:/")).toBe(true);
   });
+
+  it("rejects unsafe classroom ids and relative paths", () => {
+    expect(() =>
+      resolveClassroomAssetAbsolute("C:/data", "../evil", "images/gifts/a.jpg", (...p) => p.join("/")),
+    ).toThrow();
+    expect(() =>
+      resolveClassroomAssetAbsolute(
+        "C:/data",
+        "2-7_2026-2027",
+        "../secrets.jpg",
+        (...p) => p.join("/"),
+      ),
+    ).toThrow();
+  });
 });

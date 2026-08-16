@@ -50,4 +50,32 @@ describe("worker auth", () => {
     const response = await worker.fetch(request, env);
     expect(response.status).toBe(401);
   });
+
+  it("returns 401 when BACKUP_API_TOKEN is not configured", async () => {
+    const envWithoutToken = {
+      BACKUP_BUCKET: {
+        put: async () => undefined,
+        get: async () => null,
+      },
+    } as never;
+
+    const request = new Request("https://example.com/backup", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer anything",
+      },
+      body: JSON.stringify({
+        deviceId: "d1",
+        classroomId: "c1",
+        fileName: "class.json",
+        schemaVersion: 1,
+        timestamp: "2026-01-01T00:00:00.000Z",
+        payload: {},
+      }),
+    });
+
+    const response = await worker.fetch(request, envWithoutToken);
+    expect(response.status).toBe(401);
+  });
 });

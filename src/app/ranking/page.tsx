@@ -1,9 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Crown } from 'lucide-react'
+import { Crown, MonitorPlay } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
+import { usePresentationMode } from '@/src/store/PresentationModeContext'
+import { PresentationChrome } from '@/src/components/PresentationChrome'
 import type { Student } from '@/src/types/models'
 import {
   buildStudentRanking,
@@ -11,7 +13,7 @@ import {
   filterRankedStudents,
   type RankingPeriod,
 } from '@/src/utils/ranking'
-import { PageHeader, ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, ClassroomButton } from '@/src/components/classroom'
 import { StudentDetailsModal } from '@/src/app/students/components/student-details-modal'
 import { RankingModeToggle, type RankingMode } from './components/ranking-mode-toggle'
 import { RankingFilters } from './components/ranking-filters'
@@ -29,6 +31,7 @@ const DEFAULT_FILTERS = {
 export default function RankingPage() {
   const { data } = useAppData()
   const { isLoaded } = useActiveClassroom()
+  const { isPresentationMode, enterPresentationMode } = usePresentationMode()
   const [mode, setMode] = useState<RankingMode>('students')
   const [searchQuery, setSearchQuery] = useState(DEFAULT_FILTERS.searchQuery)
   const [filterTeam, setFilterTeam] = useState(DEFAULT_FILTERS.filterTeam)
@@ -99,6 +102,33 @@ export default function RankingPage() {
     )
   }
 
+  if (isPresentationMode) {
+    return (
+      <PresentationChrome title="Bảng xếp hạng" subtitle="Thành tích và điểm số của các bạn trong lớp">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6">
+          {students.length === 0 ? (
+            <EmptyState emoji="🧑‍🎓" title="Chưa có học sinh để xếp hạng" />
+          ) : (
+            <>
+              {rankedStudents.length > 0 ? (
+                <ClassroomCard>
+                  <RankingPodium entries={rankedStudents} />
+                </ClassroomCard>
+              ) : null}
+              <ClassroomCard>
+                <RankingList
+                  entries={rankedStudents}
+                  teams={teams}
+                  classroomRoles={classroomRoles}
+                />
+              </ClassroomCard>
+            </>
+          )}
+        </div>
+      </PresentationChrome>
+    )
+  }
+
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
       <div className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 pb-10">
@@ -107,7 +137,14 @@ export default function RankingPage() {
           title="Bảng xếp hạng học sinh"
           subtitle="Thành tích và điểm số của các bạn trong lớp"
           iconClassName="from-amber-400 to-yellow-500"
-          actions={<RankingModeToggle mode={mode} onChange={setMode} />}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <ClassroomButton variant="secondary" onClick={enterPresentationMode}>
+                <MonitorPlay className="size-4" aria-hidden /> Trình chiếu
+              </ClassroomButton>
+              <RankingModeToggle mode={mode} onChange={setMode} />
+            </div>
+          }
         />
 
         <ClassroomCard>

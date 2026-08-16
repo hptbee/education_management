@@ -16,6 +16,7 @@ export function SettingsPage() {
   const {
     data,
     updateClassroomSettings,
+    updateAppSettings,
     updateTeacherProfile,
     renameDatabase,
     duplicateDatabase,
@@ -223,6 +224,7 @@ export function SettingsPage() {
           onOpenDataFolder={() => void handleOpenDataFolder()}
           onSwitchDatabase={(id) => void switchDatabase(id)}
           onCloseDatabase={closeDatabase}
+          onCloudBackupEnabledChange={(enabled) => updateAppSettings({ cloudBackupEnabled: enabled })}
         />
       )}
 

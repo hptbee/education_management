@@ -2,7 +2,7 @@ import type { ClassroomDatabase, DatabaseSummary } from "./types";
 import type { ClassroomDatabaseStorage } from "./storage/storage.interface";
 import { IndexedDbClassroomStorage } from "./storage/indexed-db.storage";
 import { createEmptyDatabase } from "./database.factory";
-import { generateDatabaseId, generateExportFilename } from "./database.utils";
+import { assertSafeClassroomId, generateDatabaseId, generateExportFilename } from "./database.utils";
 import { normalizeClassroomDatabase } from "../utils/classroomRoles";
 import { migrateLegacyGiftImages } from "../utils/gifts";
 import { classroomAssetService } from "./assets/classroom-asset.service";
@@ -23,6 +23,7 @@ function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
   if (!metadata?.id || typeof metadata.id !== "string") {
     throw new Error("Định dạng file không hợp lệ: thiếu metadata.id.");
   }
+  assertSafeClassroomId(metadata.id);
   if (!settings?.className || typeof settings.className !== "string") {
     throw new Error("Định dạng file không hợp lệ: thiếu thông tin lớp học.");
   }

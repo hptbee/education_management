@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
 fn get_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -8,24 +8,20 @@ fn get_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("Failed to get app data dir: {}", e))
 }
 
-fn normalize_for_compare(path: &Path) -> String {
-    let mut normalized = path
-        .to_string_lossy()
-        .replace('\\', "/")
-        .to_lowercase();
-    if let Some(stripped) = normalized.strip_prefix("//?/") {
-        normalized = stripped.to_string();
+fn path_has_forbidden_components(path: &Path) -> bool {
+    for component in path.components() {
+        match component {
+            Component::ParentDir => return true,
+            Component::RootDir | Component::Prefix(_) => return true,
+            Component::Normal(s) if s.is_empty() => return true,
+            _ => {}
+        }
     }
-    while normalized.len() > 1 && normalized.ends_with('/') {
-        normalized.pop();
-    }
-    normalized
+    false
 }
 
 fn path_is_under(base: &Path, candidate: &Path) -> bool {
-    let base_key = normalize_for_compare(base);
-    let candidate_key = normalize_for_compare(candidate);
-    candidate_key == base_key || candidate_key.starts_with(&format!("{}/", base_key))
+    candidate.starts_with(base)
 }
 
 fn resolve_under_data_path(
@@ -33,6 +29,10 @@ fn resolve_under_data_path(
     canonical_data: &Path,
     create_missing_parent: bool,
 ) -> Result<PathBuf, String> {
+    if path_has_forbidden_components(path) {
+        return Err("Access denied: invalid path components".to_string());
+    }
+
     if path.exists() {
         let resolved = std::fs::canonicalize(path)
             .map_err(|e| format!("Failed to canonicalize {}: {}", path.display(), e))?;
@@ -46,7 +46,9 @@ fn resolve_under_data_path(
         .parent()
         .ok_or_else(|| format!("Invalid path: {}", path.display()))?;
 
-    let resolved_parent = if parent.exists() {
+    let resolved_parent = if parent.as_os_str().is_empty() {
+        canonical_data.clone()
+    } else if parent.exists() {
         let canonical_parent = std::fs::canonicalize(parent)
             .map_err(|e| format!("Failed to canonicalize {}: {}", parent.display(), e))?;
         if !path_is_under(canonical_data, &canonical_parent) {
@@ -64,13 +66,35 @@ fn resolve_under_data_path(
             if !path_is_under(canonical_data, &canonical_parent) {
                 return Err("Access denied: path is outside application data directory".to_string());
             }
-            return Ok(canonical_parent.join(path.file_name().unwrap()));
+            let resolved = canonical_parent.join(path.file_name().unwrap());
+            if !path_is_under(canonical_data, &resolved) {
+                return Err("Access denied: path is outside application data directory".to_string());
+            }
+            return Ok(resolved);
         }
         return Err(format!("Path not found: {}", path.display()));
-    } else if !path_is_under(canonical_data, parent) {
-        return Err("Access denied: path is outside application data directory".to_string());
     } else {
-        parent.to_path_buf()
+        let joined = if path.is_absolute() {
+            parent.clone()
+        } else {
+            canonical_data.join(parent)
+        };
+        if path_has_forbidden_components(&joined) {
+            return Err("Access denied: invalid path components".to_string());
+        }
+        if joined.exists() {
+            let canonical_parent = std::fs::canonicalize(&joined)
+                .map_err(|e| format!("Failed to canonicalize {}: {}", joined.display(), e))?;
+            if !path_is_under(canonical_data, &canonical_parent) {
+                return Err("Access denied: path is outside application data directory".to_string());
+            }
+            canonical_parent
+        } else {
+            if !path_is_under(canonical_data, &joined) {
+                return Err("Access denied: path is outside application data directory".to_string());
+            }
+            joined
+        }
     };
 
     let resolved = match path.file_name() {
@@ -93,7 +117,11 @@ fn resolve_under_data_path(
     Ok(resolved)
 }
 
-fn assert_under_data_dir(app: &AppHandle, path: &str, create_missing_parent: bool) -> Result<PathBuf, String> {
+fn assert_under_data_dir(
+    app: &AppHandle,
+    path: &str,
+    create_missing_parent: bool,
+) -> Result<PathBuf, String> {
     let data_dir = get_data_dir(app)?;
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| format!("Failed to create data dir {}: {}", data_dir.display(), e))?;
@@ -102,13 +130,31 @@ fn assert_under_data_dir(app: &AppHandle, path: &str, create_missing_parent: boo
         .map_err(|e| format!("Failed to canonicalize data dir {}: {}", data_dir.display(), e))?;
 
     let requested = PathBuf::from(path);
-    resolve_under_data_path(&requested, &canonical_data, create_missing_parent)
+    if path_has_forbidden_components(&requested) {
+        return Err("Access denied: invalid path components".to_string());
+    }
+
+    let under_data = if requested.is_absolute() {
+        requested
+    } else {
+        canonical_data.join(&requested)
+    };
+
+    resolve_under_data_path(&under_data, &canonical_data, create_missing_parent)
 }
 
 #[tauri::command]
 async fn get_data_directory(app: AppHandle) -> Result<String, String> {
     let dir = get_data_dir(&app)?;
     Ok(dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn get_cloud_backup_token() -> Option<String> {
+    std::env::var("CLOUD_BACKUP_TOKEN")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 #[tauri::command]
@@ -183,7 +229,13 @@ async fn write_binary_file(app: AppHandle, path: String, contents: Vec<u8>) -> R
     let temp_path = PathBuf::from(format!("{}.tmp", safe_path.to_string_lossy()));
     let canonical_data = std::fs::canonicalize(get_data_dir(&app)?)
         .map_err(|e| format!("Failed to canonicalize data dir: {}", e))?;
-    if !path_is_under(&canonical_data, &temp_path) {
+    let canonical_temp = if temp_path.exists() {
+        std::fs::canonicalize(&temp_path)
+            .map_err(|e| format!("Failed to canonicalize temp path: {}", e))?
+    } else {
+        temp_path.clone()
+    };
+    if !path_is_under(&canonical_data, &canonical_temp) {
         return Err("Access denied: temp path is outside application data directory".to_string());
     }
 
@@ -217,7 +269,6 @@ async fn remove_dir(app: AppHandle, path: String) -> Result<(), String> {
 #[tauri::command]
 async fn rename_path(app: AppHandle, from: String, to: String) -> Result<(), String> {
     let safe_from = assert_under_data_dir(&app, &from, false)?;
-    let safe_to_parent = PathBuf::from(&to);
     let safe_to = assert_under_data_dir(&app, &to, true)?;
 
     if !safe_from.exists() {
@@ -228,7 +279,7 @@ async fn rename_path(app: AppHandle, from: String, to: String) -> Result<(), Str
         return Err(format!("Destination already exists: {}", safe_to.display()));
     }
 
-    if let Some(parent) = safe_to_parent.parent() {
+    if let Some(parent) = safe_to.parent() {
         if !parent.exists() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("Failed to create parent dir {}: {}", parent.display(), e))?;
@@ -245,7 +296,13 @@ async fn write_text_file(app: AppHandle, path: String, contents: String) -> Resu
     let temp_path = PathBuf::from(format!("{}.tmp", safe_path.to_string_lossy()));
     let canonical_data = std::fs::canonicalize(get_data_dir(&app)?)
         .map_err(|e| format!("Failed to canonicalize data dir: {}", e))?;
-    if !path_is_under(&canonical_data, &temp_path) {
+    let canonical_temp = if temp_path.exists() {
+        std::fs::canonicalize(&temp_path)
+            .map_err(|e| format!("Failed to canonicalize temp path: {}", e))?
+    } else {
+        temp_path.clone()
+    };
+    if !path_is_under(&canonical_data, &canonical_temp) {
         return Err("Access denied: temp path is outside application data directory".to_string());
     }
 
@@ -276,6 +333,7 @@ async fn file_exists(app: AppHandle, path: String) -> Result<bool, String> {
     let safe_path = assert_under_data_dir(&app, &path, false)?;
     Ok(safe_path.exists())
 }
+
 #[tauri::command]
 async fn open_path(app: AppHandle, path: String) -> Result<(), String> {
     let safe_path = assert_under_data_dir(&app, &path, false)?;
@@ -320,6 +378,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_data_directory,
+            get_cloud_backup_token,
             ensure_dir,
             read_text_file,
             write_text_file,
