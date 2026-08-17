@@ -38,6 +38,7 @@ import {
   type CloudBackupState,
 } from "../database/backup/cloud-backup.service";
 import { toastError, toastSuccess } from "../utils/toast";
+import { logAppEvent } from "../logging/app-log";
 
 export type { RecognizeStudentsInput };
 
@@ -50,6 +51,8 @@ interface AppDataContextValue {
   saveError: string | null;
   localSaveStatus: LocalSaveStatus;
   cloudBackupState: CloudBackupState;
+  cloudBackupError: string | null;
+  retryCloudBackup: () => Promise<void>;
   clearSaveError: () => void;
   retrySave: () => Promise<void>;
   retryInit: () => Promise<void>;
@@ -110,6 +113,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [localSaveStatus, setLocalSaveStatus] = useState<LocalSaveStatus>("saved");
   const [cloudBackupState, setCloudBackupState] = useState<CloudBackupState>("disabled");
+  const [cloudBackupError, setCloudBackupError] = useState<string | null>(null);
   const dataRef = useRef<ClassroomDatabase | null>(null);
   const lastPersistedRef = useRef<ClassroomDatabase | null>(null);
   const saveGenerationRef = useRef(0);
@@ -133,6 +137,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       prevCloudBackupRef.current = state;
       setCloudBackupState(state);
+      setCloudBackupError(state === "failed" ? error : null);
     });
     cloudBackupScheduler.startPeriodicRetry();
     return () => {
@@ -173,6 +178,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không thể khởi tạo dữ liệu lớp học.";
       console.error("[AppDataProvider] init failed:", error);
+      logAppEvent("error", "app-data.init", message, error);
       setInitError(message);
       applyLoadedDatabase(null);
     } finally {
@@ -183,6 +189,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void loadInitialDatabase();
   }, [loadInitialDatabase]);
+
+  useEffect(() => {
+    const current = dataRef.current;
+    if (!current?.appSettings.cloudBackupEnabled) return;
+    void cloudBackupScheduler.checkStartupBackup(current);
+  }, [data?.metadata.id, data?.appSettings.cloudBackupEnabled]);
 
   const flushSave = useCallback(async (): Promise<boolean> => {
     if (saveInFlightRef.current) return false;
@@ -224,6 +236,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const message =
         error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
       console.error("[AppDataProvider] save failed:", error);
+      logAppEvent("error", "app-data.save", message, error);
       setLocalSaveStatus("error");
       setSaveError(message);
       saveFailureCountRef.current += 1;
@@ -279,6 +292,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       void flushSave();
     }, SAVE_DEBOUNCE_MS);
   }, [flushSave]);
+
+  const retryCloudBackup = useCallback(async () => {
+    const current = dataRef.current;
+    if (!current?.appSettings.cloudBackupEnabled) return;
+    await cloudBackupScheduler.triggerUploadNow(current);
+  }, []);
 
   const retrySave = useCallback(async () => {
     if (!dataRef.current) return;
@@ -348,6 +367,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       saveError,
       localSaveStatus,
       cloudBackupState,
+      cloudBackupError,
+      retryCloudBackup,
       clearSaveError,
       retrySave,
       retryInit: loadInitialDatabase,
@@ -1009,7 +1030,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, persistNow],
+    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, cloudBackupError, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, retryCloudBackup, persistNow],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

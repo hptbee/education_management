@@ -1,6 +1,8 @@
 # Default sound effects
 
-Bundled classroom UI sound effects for future playback (not wired yet). All files are downloaded from [Mixkit](https://mixkit.co/free-sound-effects/) under the **Mixkit Sound Effects Free License**.
+Bundled classroom UI sound effects. All files are downloaded from [Mixkit](https://mixkit.co/free-sound-effects/) under the **Mixkit Sound Effects Free License**.
+
+Playback is wired via `src/utils/sounds.ts` and respects `appSettings.soundEnabled` (default `true`).
 
 ## License summary
 

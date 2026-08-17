@@ -5,6 +5,7 @@ import { X, Plus, Minus, Trophy } from 'lucide-react'
 import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import type { Team } from '@/src/types/models'
+import { playSound } from '@/src/utils/sounds'
 
 const QUICK_AMOUNTS = [5, 10, 20, 50]
 
@@ -15,7 +16,8 @@ interface TeamPointsDialogProps {
 }
 
 export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProps) {
-  const { updateTeamScore } = useAppData()
+  const { data, updateTeamScore } = useAppData()
+  const soundEnabled = data?.appSettings.soundEnabled ?? true
   const [customAmount, setCustomAmount] = useState('')
   const [note, setNote] = useState('')
   const [mode, setMode] = useState<'add' | 'subtract'>('add')
@@ -29,6 +31,7 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
     // Don't allow score to go below 0
     if (team.score + delta < 0) return
     updateTeamScore(team.id, delta, note.trim() || undefined)
+    playSound(mode === 'add' ? 'success' : 'wrong-answer', { enabled: soundEnabled })
     setNote('')
     onClose()
   }
@@ -39,6 +42,7 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
     const delta = mode === 'add' ? n : -n
     if (team.score + delta < 0) return
     updateTeamScore(team.id, delta, note.trim() || undefined)
+    playSound(mode === 'add' ? 'success' : 'wrong-answer', { enabled: soundEnabled })
     setCustomAmount('')
     setNote('')
     onClose()

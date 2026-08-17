@@ -250,6 +250,15 @@ fn open_system_url(url: &str) -> Result<(), String> {
   Ok(())
 }
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static OAUTH_CANCEL_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+fn cancel_google_oauth() {
+  OAUTH_CANCEL_REQUESTED.store(true, Ordering::SeqCst);
+}
+
 #[derive(serde::Serialize)]
 struct GoogleOAuthCallback {
   code: String,
@@ -313,6 +322,8 @@ async fn start_google_oauth(
   use std::net::TcpListener;
   use std::time::{Duration, Instant};
 
+  OAUTH_CANCEL_REQUESTED.store(false, Ordering::SeqCst);
+
   let listener = TcpListener::bind("127.0.0.1:0")
     .map_err(|e| format!("Failed to bind loopback port: {}", e))?;
   let port = listener
@@ -335,6 +346,11 @@ async fn start_google_oauth(
 
   let started = Instant::now();
   loop {
+    if OAUTH_CANCEL_REQUESTED.load(Ordering::SeqCst) {
+      OAUTH_CANCEL_REQUESTED.store(false, Ordering::SeqCst);
+      return Err("Đăng nhập đã bị hủy.".to_string());
+    }
+
     if started.elapsed() > Duration::from_secs(180) {
       return Err("Google sign-in timed out".to_string());
     }
@@ -595,17 +611,171 @@ async fn open_path(app: AppHandle, path: String) -> Result<(), String> {
     Ok(())
 }
 
+const MAX_APP_LOG_BYTES: u64 = 2 * 1024 * 1024;
+const MAX_LOG_FIELD_CHARS: usize = 4_096;
+const MAX_LOG_DETAIL_CHARS: usize = 8_192;
+
+#[derive(serde::Deserialize)]
+struct AppLogEntry {
+    level: String,
+    category: String,
+    message: String,
+    detail: Option<String>,
+}
+
+fn sanitize_log_field(value: &str, max_chars: usize) -> String {
+    let collapsed: String = value
+        .chars()
+        .map(|ch| if ch == '\n' || ch == '\r' { ' ' } else { ch })
+        .collect();
+    if collapsed.chars().count() <= max_chars {
+        return collapsed;
+    }
+    collapsed.chars().take(max_chars).collect::<String>() + "…"
+}
+
+fn app_log_file_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let logs_dir = get_data_dir(app)?.join("logs");
+    std::fs::create_dir_all(&logs_dir)
+        .map_err(|e| format!("Failed to create logs dir {}: {}", logs_dir.display(), e))?;
+    Ok(logs_dir.join("app.log"))
+}
+
+fn rotate_app_log_if_needed(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let size = std::fs::metadata(path)
+        .map_err(|e| format!("Failed to stat log file {}: {}", path.display(), e))?
+        .len();
+    if size <= MAX_APP_LOG_BYTES {
+        return Ok(());
+    }
+    let backup = path.with_extension("log.1");
+    let _ = std::fs::remove_file(&backup);
+    std::fs::rename(path, &backup)
+        .map_err(|e| format!("Failed to rotate log file {}: {}", path.display(), e))
+}
+
+fn format_log_timestamp() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    format!("{millis}")
+}
+
+fn append_log_lines(app: &AppHandle, entries: &[AppLogEntry]) -> Result<(), String> {
+    if entries.is_empty() {
+        return Ok(());
+    }
+
+    let path = app_log_file_path(app)?;
+    rotate_app_log_if_needed(&path)?;
+
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| format!("Failed to open log file {}: {}", path.display(), e))?;
+
+    for entry in entries {
+        let level = sanitize_log_field(&entry.level, 16).to_uppercase();
+        let category = sanitize_log_field(&entry.category, 64);
+        let message = sanitize_log_field(&entry.message, MAX_LOG_FIELD_CHARS);
+        let detail = entry
+            .detail
+            .as_deref()
+            .map(|value| sanitize_log_field(value, MAX_LOG_DETAIL_CHARS));
+        let line = match detail {
+            Some(detail) => format!(
+                "{} | {} | {} | {} | {}\n",
+                format_log_timestamp(),
+                level,
+                category,
+                message,
+                detail
+            ),
+            None => format!(
+                "{} | {} | {} | {}\n",
+                format_log_timestamp(),
+                level,
+                category,
+                message
+            ),
+        };
+        file.write_all(line.as_bytes())
+            .map_err(|e| format!("Failed to write log file {}: {}", path.display(), e))?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn append_app_logs(app: AppHandle, entries: Vec<AppLogEntry>) -> Result<(), String> {
+    append_log_lines(&app, &entries)
+}
+
+#[tauri::command]
+async fn read_app_log_tail(app: AppHandle, max_lines: u32) -> Result<Vec<String>, String> {
+    let path = app_log_file_path(&app)?;
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read log file {}: {}", path.display(), e))?;
+    let limit = max_lines.clamp(1, 500) as usize;
+    let mut lines: Vec<String> = content
+        .lines()
+        .rev()
+        .take(limit)
+        .map(str::to_string)
+        .collect();
+    lines.reverse();
+    Ok(lines)
+}
+
+#[tauri::command]
+async fn clear_app_logs(app: AppHandle) -> Result<(), String> {
+    let path = app_log_file_path(&app)?;
+    if path.exists() {
+        std::fs::remove_file(&path)
+            .map_err(|e| format!("Failed to remove log file {}: {}", path.display(), e))?;
+    }
+    let backup = path.with_extension("log.1");
+    if backup.exists() {
+        let _ = std::fs::remove_file(&backup);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_app_log_directory(app: AppHandle) -> Result<String, String> {
+    let path = app_log_file_path(&app)?;
+    Ok(path
+        .parent()
+        .ok_or_else(|| "Invalid log directory".to_string())?
+        .to_string_lossy()
+        .to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(if cfg!(debug_assertions) {
+                        log::LevelFilter::Debug
+                    } else {
+                        log::LevelFilter::Info
+                    })
+                    .build(),
+            )?;
+            log::info!("Desktop app started");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -614,6 +784,7 @@ pub fn run() {
             save_entitlement,
             load_entitlement,
             clear_entitlement,
+            cancel_google_oauth,
             start_google_oauth,
             ensure_dir,
             read_text_file,
@@ -626,6 +797,10 @@ pub fn run() {
             file_exists,
             list_dir,
             open_path,
+            append_app_logs,
+            read_app_log_tail,
+            clear_app_logs,
+            get_app_log_directory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

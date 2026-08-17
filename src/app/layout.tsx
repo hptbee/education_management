@@ -31,6 +31,7 @@ import { ClassroomDialogProvider, ClassroomToaster } from '@/src/components/clas
 import { AppShell } from '@/src/components/AppShell'
 import { AccessGate } from '@/src/components/access-gate'
 import { ClassroomDocumentTitle } from '@/src/components/ClassroomDocumentTitle'
+import { DesktopLoggingInit } from '@/src/components/DesktopLoggingInit'
 
 export default function RootLayout({
   children,
@@ -40,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="vi" className={`light ${nunito.variable} ${baloo.variable} bg-page`}>
       <body className="antialiased font-sans">
+        <DesktopLoggingInit />
         <AuthProvider>
           <AppDataProvider>
             <PresentationModeProvider>

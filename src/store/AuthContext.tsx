@@ -2,14 +2,30 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { fetchMe, postAuthGoogle, refreshEntitlement } from "@/src/auth/api";
-import { mapApiCodeToAccessState, mapRefreshDenial, resolveAccessState, verifyEntitlementToken } from "@/src/auth/entitlement";
+import { mapApiCodeToAccessState, resolveAccessState, verifyEntitlementToken } from "@/src/auth/entitlement";
 import { loginWithGoogleDesktop, loginWithGoogleWeb } from "@/src/auth/google-login";
+import {
+  clearLoginCancel,
+  isLoginCancelRequested,
+  LoginCancelledError,
+  requestLoginCancel,
+} from "@/src/auth/login-cancel";
 import { clearAuthSession, loadAuthSession, saveAuthSession } from "@/src/auth/secure-storage";
-import type { AccessState, AuthLicense, AuthUser, EntitlementPermissions, StoredAuthSession } from "@/src/auth/types";
+import type {
+  AccessState,
+  AuthLicense,
+  AuthUser,
+  EntitlementPermissions,
+  LoginStep,
+  StoredAuthSession,
+} from "@/src/auth/types";
 import { isTauri } from "@/src/database/tauri-fs.service";
 
 interface AuthContextValue {
   isLoading: boolean;
+  isBootstrapping: boolean;
+  isLoggingIn: boolean;
+  loginStep: LoginStep | null;
   accessState: AccessState;
   user: AuthUser | null;
   license: AuthLicense | null;
@@ -18,6 +34,7 @@ interface AuthContextValue {
   lastVerifiedAt: string | null;
   offlineValidUntil: number | null;
   loginWithGoogle: (idToken?: string) => Promise<void>;
+  cancelLogin: () => void;
   refreshSession: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -30,7 +47,9 @@ function isOnline(): boolean {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginStep, setLoginStep] = useState<LoginStep | null>(null);
   const [session, setSession] = useState<StoredAuthSession | null>(null);
   const [accessState, setAccessState] = useState<AccessState>("AUTH_REQUIRED");
   const [serverDenied, setServerDenied] = useState<AccessState | null>(null);
@@ -64,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const bootstrap = useCallback(async () => {
-    setIsLoading(true);
+    setIsBootstrapping(true);
     try {
       const stored = await loadAuthSession();
       setSession(stored);
@@ -88,17 +107,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setServerDenied(null);
             await recomputeAccess(next, null);
           } else {
-            const denied = mapRefreshDenial(refreshed.code);
-            setServerDenied(denied);
-            await recomputeAccess(stored, denied);
+            const denied = mapApiCodeToAccessState(refreshed.code);
+            if (denied === "AUTH_REQUIRED") {
+              const verified = await verifyEntitlementToken(stored.entitlement);
+              const now = Math.floor(Date.now() / 1000);
+              if (verified && now <= verified.claims.offlineValidUntil) {
+                await recomputeAccess(stored, null);
+              } else {
+                setServerDenied(denied);
+                await recomputeAccess(stored, denied);
+              }
+            } else if (denied) {
+              setServerDenied(denied);
+              await recomputeAccess(stored, denied);
+            } else {
+              await recomputeAccess(stored, null);
+            }
           }
         } catch (error) {
           console.warn("[AuthProvider] bootstrap refresh persist failed:", error);
-          await recomputeAccess(stored, serverDenied);
+          await recomputeAccess(stored, null);
         }
       }
     } finally {
-      setIsLoading(false);
+      setIsBootstrapping(false);
     }
   }, [recomputeAccess]);
 
@@ -106,15 +138,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void bootstrap();
   }, [bootstrap]);
 
+  const cancelLogin = useCallback(() => {
+    requestLoginCancel();
+    if (isTauri()) {
+      void import("@tauri-apps/api/core").then(({ invoke }) => {
+        void invoke("cancel_google_oauth");
+      });
+    }
+    setIsLoggingIn(false);
+    setLoginStep(null);
+  }, []);
+
   const loginWithGoogle = useCallback(
     async (idToken?: string) => {
-      setIsLoading(true);
+      clearLoginCancel();
+      setIsLoggingIn(true);
+      setLoginStep(isTauri() ? "opening_browser" : "verifying");
       try {
         let result;
         if (idToken) {
+          if (isLoginCancelRequested()) throw new LoginCancelledError();
+          setLoginStep("verifying");
           result = await postAuthGoogle(await loginWithGoogleWeb(idToken));
         } else if (isTauri()) {
+          setLoginStep("waiting_callback");
           const oauth = await loginWithGoogleDesktop();
+          if (isLoginCancelRequested()) throw new LoginCancelledError();
+          setLoginStep("verifying");
           result = await postAuthGoogle({
             code: oauth.code,
             codeVerifier: oauth.codeVerifier,
@@ -124,11 +174,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error("Vui lòng đăng nhập bằng Google trên web.");
         }
 
+        if (isLoginCancelRequested()) throw new LoginCancelledError();
+
         if (!result.ok) {
           const denied = mapApiCodeToAccessState(result.code) ?? "AUTH_REQUIRED";
           setServerDenied(denied);
           setAccessState(denied);
-          throw new Error(result.error || "Đăng nhập thất bại. Kiểm tra cấu hình Worker (GOOGLE_CLIENT_ID_DESKTOP).");
+          throw new Error(
+            result.error || "Đăng nhập thất bại. Kiểm tra cấu hình Worker (GOOGLE_CLIENT_ID_DESKTOP).",
+          );
         }
 
         const verified = await verifyEntitlementToken(result.entitlement);
@@ -148,8 +202,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(next);
         setServerDenied(null);
         await recomputeAccess(next, null);
+      } catch (error) {
+        if (error instanceof LoginCancelledError || isLoginCancelRequested()) {
+          throw new LoginCancelledError();
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("Đăng nhập đã bị hủy")) {
+          throw new LoginCancelledError();
+        }
+        throw error;
       } finally {
-        setIsLoading(false);
+        clearLoginCancel();
+        setIsLoggingIn(false);
+        setLoginStep(null);
       }
     },
     [recomputeAccess],
@@ -186,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const me = await fetchMe(session.entitlement);
     if (!me.ok) {
-      const denied = mapRefreshDenial(me.code);
+      const denied = mapApiCodeToAccessState(me.code);
       setServerDenied(denied);
       await recomputeAccess(session, denied);
       return;
@@ -236,7 +301,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isLoading,
+      isLoading: isBootstrapping,
+      isBootstrapping,
+      isLoggingIn,
+      loginStep,
       accessState,
       user: session?.user ?? null,
       license: session?.license ?? null,
@@ -245,10 +313,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastVerifiedAt: session?.lastVerifiedAt ?? null,
       offlineValidUntil,
       loginWithGoogle,
+      cancelLogin,
       refreshSession,
       logout,
     }),
-    [accessState, isLoading, loginWithGoogle, logout, offlineValidUntil, permissions, refreshSession, session],
+    [
+      accessState,
+      isBootstrapping,
+      isLoggingIn,
+      loginStep,
+      loginWithGoogle,
+      cancelLogin,
+      logout,
+      offlineValidUntil,
+      permissions,
+      refreshSession,
+      session,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

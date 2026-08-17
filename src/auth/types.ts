@@ -11,6 +11,8 @@ export type AccessState =
   | "AUTH_REQUIRED"
   | "ONLINE_VERIFICATION_REQUIRED";
 
+export type LoginStep = "opening_browser" | "waiting_callback" | "verifying";
+
 export interface EntitlementPermissions {
   appAccess: boolean;
   cloudBackup: boolean;

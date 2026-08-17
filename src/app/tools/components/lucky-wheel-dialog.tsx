@@ -25,6 +25,7 @@ import { NamedWheel } from './named-wheel'
 import { PickerConfigPanel } from './picker-config-panel'
 import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
 import { canAnimate } from '@/src/utils/motion'
+import { playSound, startWheelTicks } from '@/src/utils/sounds'
 
 const LIST_REVEAL_DELAY_MS = 3000
 const LIST_HIDE_DURATION_MS = 450
@@ -41,6 +42,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   const { data, setWheelStudentBag, recordLuckyWheelSelection } = useAppData()
   const { showConfirm } = useClassroomDialog()
   const animationsEnabled = data?.appSettings.animationsEnabled ?? true
+  const soundEnabled = data?.appSettings.soundEnabled ?? true
   const allowMotion = canAnimate(animationsEnabled)
   const bagRef = useRef<string[]>([])
   const wheelStudentBag = data?.wheelStudentBag
@@ -75,8 +77,11 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stopWheelTicksRef = useRef<(() => void) | null>(null)
 
   const clearTimers = useCallback(() => {
+    stopWheelTicksRef.current?.()
+    stopWheelTicksRef.current = null
     ;[revealTimeoutRef, spinTimeoutRef, hideTimeoutRef, autoAdvanceRef].forEach((ref) => {
       if (ref.current) {
         clearTimeout(ref.current)
@@ -255,8 +260,11 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
       setWinner(null)
 
       const finishSpin = () => {
+        stopWheelTicksRef.current?.()
+        stopWheelTicksRef.current = null
         setWinner(target)
         setIsSpinning(false)
+        playSound('wheel-result', { enabled: soundEnabled })
         if (allowMotion) {
           confetti({ particleCount: 120, spread: 90, origin: { y: 0.45 } })
         }
@@ -276,13 +284,14 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
         setIsPreparing(false)
         setIsSpinning(true)
         setRotation((current) => getWinnerRotation(current, winnerIndex, wheelPool.length, plan.extraTurns))
+        stopWheelTicksRef.current = startWheelTicks(plan.durationMs, soundEnabled)
 
         spinTimeoutRef.current = setTimeout(() => {
           finishSpin()
         }, plan.durationMs)
       }, LIST_HIDE_DURATION_MS)
     },
-    [clearTimers, wheelStudents, allowMotion],
+    [clearTimers, wheelStudents, allowMotion, soundEnabled],
   )
 
   const recordSessionPick = useCallback((studentId: string) => {

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { AlertTriangle, Sprout, WifiOff, type LucideIcon } from "lucide-react";
-import { ClassroomButton, ClassroomCard, ClassroomSkeleton, useClassroomDialog } from "@/src/components/classroom";
+import { AuthBootstrapProgress, AuthLoginProgress } from "@/src/components/auth-login-progress";
+import { ClassroomButton, ClassroomCard, useClassroomDialog } from "@/src/components/classroom";
+import { LoginCancelledError } from "@/src/auth/login-cancel";
 import { useAuth } from "@/src/store/AuthContext";
 import { getGoogleClientId } from "@/src/auth/api";
 import type { AccessState } from "@/src/auth/types";
@@ -48,17 +50,25 @@ const MESSAGES: Partial<Record<AccessState, GateMessage>> = {
   },
 };
 
-function GoogleSignInButton({ onCredential }: { onCredential: (idToken: string) => void }) {
+function GoogleSignInButton({
+  onCredential,
+  disabled,
+}: {
+  onCredential: (idToken: string) => void;
+  disabled?: boolean;
+}) {
   const buttonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isTauri()) return;
+    if (isTauri() || disabled) return;
     const clientId = getGoogleClientId();
     if (!clientId || !buttonRef.current) return;
 
     const scriptId = "google-gsi-script";
     const renderButton = () => {
-      const google = (window as unknown as { google?: { accounts: { id: { initialize: Function; renderButton: Function } } } }).google;
+      const google = (window as unknown as {
+        google?: { accounts: { id: { initialize: Function; renderButton: Function } } };
+      }).google;
       if (!google?.accounts?.id || !buttonRef.current) return;
       google.accounts.id.initialize({
         client_id: clientId,
@@ -87,10 +97,16 @@ function GoogleSignInButton({ onCredential }: { onCredential: (idToken: string) 
     script.defer = true;
     script.onload = renderButton;
     document.body.appendChild(script);
-  }, [onCredential]);
+  }, [disabled, onCredential]);
 
   if (isTauri()) return null;
-  return <div ref={buttonRef} className="flex justify-center" />;
+  return (
+    <div
+      ref={buttonRef}
+      className={`flex justify-center ${disabled ? "pointer-events-none opacity-50" : ""}`}
+      aria-disabled={disabled || undefined}
+    />
+  );
 }
 
 function formatLoginError(error: unknown): string {
@@ -102,13 +118,23 @@ function formatLoginError(error: unknown): string {
 }
 
 export function AccessGate({ children }: { children: React.ReactNode }) {
-  const { isLoading, accessState, loginWithGoogle, refreshSession, logout } = useAuth();
+  const {
+    isBootstrapping,
+    isLoggingIn,
+    loginStep,
+    accessState,
+    loginWithGoogle,
+    cancelLogin,
+    refreshSession,
+    logout,
+  } = useAuth();
   const { showAlert } = useClassroomDialog();
 
   const handleLogin = async (token?: string) => {
     try {
       await loginWithGoogle(token);
     } catch (error) {
+      if (error instanceof LoginCancelledError) return;
       await showAlert(formatLoginError(error), {
         title: "Đăng nhập thất bại",
         variant: "error",
@@ -119,12 +145,12 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
   const allowed =
     accessState === "AUTHENTICATED_AND_ACTIVE" || accessState === "OFFLINE_GRACE";
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-page">
-        <ClassroomSkeleton />
-      </div>
-    );
+  if (isBootstrapping) {
+    return <AuthBootstrapProgress />;
+  }
+
+  if (isLoggingIn && loginStep) {
+    return <AuthLoginProgress step={loginStep} onCancel={cancelLogin} />;
   }
 
   if (allowed) {
@@ -149,11 +175,14 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
           {accessState === "AUTH_REQUIRED" ? (
             <>
               {isTauri() ? (
-                <ClassroomButton onClick={() => void handleLogin()}>
+                <ClassroomButton disabled={isLoggingIn} onClick={() => void handleLogin()}>
                   Đăng nhập bằng Google
                 </ClassroomButton>
               ) : (
-                <GoogleSignInButton onCredential={(token) => void handleLogin(token)} />
+                <GoogleSignInButton
+                  disabled={isLoggingIn}
+                  onCredential={(token) => void handleLogin(token)}
+                />
               )}
             </>
           ) : (

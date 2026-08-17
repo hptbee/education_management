@@ -5,6 +5,7 @@ import { backupMetadataService } from "./backup-metadata.service";
 import { loadAuthSession } from "@/src/auth/secure-storage";
 import { verifyEntitlementToken } from "@/src/auth/entitlement";
 import { sanitizeBackupIdentifier } from "../safeIdentifiers";
+import { logAppEvent } from "@/src/logging/app-log";
 
 export interface BackupUploadRequest {
   classroomId: string;
@@ -254,9 +255,17 @@ export class CloudBackupScheduler {
         this.pendingDb = null;
         this.failureCount = 0;
         this.setState("synced", null);
+        logAppEvent("info", "cloud-backup", "Cloud backup uploaded", {
+          classroomId: uploadedId,
+          updatedAt: uploadedAt,
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      logAppEvent("error", "cloud-backup", message, {
+        classroomId: db.metadata.id,
+        updatedAt: db.metadata.updatedAt,
+      });
       await backupMetadataService.recordCloudBackupFailure(db.metadata.id, message);
       this.failureCount += 1;
       this.setState("failed", message);
@@ -281,6 +290,28 @@ export class CloudBackupScheduler {
 
   getState(): CloudBackupState {
     return this.state;
+  }
+
+  getLastError(): string | null {
+    return this.lastError;
+  }
+
+  /** Skip debounce and upload immediately (manual retry). */
+  async triggerUploadNow(db: ClassroomDatabase): Promise<void> {
+    if (!(await this.canUpload(db))) {
+      this.pendingDb = null;
+      this.setState("disabled", null);
+      return;
+    }
+
+    this.pendingDb = db;
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    void backupMetadataService.recordCloudBackupPending(db.metadata.id);
+    this.setState("pending", null);
+    await this.flushPending();
   }
 }
 

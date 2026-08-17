@@ -9,6 +9,7 @@ import type { Recognition, Student } from '@/src/types/models'
 import { getStudentAvatar } from '@/src/utils/student'
 import { dedupeRecognitionsByStudent } from '@/src/utils/recognition'
 import { canAnimate } from '@/src/utils/motion'
+import { playSound } from '@/src/utils/sounds'
 import { ClassroomButton, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface CelebrationOverlayProps {
@@ -16,6 +17,7 @@ interface CelebrationOverlayProps {
   students: Student[]
   badges: { id: string; name: string; icon?: string }[]
   animationsEnabled: boolean
+  soundEnabled: boolean
   onClose: () => void
   onRecognizeMore: () => void
 }
@@ -159,6 +161,7 @@ export function CelebrationOverlay({
   students,
   badges,
   animationsEnabled,
+  soundEnabled,
   onClose,
   onRecognizeMore,
 }: CelebrationOverlayProps) {
@@ -188,6 +191,15 @@ export function CelebrationOverlay({
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!soundEnabled) return
+    playSound('recognition', { enabled: soundEnabled })
+    const applauseTimer = window.setTimeout(() => {
+      playSound('applause', { enabled: soundEnabled })
+    }, 400)
+    return () => window.clearTimeout(applauseTimer)
+  }, [soundEnabled])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow

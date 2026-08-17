@@ -260,6 +260,7 @@ export function RecognitionFormSection({
           students={students}
           badges={badges}
           animationsEnabled={data.appSettings.animationsEnabled}
+          soundEnabled={data.appSettings.soundEnabled}
           onClose={() => setCelebrationRecords(null)}
           onRecognizeMore={() => setCelebrationRecords(null)}
         />

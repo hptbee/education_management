@@ -6,6 +6,7 @@ import type { PointAction, PointHistorySource, Student } from '@/src/types/model
 import { useAppData } from '@/src/store/AppDataContext'
 import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 import { createId } from '@/src/utils/id'
+import { playSound } from '@/src/utils/sounds'
 
 export type PointsDialogMode = 'add' | 'subtract'
 
@@ -100,6 +101,9 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
     }
 
     applyPoints(student.id, action, undefined, source)
+    playSound(isAdd ? 'success' : 'wrong-answer', {
+      enabled: data?.appSettings.soundEnabled ?? true,
+    })
     onClose()
   }
 

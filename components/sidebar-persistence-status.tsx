@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import {
   formatSidebarCloudLine,
   getPlanBadgeLabel,
 } from '@/src/app/settings/components/account-plan-display'
+import { isCloudBackupConfigured } from '@/src/database/backup/cloud-backup.service'
 import { useAppData } from '@/src/store/AppDataContext'
 import type { LocalSaveStatus } from '@/src/store/AppDataContext'
 import { useAuth } from '@/src/store/AuthContext'
@@ -48,6 +50,7 @@ function getCloudStatus(
   hasCloudBackupPermission: boolean,
   classroomOptIn: boolean,
   cloudBackupState: string,
+  cloudConfigured: boolean,
 ): { label: string; tone: string; icon: StatusIconConfig } {
   if (!hasCloudBackupPermission) {
     return {
@@ -63,6 +66,13 @@ function getCloudStatus(
       icon: { icon: CloudOff, tone: 'text-slate-400' },
     }
   }
+  if (!cloudConfigured) {
+    return {
+      label: 'Chưa cấu hình',
+      tone: 'text-amber-600',
+      icon: { icon: CloudOff, tone: 'text-amber-600' },
+    }
+  }
   if (cloudBackupState === 'uploading' || cloudBackupState === 'pending') {
     return {
       label: 'Đang sao lưu...',
@@ -75,6 +85,13 @@ function getCloudStatus(
       label: 'Đã sao lưu',
       tone: 'text-emerald-600',
       icon: { icon: CheckCircle2, tone: 'text-emerald-600' },
+    }
+  }
+  if (cloudBackupState === 'failed') {
+    return {
+      label: 'Sao lưu thất bại',
+      tone: 'text-rose-600',
+      icon: { icon: AlertCircle, tone: 'text-rose-600' },
     }
   }
   return {
@@ -95,15 +112,39 @@ function StatusIcon({ config }: { config: StatusIconConfig }) {
 }
 
 export function SidebarPersistenceStatus() {
-  const { localSaveStatus, cloudBackupState, saveError, retrySave, data } = useAppData()
-  const { permissions, license } = useAuth()
+  const {
+    localSaveStatus,
+    cloudBackupState,
+    cloudBackupError,
+    saveError,
+    retrySave,
+    retryCloudBackup,
+    data,
+  } = useAppData()
+  const { permissions, license, entitlement } = useAuth()
+  const [cloudConfigured, setCloudConfigured] = useState(false)
+
   const hasCloudBackupPermission = permissions?.cloudBackup === true
   const classroomOptIn = Boolean(data?.appSettings?.cloudBackupEnabled)
 
+  useEffect(() => {
+    void isCloudBackupConfigured().then(setCloudConfigured)
+  }, [entitlement, data?.metadata.id, data?.appSettings.cloudBackupEnabled])
+
   const local = getLocalStatus(localSaveStatus)
-  const cloud = getCloudStatus(hasCloudBackupPermission, classroomOptIn, cloudBackupState)
+  const cloud = getCloudStatus(
+    hasCloudBackupPermission,
+    classroomOptIn,
+    cloudBackupState,
+    cloudConfigured,
+  )
   const cloudLine = formatSidebarCloudLine(license?.plan, cloud.label)
   const planLabel = getPlanBadgeLabel(license?.plan)
+  const showCloudRetry =
+    classroomOptIn &&
+    hasCloudBackupPermission &&
+    cloudConfigured &&
+    cloudBackupState === 'failed'
 
   return (
     <div className="space-y-1.5 px-1 pb-2 text-xs font-bold leading-tight">
@@ -130,6 +171,23 @@ export function SidebarPersistenceStatus() {
           <span>{cloudLine}</span>
         </p>
       </Link>
+      {cloudBackupError && cloudBackupState === 'failed' ? (
+        <p className="px-1 text-[11px] font-semibold leading-snug text-rose-600">{cloudBackupError}</p>
+      ) : null}
+      {!classroomOptIn && hasCloudBackupPermission ? (
+        <p className="px-1 text-[11px] font-semibold leading-snug text-slate-500">
+          Vào Cài đặt → Tài khoản để bật sao lưu đám mây cho lớp này.
+        </p>
+      ) : null}
+      {showCloudRetry ? (
+        <button
+          type="button"
+          onClick={() => void retryCloudBackup()}
+          className="min-h-11 w-full cursor-pointer rounded-xl border border-rose-200 bg-white px-2 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-50"
+        >
+          Thử sao lưu đám mây lại
+        </button>
+      ) : null}
       {saveError ? (
         <div className="space-y-1.5">
           <p className="text-rose-600">{saveError}</p>

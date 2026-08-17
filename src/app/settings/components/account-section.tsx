@@ -18,6 +18,7 @@ import { databaseService } from '@/src/database/database.service'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useAuth } from '@/src/store/AuthContext'
 import { cn } from '@/lib/utils'
+import { AppLogSection } from './app-log-section'
 import {
   formatLicenseExpiryDate,
   getCloudBackupStatusText,
@@ -381,6 +382,8 @@ export function AccountSection() {
         currentPlan={license?.plan}
         onClose={() => setBenefitsOpen(false)}
       />
+
+      <AppLogSection />
     </>
   )
 }

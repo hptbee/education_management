@@ -1,4 +1,5 @@
 import { getGoogleClientId } from "./api";
+import { isLoginCancelRequested, LoginCancelledError } from "./login-cancel";
 import { isTauri } from "@/src/database/tauri-fs.service";
 
 function randomString(length: number): string {
@@ -31,10 +32,25 @@ export async function loginWithGoogleDesktop(): Promise<{
 
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
-    const callback = await invoke<{ code: string; redirect_uri: string }>("start_google_oauth", {
-      clientId,
-      codeChallenge,
-    });
+    if (isLoginCancelRequested()) {
+      throw new LoginCancelledError();
+    }
+    let callback: { code: string; redirect_uri: string };
+    try {
+      callback = await invoke<{ code: string; redirect_uri: string }>("start_google_oauth", {
+        clientId,
+        codeChallenge,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (isLoginCancelRequested() || message.includes("Đăng nhập đã bị hủy")) {
+        throw new LoginCancelledError();
+      }
+      throw error;
+    }
+    if (isLoginCancelRequested()) {
+      throw new LoginCancelledError();
+    }
     try {
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
       await getCurrentWindow().setFocus();
