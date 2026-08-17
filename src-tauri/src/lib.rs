@@ -167,11 +167,11 @@ fn save_entitlement(app: AppHandle, payload: String) -> Result<(), String> {
     .set_password(&payload)
     .map_err(|e| format!("Failed to save entitlement to secure storage: {}", e))?;
 
+  // Keep an app-data backup so reopen still works if the OS keychain read fails later.
   let data_dir = get_data_dir(&app)?;
   let path = data_dir.join("entitlement.sec");
-  if path.exists() {
-    let _ = std::fs::remove_file(&path);
-  }
+  std::fs::write(&path, &payload)
+    .map_err(|e| format!("Failed to write entitlement backup: {}", e))?;
 
   Ok(())
 }
@@ -286,8 +286,29 @@ fn write_http_response(stream: &mut std::net::TcpStream, status: &str, body: &st
   let _ = stream.flush();
 }
 
+fn focus_app_window(app: &AppHandle) {
+  #[cfg(target_os = "windows")]
+  {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{AllowSetForegroundWindow, ASFW_ANY};
+    unsafe {
+      AllowSetForegroundWindow(ASFW_ANY);
+    }
+  }
+
+  for (_, window) in app.webview_windows() {
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+    break;
+  }
+}
+
 #[tauri::command]
-async fn start_google_oauth(client_id: String, code_challenge: String) -> Result<GoogleOAuthCallback, String> {
+async fn start_google_oauth(
+  app: AppHandle,
+  client_id: String,
+  code_challenge: String,
+) -> Result<GoogleOAuthCallback, String> {
   use std::io::Read;
   use std::net::TcpListener;
   use std::time::{Duration, Instant};
@@ -334,8 +355,9 @@ async fn start_google_oauth(client_id: String, code_challenge: String) -> Result
         write_http_response(
           &mut stream,
           "200 OK",
-          "Đăng nhập thành công. Bạn có thể quay lại ứng dụng.",
+          "Đăng nhập thành công. Ứng dụng sẽ được đưa lên trước.",
         );
+        focus_app_window(&app);
         return Ok(GoogleOAuthCallback {
           code,
           redirect_uri,

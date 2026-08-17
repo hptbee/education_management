@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as jose from "jose";
-import { mapApiCodeToAccessState, resolveAccessState, verifyEntitlementToken } from "./entitlement";
+import { mapApiCodeToAccessState, mapRefreshDenial, resolveAccessState, verifyEntitlementToken } from "./entitlement";
 import type { EntitlementClaims } from "./types";
 
 const baseClaims: EntitlementClaims = {
@@ -139,6 +139,17 @@ describe("mapApiCodeToAccessState", () => {
 
   it("returns null for unknown codes", () => {
     expect(mapApiCodeToAccessState("UNKNOWN")).toBeNull();
+  });
+});
+
+describe("mapRefreshDenial", () => {
+  it("ignores AUTH_REQUIRED so local session can stay valid", () => {
+    expect(mapRefreshDenial("AUTH_REQUIRED")).toBeNull();
+  });
+
+  it("maps account and license lockouts", () => {
+    expect(mapRefreshDenial("LICENSE_EXPIRED")).toBe("LICENSE_EXPIRED");
+    expect(mapRefreshDenial("ACCOUNT_DISABLED")).toBe("ACCOUNT_DISABLED");
   });
 });
 

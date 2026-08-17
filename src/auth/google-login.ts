@@ -35,6 +35,12 @@ export async function loginWithGoogleDesktop(): Promise<{
       clientId,
       codeChallenge,
     });
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().setFocus();
+    } catch {
+      // Best-effort; Rust side also tries to focus after OAuth callback.
+    }
     if (!callback.code) {
       throw new Error("Không nhận được mã xác thực Google.");
     }

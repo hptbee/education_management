@@ -94,3 +94,9 @@ export function mapApiCodeToAccessState(code: string | undefined): AccessState |
       return null;
   }
 }
+
+/** Refresh/me failures with AUTH_REQUIRED should not wipe a locally verifiable session. */
+export function mapRefreshDenial(code: string | undefined): AccessState | null {
+  const denied = mapApiCodeToAccessState(code);
+  return denied === "AUTH_REQUIRED" ? null : denied;
+}

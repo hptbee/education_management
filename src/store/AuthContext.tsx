@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { fetchMe, postAuthGoogle, refreshEntitlement } from "@/src/auth/api";
-import { mapApiCodeToAccessState, resolveAccessState, verifyEntitlementToken } from "@/src/auth/entitlement";
+import { mapApiCodeToAccessState, mapRefreshDenial, resolveAccessState, verifyEntitlementToken } from "@/src/auth/entitlement";
 import { loginWithGoogleDesktop, loginWithGoogleWeb } from "@/src/auth/google-login";
 import { clearAuthSession, loadAuthSession, saveAuthSession } from "@/src/auth/secure-storage";
 import type { AccessState, AuthLicense, AuthUser, EntitlementPermissions, StoredAuthSession } from "@/src/auth/types";
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setServerDenied(null);
             await recomputeAccess(next, null);
           } else {
-            const denied = mapApiCodeToAccessState(refreshed.code);
+            const denied = mapRefreshDenial(refreshed.code);
             setServerDenied(denied);
             await recomputeAccess(stored, denied);
           }
@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const me = await fetchMe(session.entitlement);
     if (!me.ok) {
-      const denied = mapApiCodeToAccessState(me.code);
+      const denied = mapRefreshDenial(me.code);
       setServerDenied(denied);
       await recomputeAccess(session, denied);
       return;

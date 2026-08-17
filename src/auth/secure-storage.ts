@@ -10,7 +10,8 @@ export async function loadAuthSession(): Promise<StoredAuthSession | null> {
       const raw = await invoke<string | null>("load_entitlement");
       if (!raw) return null;
       return JSON.parse(raw) as StoredAuthSession;
-    } catch {
+    } catch (error) {
+      console.warn("[secure-storage] loadAuthSession failed:", error);
       return null;
     }
   }
