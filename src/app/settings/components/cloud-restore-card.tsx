@@ -4,7 +4,10 @@ import { CloudDownload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ClassroomButton, ClassroomCard, useClassroomDialog } from '@/src/components/classroom'
 import { listCloudClassrooms, restoreCloudClassroom } from '@/src/auth/api'
-import { isCloudBackupConfigured } from '@/src/database/backup/cloud-backup.service'
+import {
+  getCloudBackupUrl,
+  isEntitlementConfigured,
+} from '@/src/database/backup/cloud-backup.service'
 import type { ClassroomDatabase } from '@/src/database/types'
 import { useAuth } from '@/src/store/AuthContext'
 
@@ -24,7 +27,6 @@ export function CloudRestoreCard({
 }: CloudRestoreCardProps) {
   const { entitlement, permissions } = useAuth()
   const { showConfirm } = useClassroomDialog()
-  const [cloudConfigured, setCloudConfigured] = useState(false)
   const [cloudClassrooms, setCloudClassrooms] = useState<
     { classroomId: string; updatedAt: string | null; size: number }[]
   >([])
@@ -33,15 +35,14 @@ export function CloudRestoreCard({
   const [cloudError, setCloudError] = useState<string | null>(null)
 
   const hasCloudBackupPermission = permissions?.cloudBackup === true
-  const showCloudFeatures = cloudConfigured && hasCloudBackupPermission
+  const hasWorkerUrl = Boolean(getCloudBackupUrl())
+  const hasPublicKey = isEntitlementConfigured()
+  const cloudEnvReady = hasWorkerUrl && hasPublicKey
+  const canUseCloudRestore = Boolean(entitlement) && hasCloudBackupPermission && cloudEnvReady
   const showCloudUpgradeNote = Boolean(entitlement) && !hasCloudBackupPermission
 
   useEffect(() => {
-    void isCloudBackupConfigured().then(setCloudConfigured)
-  }, [entitlement, reloadKey])
-
-  useEffect(() => {
-    if (!cloudConfigured || !entitlement || !hasCloudBackupPermission) {
+    if (!canUseCloudRestore || !entitlement) {
       setCloudClassrooms([])
       return
     }
@@ -52,7 +53,7 @@ export function CloudRestoreCard({
       .then(setCloudClassrooms)
       .catch(() => setCloudError('Không tải được danh sách lớp trên đám mây.'))
       .finally(() => setLoadingCloud(false))
-  }, [cloudConfigured, entitlement, hasCloudBackupPermission, reloadKey])
+  }, [canUseCloudRestore, entitlement, reloadKey])
 
   const handleRestoreFromCloud = async (classroomId: string) => {
     if (!entitlement) return
@@ -83,6 +84,10 @@ export function CloudRestoreCard({
     }
   }
 
+  if (!entitlement) {
+    return null
+  }
+
   if (showCloudUpgradeNote) {
     return (
       <ClassroomCard>
@@ -94,15 +99,26 @@ export function CloudRestoreCard({
     )
   }
 
-  if (!showCloudFeatures) {
-    return null
+  if (!cloudEnvReady) {
+    return (
+      <ClassroomCard>
+        <h2 className="font-display text-lg font-extrabold text-slate-800">Khôi phục từ đám mây</h2>
+        <p className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          Sao lưu đám mây chưa cấu hình trong bản cài này
+          {!hasWorkerUrl ? ' (thiếu URL Worker)' : ''}
+          {!hasPublicKey ? ' (thiếu khóa entitlement)' : ''}. Với bản .exe, hãy build lại sau khi cập nhật
+          `.env.local`, hoặc đăng xuất và đăng nhập lại.
+        </p>
+      </ClassroomCard>
+    )
   }
 
   return (
     <ClassroomCard>
       <h2 className="font-display text-lg font-extrabold text-slate-800">Khôi phục từ đám mây</h2>
       <p className="mt-1 text-sm font-semibold text-slate-500">
-        Tải lớp đã sao lưu trên tài khoản của cô về thiết bị này.
+        Tải lớp đã sao lưu trên tài khoản của cô về thiết bị này (không tự đồng bộ — bấm Khôi phục cho
+        mỗi lớp).
       </p>
       {cloudError ? (
         <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
@@ -113,7 +129,8 @@ export function CloudRestoreCard({
         <p className="mt-4 text-sm font-semibold text-slate-500">Đang tải danh sách...</p>
       ) : cloudClassrooms.length === 0 ? (
         <p className="mt-4 rounded-2xl bg-surface-soft px-4 py-3 text-sm font-semibold text-slate-500">
-          Chưa có lớp nào được sao lưu trên đám mây.
+          Chưa có lớp nào được sao lưu trên đám mây. Trên máy cũ, bật sao lưu đám mây cho lớp và lưu
+          lại trước khi khôi phục ở đây.
         </p>
       ) : (
         <ul className="mt-4 grid gap-2">
