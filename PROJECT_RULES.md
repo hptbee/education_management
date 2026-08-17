@@ -100,7 +100,7 @@ All feature data belongs to the currently active classroom database.
 
 Switching pages must NOT reset the active classroom.
 
-**Auth:** Google sign-in is required (`AccessGate` in `layout.tsx`). Local classrooms persist across lock/logout. See `docs/ACCOUNTS.md`.
+**Auth:** Google sign-in is required (`AccessGate` in `layout.tsx`). Local classrooms persist across lock/logout. Web uses GIS `idToken`; Tauri uses PKCE loopback with separate Desktop OAuth client — see `docs/ACCOUNTS.md`.
 
 ---
 

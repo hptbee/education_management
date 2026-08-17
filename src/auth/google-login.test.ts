@@ -59,7 +59,10 @@ describe("loginWithGoogleDesktop", () => {
     vi.mocked(isTauri).mockReturnValue(true);
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = "client-id";
     vi.doMock("@tauri-apps/api/core", () => ({
-      invoke: vi.fn().mockResolvedValue("http://localhost/callback?code=abc123"),
+      invoke: vi.fn().mockResolvedValue({
+        code: "abc123",
+        redirect_uri: "http://localhost/callback",
+      }),
     }));
     const result = await loginWithGoogleDesktop();
     expect(result.code).toBe("abc123");

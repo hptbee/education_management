@@ -19,7 +19,8 @@ See also: [`workers/cloud-backup/README.md`](../workers/cloud-backup/README.md)
 
 ```env
 NEXT_PUBLIC_CLOUD_BACKUP_URL=https://classroom-cloud-backup.phuontun-01.workers.dev
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=<your-client-id>.apps.googleusercontent.com
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<web-application-client-id>.apps.googleusercontent.com
+NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP=<desktop-app-client-id>.apps.googleusercontent.com
 NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
 ...
 -----END PUBLIC KEY-----"
@@ -27,13 +28,19 @@ NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
 
 Restart `npm run dev` or `npm run tauri:dev` after changing env.
 
+**Tauri production builds:** `NEXT_PUBLIC_*` values are embedded at **Next.js build time**. After changing `.env.local`, run `npm run tauri:build` again so the `.exe` picks up new client IDs or entitlement keys.
+
 ### 2. Worker secrets
 
 ```bash
 cd workers/cloud-backup
-npx wrangler secret put GOOGLE_CLIENT_ID          # same value as NEXT_PUBLIC_GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_ID          # Web application client (id_token audience)
+npx wrangler secret put GOOGLE_CLIENT_ID_DESKTOP  # Desktop app client (PKCE code exchange)
+npx wrangler secret put GOOGLE_CLIENT_SECRET      # Desktop client secret — Worker only; never in the app
 npx wrangler secret put ENTITLEMENT_PRIVATE_KEY   # PKCS#8 PEM (pair of public key above)
 npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB  # optional: Google `sub` for first admin
+# Optional — comma-separated browser origins; default is permissive CORS when unset
+# npx wrangler secret put CORS_ALLOWED_ORIGINS
 npx wrangler deploy
 ```
 
@@ -67,14 +74,28 @@ Console: [Google Cloud → Credentials](https://console.cloud.google.com/apis/cr
 
 ### Client IDs (you may need two)
 
-| Platform | Client type | Configuration |
-|---|---|---|
-| **Web** (`npm run dev`) | Web application | **Authorized JavaScript origins:** `http://localhost:3000` (add `http://127.0.0.1:3000` if you use that URL) |
-| **Tauri** (`npm run tauri:dev`) | Desktop app | PKCE loopback `http://127.0.0.1:<port>/oauth/callback` (dynamic port; Desktop client type handles this) |
+| Platform | Client type | App env | Worker secret/var |
+|---|---|---|---|
+| **Web** (`npm run dev`) | Web application | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_ID` |
+| **Tauri** (`.exe`) | Desktop app | `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` | `GOOGLE_CLIENT_ID_DESKTOP` |
 
-Use the matching client ID in `.env.local` and `GOOGLE_CLIENT_ID` Worker secret for the platform you are testing.
+Web: add **Authorized JavaScript origins** `http://localhost:3000` (and `http://127.0.0.1:3000` if needed).  
+Desktop: PKCE loopback `http://127.0.0.1:<port>/oauth/callback` (dynamic port).
 
-**Do not** put the Google **client secret** in the React app or `.env.local`. This app uses public OAuth (PKCE / id_token).
+Use the matching client ID in `.env.local` and Worker for each platform you test.
+
+**Do not** put the Google **client secret** in the React app or `.env.local`. Set `GOOGLE_CLIENT_SECRET` on the Worker only (`wrangler secret put GOOGLE_CLIENT_SECRET`).
+
+### Auth flows (app)
+
+| Runtime | Google proof | App env | Worker validates with |
+|---|---|---|---|
+| Web dev (`npm run dev`) | Google Identity Services → `idToken` | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_ID` |
+| Tauri `.exe` | PKCE loopback → `code` + `codeVerifier` + `redirectUri` | `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` | `GOOGLE_CLIENT_ID_DESKTOP` + optional `GOOGLE_CLIENT_SECRET` |
+
+The app picks the client via `getGoogleClientId()` in `src/auth/api.ts` (`isTauri()` → desktop ID). Tauri opens the browser with `rundll32 url.dll,FileProtocolHandler` on Windows so `&` in the OAuth query string is not truncated.
+
+Worker failures and missing entitlement verification surface as login errors in the UI (not a silent return to the lock screen).
 
 ### Common Google errors
 
@@ -83,6 +104,8 @@ Use the matching client ID in `.env.local` and `GOOGLE_CLIENT_ID` Worker secret 
 | `no registered origin` / `401 invalid_client` | Add exact browser origin to **Authorized JavaScript origins** (Web client) |
 | `access blocked` | Add email to OAuth consent screen **Test users** |
 | `redirect_uri_mismatch` (Tauri) | Use **Desktop app** client, not Web client |
+| `response_type` missing (Windows `.exe`) | OAuth URL must not go through unquoted `cmd start` (query `&` was truncated). Use a current `.exe` build (`rundll32` launcher). |
+| Browser shows success on `127.0.0.1` but app stays on login | Worker `POST /auth/google` failed or entitlement verify failed — check alert text; verify `GOOGLE_CLIENT_ID_DESKTOP`, `GOOGLE_CLIENT_SECRET`, and `NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY` in the **built** app |
 
 ---
 
@@ -150,9 +173,13 @@ Local classroom files are **never deleted** on lock, logout, disable, or license
 
 ## Cloud backup
 
+### Plan gating
+
+Cloud backup requires `permissions.cloudBackup` on the entitlement — **premium** or **lifetime** plans only. **Trial** and **basic** can use the app but cannot upload, list, or restore from R2.
+
 ### Opt-in
 
-**Cài đặt → Dữ liệu** → enable **Tự động sao lưu lớp này lên đám mây** per classroom.
+**Cài đặt → Dữ liệu** → enable **Tự động sao lưu lớp này lên đám mây** per classroom (tab hidden unless `SETTINGS_TABS.showDataTab`).
 
 First login does **not** auto-upload all local classes. **Tài khoản** tab may prompt to enable backup for the current class.
 
@@ -167,6 +194,29 @@ Legacy `backups/{deviceId}/...` objects are **not** migrated automatically.
 ### Restore
 
 **Cài đặt → Dữ liệu → Khôi phục từ đám mây** — lists cloud classrooms; confirm before import. Non-2xx list responses throw a parsed Worker error (empty list only when HTTP 200 returns no classrooms). The **Dữ liệu** tab is hidden by default (`SETTINGS_TABS.showDataTab`).
+
+Import does **not** overwrite a classroom that already exists locally with the same `metadata.id` — delete or export the local class first, or restore onto a machine that does not already have that id.
+
+### Multi-device usage (not sync)
+
+Cloud backup is **upload + manual restore**, not bidirectional sync between PCs.
+
+| Question | Answer |
+|---|---|
+| Same Google account on PC1 and PC2? | Yes — one R2 namespace: `users/{userId}/classrooms/{classroomId}/...` |
+| Does login on PC2 pull cloud data? | **No.** Each PC keeps its own local JSON files. |
+| When does cloud update? | After a **local save** on that PC, when cloud backup is **enabled for that class** (~30s debounce). |
+| What if PC2 saves with an old local copy? | **Last upload wins** — `PUT /backup` replaces the whole cloud file; no merge. |
+| How to get PC1’s data on PC2? | Manual **Khôi phục từ đám mây** (Dữ liệu tab), before editing, if that class id is not already on PC2. |
+| Back on PC1 the next day? | PC1 still shows **PC1 local** until you restore from cloud or edit locally; saving may upload PC1 local and overwrite cloud again. |
+
+**Recommended workflow when switching machines:**
+
+1. On the machine you finished on — wait for cloud upload (after last save; ~30s).
+2. On the other machine — restore from cloud **before** scoring or editing that class (if the class id is not already present locally).
+3. Avoid editing the same class on two PCs without restore — otherwise whichever PC uploads last replaces the cloud copy.
+
+`checkStartupBackup` only compares **local** `metadata.updatedAt` to this device’s backup metadata — it does **not** compare to the cloud timestamp.
 
 ---
 
@@ -240,9 +290,35 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -d '{"userId":"usr_xxx","plan":"premium","expiresAt":"2027-12-31T00:00:00.000Z"}' \
   https://classroom-cloud-backup.phuontun-01.workers.dev/admin/licenses
+
+# Upgrade existing license to lifetime (no expiry)
+curl -X PATCH \
+  -H "Authorization: Bearer $ADMIN_ENTITLEMENT" \
+  -H "Content-Type: application/json" \
+  -d '{"plan":"lifetime","status":"active","expiresAt":null}' \
+  https://classroom-cloud-backup.phuontun-01.workers.dev/admin/licenses/lic_xxx
 ```
 
-There is **no admin UI** in the app — API + docs only.
+### Option C — D1 direct (no admin JWT)
+
+Use when you have Wrangler access but no admin entitlement handy. **Always bump `license_version`** so refresh picks up the new plan.
+
+```bash
+cd workers/cloud-backup
+
+# Find user id
+npx wrangler d1 execute classroom-app --remote --command \
+  "SELECT id, email, license_version FROM users WHERE email='teacher@example.com'"
+
+# Upgrade active license to lifetime (replace ids)
+npx wrangler d1 execute classroom-app --remote --command \
+  "UPDATE licenses SET plan='lifetime', status='active', expires_at=NULL, updated_at=datetime('now') WHERE id='lic_xxx'; \
+   UPDATE users SET license_version=license_version+1, updated_at=datetime('now') WHERE id='usr_xxx';"
+```
+
+The teacher must **sign in again** or wait for online refresh after an admin change.
+
+There is **no admin UI** in the app — API + Wrangler D1 only.
 
 ---
 
@@ -264,7 +340,8 @@ Never store entitlements in classroom JSON, IndexedDB, `localStorage`, or settin
 | Symptom | Likely cause |
 |---|---|
 | `POST /auth/google` **404** | Old Worker not deployed — run `npx wrangler deploy` from `workers/cloud-backup` |
-| `POST /auth/google` **401** | Invalid Google token, or `GOOGLE_CLIENT_ID` secret mismatch |
+| `POST /auth/google` **401** | Invalid Google token; web `GOOGLE_CLIENT_ID` mismatch; or desktop `GOOGLE_CLIENT_ID_DESKTOP` / `GOOGLE_CLIENT_SECRET` mismatch |
+| Plan changed in D1 but app still shows old plan | Cached JWT — refresh session, re-login, or wait for online auto-refresh after `license_version` bump |
 | Login OK but app stays locked | Missing/wrong `NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY` |
 | Google `no registered origin` | Web client missing JavaScript origin for your dev URL |
 | Cloud backup skipped | Not signed in, no entitlement, or per-class opt-in disabled |

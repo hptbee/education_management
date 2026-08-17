@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchMe,
   getGoogleClientId,
+  getGoogleDesktopClientId,
+  getGoogleWebClientId,
   getWorkerBaseUrl,
   listCloudClassrooms,
   postAuthGoogle,
@@ -9,15 +11,25 @@ import {
   restoreCloudClassroom,
 } from "./api";
 
+vi.mock("@/src/database/tauri-fs.service", () => ({
+  isTauri: vi.fn(() => false),
+}));
+
+import { isTauri } from "@/src/database/tauri-fs.service";
+
 describe("api env helpers", () => {
   const originalUrl = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
   const originalClient = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const originalDesktop = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP;
 
   afterEach(() => {
     if (originalUrl) process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalUrl;
     else delete process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
     if (originalClient) process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = originalClient;
     else delete process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (originalDesktop) process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP = originalDesktop;
+    else delete process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP;
+    vi.mocked(isTauri).mockReturnValue(false);
   });
 
   it("reads worker base url", () => {
@@ -25,9 +37,20 @@ describe("api env helpers", () => {
     expect(getWorkerBaseUrl()).toBe("https://worker.example.com");
   });
 
-  it("reads google client id", () => {
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = "client-id";
-    expect(getGoogleClientId()).toBe("client-id");
+  it("reads web google client id", () => {
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = "web-client";
+    expect(getGoogleWebClientId()).toBe("web-client");
+    expect(getGoogleClientId()).toBe("web-client");
+  });
+
+  it("reads desktop google client id for tauri", () => {
+    vi.stubGlobal("window", {});
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = "web-client";
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP = "desktop-client";
+    vi.mocked(isTauri).mockReturnValue(true);
+    expect(getGoogleDesktopClientId()).toBe("desktop-client");
+    expect(getGoogleClientId()).toBe("desktop-client");
+    vi.unstubAllGlobals();
   });
 });
 

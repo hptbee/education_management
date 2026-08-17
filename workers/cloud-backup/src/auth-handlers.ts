@@ -14,7 +14,15 @@ import { defaultGoogleVerifier, type GoogleVerifier } from "./google";
 export async function handleAuthGoogle(
   request: Request,
   env: Env,
-  verifyGoogle: GoogleVerifier = (input) => defaultGoogleVerifier(env.GOOGLE_CLIENT_ID, input),
+  verifyGoogle: GoogleVerifier = (input) =>
+    defaultGoogleVerifier(
+      {
+        webClientId: env.GOOGLE_CLIENT_ID,
+        desktopClientId: env.GOOGLE_CLIENT_ID_DESKTOP,
+        desktopClientSecret: env.GOOGLE_CLIENT_SECRET,
+      },
+      input,
+    ),
 ): Promise<Response> {
   let body: {
     idToken?: string;

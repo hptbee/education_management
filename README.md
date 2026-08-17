@@ -23,8 +23,8 @@ The app is designed for a single classroom and focuses on student profiles, clas
 - **Local-first Desktop App**: Runs natively on Windows/macOS/Linux via Tauri.
 - **Classroom data stays local**: `ClassroomDatabase` JSON on disk (Tauri) or IndexedDB (web dev) is the source of truth for students, points, teams, etc.
 - **Google sign-in required**: Teachers authenticate via Google; the app receives a signed **entitlement** from the Cloudflare Worker.
-- **7-day trial**: New Google accounts get a one-time 7-day trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **no license rows** also receive that one-time trial. Expired trials are not reminted. Upgrade to Basic or Premium 1 năm for continued access and cloud backup.
-- **Optional cloud backup**: Per-class opt-in upload to R2 (Premium / lifetime only) — not a replacement for local storage.
+- **7-day trial**: New Google accounts get a one-time 7-day trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **no license rows** also receive that one-time trial. Expired trials are not reminted. Upgrade to Basic or Premium 1 năm for continued access; **lifetime** is admin-assigned (not shown in the public plan comparison).
+- **Optional cloud backup**: Per-class opt-in upload to R2 (**premium** or **lifetime** only) — not a replacement for local storage.
 - **JSON File Persistence**: Classroom data is stored in local JSON files via Tauri filesystem APIs.
 
 See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) for OAuth, Worker, D1, and entitlement setup.
@@ -37,13 +37,19 @@ Copy `.env.example` to `.env.local` and configure:
 
 ```env
 NEXT_PUBLIC_CLOUD_BACKUP_URL=https://classroom-cloud-backup.phuontun-01.workers.dev
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=<your-google-client-id>
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<web-application-client-id>
+NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP=<desktop-app-client-id>
 NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
 ...
 -----END PUBLIC KEY-----"
 ```
 
-See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) for Google OAuth and Worker secret setup.
+| Variable | Used when |
+|---|---|
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | `npm run dev` (Web application OAuth client) |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` | `npm run tauri:dev` / `tauri:build` (Desktop app PKCE client) |
+
+Worker secrets must match: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID_DESKTOP`, and usually `GOOGLE_CLIENT_SECRET` for desktop code exchange. See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md).
 
 Install dependencies:
 
@@ -71,6 +77,8 @@ Build the Tauri executable for production:
 npm run tauri:build
 ```
 
+`NEXT_PUBLIC_*` env vars are baked in at build time. After changing `.env.local`, run `tauri:build` again before distributing a new `.exe`.
+
 ## GitHub Releases
 
 This repo builds desktop installers automatically via [GitHub Actions](.github/workflows/release.yml).
@@ -79,8 +87,8 @@ This repo builds desktop installers automatically via [GitHub Actions](.github/w
 2. Commit and push to the `release` branch, **or** push a version tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.8
+git push origin v0.1.8
 ```
 
 3. GitHub Actions builds Windows, macOS, and Linux bundles and creates a **draft** release.
@@ -168,4 +176,4 @@ Student-facing tools (Lucky Wheel, Timer, Lucky Star): larger type, more celebra
 
 See [docs/PROJECT_SCOPE.md](./docs/PROJECT_SCOPE.md) for the full product requirements and implementation scope.
 
-**Accounts & cloud backup** (added after v0.1.6 scope): see [docs/ACCOUNTS.md](./docs/ACCOUNTS.md). Classroom JSON remains local-first; Worker handles auth, licensing, and optional backup only.
+**Accounts & cloud backup** (v0.1.7+; dual Web/Desktop OAuth in v0.1.8+): see [docs/ACCOUNTS.md](./docs/ACCOUNTS.md). Classroom JSON remains local-first; Worker handles auth, licensing, and optional backup only.

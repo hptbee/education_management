@@ -21,6 +21,10 @@
 > cloud backup** are implemented via `workers/cloud-backup` (Cloudflare Worker + D1 + R2).
 > Classroom JSON remains local-first. See [ACCOUNTS.md](./ACCOUNTS.md). This does not change
 > the rule that `ClassroomDatabase` is the in-app source of truth for classroom data.
+>
+> **v0.1.8+:** Separate **Web** and **Desktop** Google OAuth clients; Tauri PKCE loopback;
+> Worker secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID_DESKTOP`, `GOOGLE_CLIENT_SECRET`.
+> Admin license changes (including **lifetime**) via Worker admin API or D1 + `license_version` bump.
 
 ---
 
@@ -356,11 +360,11 @@ Teacher-only notes must never appear in:
 - Recognition presentation
 - Team presentation
 
-## BR-010: Local-Only Data
+## BR-010: Local-First Data (per device)
 
-All application data belongs to the current browser/device unless exported and imported manually.
+Classroom JSON on each browser/PC is local-first unless exported, imported, or **manually** restored from cloud backup.
 
-The application must not imply automatic synchronization between devices.
+The application must not imply automatic synchronization between devices. Optional cloud backup (premium/lifetime) is **upload after local save** plus **manual restore** — not real-time sync. See [ACCOUNTS.md](./ACCOUNTS.md) § Multi-device usage.
 
 ---
 
@@ -1754,14 +1758,13 @@ Because the application is local-first, data protection is important.
 
 ## Cloud backup (optional, v0.1.7+)
 
-When signed in with a valid entitlement and per-class opt-in (`appSettings.cloudBackupEnabled`):
+When signed in with a valid entitlement, **premium** or **lifetime** plan (`permissions.cloudBackup`), and per-class opt-in (`appSettings.cloudBackupEnabled`):
 
 - After each local save, the app may upload classroom JSON to R2 via the Cloudflare Worker.
 - Storage key: `users/{userId}/classrooms/{classroomId}/database.json`.
-- Teacher can list and restore cloud backups from **Cài đặt → Dữ liệu**.
+- Teacher can list and restore cloud backups from **Cài đặt → Dữ liệu** (manual restore; not automatic on login).
 - Cloud backup does not replace local JSON; local save always happens first.
-
-See [ACCOUNTS.md](./ACCOUNTS.md).
+- **Not multi-device sync:** each PC has its own local files; cloud is last-upload-wins per classroom id. See [ACCOUNTS.md](./ACCOUNTS.md) § Multi-device usage.
 
 ## Export Backup
 
@@ -1932,7 +1935,13 @@ Classroom JSON is the source of truth. On Tauri:
 
 Web dev still uses IndexedDB for classroom JSON.
 
+Entitlements: Tauri OS keychain; web dev `sessionStorage`. Google OAuth: web GIS `idToken`; desktop PKCE loopback with Desktop app client (see [ACCOUNTS.md](./ACCOUNTS.md)).
+
 ## 10.1 Storage Strategy
+
+**Current implementation:** Tauri JSON files + IndexedDB (web dev) — not `localStorage` for classroom data.
+
+The sections below describe an earlier localStorage-oriented design. Prefer §10.0 and `ClassroomDatabase` for implementation truth.
 
 Use localStorage for structured data.
 
@@ -2281,7 +2290,8 @@ Basic accessibility requirements:
 - Important actions should not rely only on color
 - Destructive actions require confirmation
 - Forms should display validation errors clearly
-- CRUD/scoring dialogs trap focus (`useModalFocusTrap`) with `role="dialog"`, `aria-modal`, and a labelled heading. Lucky Wheel is excluded from this keyboard trap unless explicitly requested.
+- CRUD/scoring dialogs trap focus (`useModalFocusTrap`) with `role="dialog"`, `aria-modal`, and a labelled heading. Stacked overlays use `modalTrapStack` so only the top dialog handles Escape/Tab. Lucky Wheel is excluded from this keyboard trap unless explicitly requested.
+- Full-screen celebration overlays (recognition ceremony) portal to `document.body` so they cover the sidebar and escape `main` overflow clipping.
 
 Do not over-engineer a full accessibility system for Version 1, but do not ignore basic usability.
 

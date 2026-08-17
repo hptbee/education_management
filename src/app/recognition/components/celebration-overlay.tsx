@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import confetti from 'canvas-confetti'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PartyPopper, Sparkles, Star, X } from 'lucide-react'
@@ -163,6 +164,7 @@ export function CelebrationOverlay({
 }: CelebrationOverlayProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [showFinale, setShowFinale] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const uniqueRecognitions = useMemo(
     () => dedupeRecognitionsByStudent(recognitions),
@@ -184,6 +186,18 @@ export function CelebrationOverlay({
   const dialogRef = useModalFocusTrap(true, onClose)
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
+  useEffect(() => {
     if (!allowMotion) return
     launchFireworksBurst()
     launchFireworkStream()
@@ -197,7 +211,7 @@ export function CelebrationOverlay({
     return () => window.clearInterval(interval)
   }, [allowMotion])
 
-  if (items.length === 0) return null
+  if (items.length === 0 || !mounted) return null
 
   const renderStudentCard = (item: (typeof items)[0], large = true) => {
     const name = item.student?.name ?? item.recognition.studentName ?? 'Học sinh'
@@ -358,14 +372,14 @@ export function CelebrationOverlay({
     )
   }
 
-  return (
+  return createPortal(
     <div
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="celebration-dialog-title"
       tabIndex={-1}
-      className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-gradient-to-b from-pastel-sky via-white to-pastel-pink"
+      className="fixed inset-0 z-[80] flex flex-col overflow-hidden bg-gradient-to-b from-pastel-sky via-white to-pastel-pink"
     >
       <h2 id="celebration-dialog-title" className="sr-only">Lễ tuyên dương</h2>
       {allowMotion ? <CelebrationBackgroundEffects /> : null}
@@ -459,6 +473,7 @@ export function CelebrationOverlay({
           Quay lại
         </ClassroomButton>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

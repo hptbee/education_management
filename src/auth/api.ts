@@ -1,13 +1,30 @@
 import type { AuthApiError, AuthLicense, AuthUser } from "./types";
+import { isTauri } from "@/src/database/tauri-fs.service";
 
 export function getWorkerBaseUrl(): string | null {
   const url = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL?.trim();
   return url || null;
 }
 
-export function getGoogleClientId(): string | null {
+/** Web application client — `npm run dev` / browser. */
+export function getGoogleWebClientId(): string | null {
   const id = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
   return id || null;
+}
+
+/** Desktop app client — Tauri `.exe` PKCE loopback. Falls back to web client if unset. */
+export function getGoogleDesktopClientId(): string | null {
+  const desktop = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP?.trim();
+  if (desktop) return desktop;
+  return getGoogleWebClientId();
+}
+
+/** Active OAuth client for the current runtime (web vs desktop). */
+export function getGoogleClientId(): string | null {
+  if (typeof window !== "undefined" && isTauri()) {
+    return getGoogleDesktopClientId();
+  }
+  return getGoogleWebClientId();
 }
 
 export interface GoogleAuthResult {

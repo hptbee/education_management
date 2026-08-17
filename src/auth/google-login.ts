@@ -31,17 +31,18 @@ export async function loginWithGoogleDesktop(): Promise<{
 
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
-    const callbackUrl = await invoke<string>("start_google_oauth", {
+    const callback = await invoke<{ code: string; redirect_uri: string }>("start_google_oauth", {
       clientId,
       codeChallenge,
     });
-    const parsed = new URL(callbackUrl);
-    const code = parsed.searchParams.get("code");
-    const redirectUri = `${parsed.origin}${parsed.pathname}`;
-    if (!code) {
+    if (!callback.code) {
       throw new Error("Không nhận được mã xác thực Google.");
     }
-    return { code, codeVerifier, redirectUri };
+    return {
+      code: callback.code,
+      codeVerifier,
+      redirectUri: callback.redirect_uri,
+    };
   }
 
   throw new Error("OAuth desktop chỉ hỗ trợ trên ứng dụng Tauri.");

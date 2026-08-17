@@ -1,5 +1,7 @@
 # Agent Instructions
 
+Tool choice: `.cursor/rules/00-tool-routing.mdc` (one primary tool per question).
+
 Always read before implementing:
 
 1. PROJECT_SCOPE.md
@@ -65,7 +67,9 @@ Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.ts
 
 **Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity (tab hidden by default — same pattern as **Nguy hiểm**).
 
-**Trial license:** First Google login auto-creates a **one-time 7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **zero license rows** also get that one-time trial. If any license row exists (including expired), do **not** remint — admin `POST /admin/licenses` restores access. Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan. Redeploy the Worker after license-logic changes.
+**Trial license:** First Google login auto-creates a **one-time 7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **zero license rows** also get that one-time trial. If any license row exists (including expired), do **not** remint — admin `POST /admin/licenses` or D1 `UPDATE` + `license_version` bump restores access. Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan. Redeploy the Worker after license-logic changes.
+
+**Google OAuth clients (v0.1.8+):** Web dev uses `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (GIS `idToken`). Tauri uses `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` (PKCE via Rust `start_google_oauth`). Worker secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID_DESKTOP`, `GOOGLE_CLIENT_SECRET`. `getGoogleClientId()` in `src/auth/api.ts` selects by runtime. Rebuild `.exe` after `.env.local` changes.
 
 ## Ranking (`/ranking`)
 
@@ -80,7 +84,9 @@ Presentation mode follows the current `mode`: students show podium + list; teams
 
 ## Dialogs
 
-CRUD/scoring overlays use `useModalFocusTrap` plus `role="dialog"`, `aria-modal`, labelled heading, and `tabIndex={-1}`. Pattern: `gift-redeem-dialog.tsx`. Leave `lucky-wheel-dialog.tsx` without a keyboard trap unless explicitly requested.
+CRUD/scoring overlays use `useModalFocusTrap` plus `role="dialog"`, `aria-modal`, labelled heading, and `tabIndex={-1}`. Pattern: `gift-redeem-dialog.tsx`. Nested overlays use `modalTrapStack` so only the top trap handles Escape/Tab. Leave `lucky-wheel-dialog.tsx` without a keyboard trap unless explicitly requested.
+
+Full-screen overlays that must cover the shell (e.g. recognition `CelebrationOverlay`) portal to `document.body` with high z-index — `main` uses `overflow-hidden` and traps focus incorrectly if the overlay stays inside it.
 
 Auth JSON (`POST /auth/google`) and admin JSON bodies are bounded to ~64 KB (`readJsonWithLimit`). Backup PUT stays on the 25 MB reader. `listCloudClassrooms` throws on non-2xx.
 

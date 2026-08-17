@@ -12,13 +12,21 @@ Full setup guide: [`docs/ACCOUNTS.md`](../../docs/ACCOUNTS.md)
 
 ```
 App (Tauri / Next.js)
-  → Google OAuth (PKCE or id_token)
-  → POST /auth/google
+  → Google OAuth
+      Web dev: GIS id_token → POST /auth/google { idToken }
+      Desktop: PKCE loopback → POST /auth/google { code, codeVerifier, redirectUri }
   → D1 (users + licenses)
   → signed entitlement JWT
   → Bearer on PUT /backup, GET /classrooms, GET /restore/:id
   → R2 users/{userId}/classrooms/{classroomId}/database.json
 ```
+
+| Runtime | App OAuth client env | Worker secret |
+|---|---|---|
+| Web (`npm run dev`) | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_ID` |
+| Tauri `.exe` | `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` | `GOOGLE_CLIENT_ID_DESKTOP` (+ `GOOGLE_CLIENT_SECRET` if required) |
+
+`NEXT_PUBLIC_*` values are embedded at Next build time — rebuild the desktop app after changing `.env.local`.
 
 Classroom JSON remains local-first in the app. This Worker does **not** replace `ClassroomDatabase` persistence.
 
@@ -109,9 +117,12 @@ npx wrangler d1 migrations apply classroom-app
 ### Secrets
 
 ```bash
-npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_ID              # Web application client
+npx wrangler secret put GOOGLE_CLIENT_ID_DESKTOP      # Desktop app client (PKCE)
+npx wrangler secret put GOOGLE_CLIENT_SECRET          # Desktop client secret (Worker only)
 npx wrangler secret put ENTITLEMENT_PRIVATE_KEY
-npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB   # optional
+npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB      # optional
+# npx wrangler secret put CORS_ALLOWED_ORIGINS          # optional comma-separated origins
 ```
 
 ### Vars (`wrangler.toml` `[vars]`)
@@ -119,6 +130,8 @@ npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB   # optional
 | Var | Default | Purpose |
 |---|---|---|
 | `DEFAULT_TRIAL_DAYS` | `7` | Auto-trial length for new teachers and existing users with zero license rows |
+| `ENTITLEMENT_PUBLIC_KEY` | (see `wrangler.toml`) | Optional public key var; signing uses `ENTITLEMENT_PRIVATE_KEY` secret |
+| `CORS_ALLOWED_ORIGINS` | unset → `*` | Optional secret or var: comma-separated allowed `Origin` values |
 
 Generate Ed25519 keys:
 
@@ -139,11 +152,19 @@ npx wrangler deploy
 
 ```env
 NEXT_PUBLIC_CLOUD_BACKUP_URL=https://classroom-cloud-backup.phuontun-01.workers.dev
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=...
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=...           # Web dev
+NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP=...   # Tauri .exe (PKCE)
 NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
 ...
 -----END PUBLIC KEY-----"
 ```
+
+See [`docs/ACCOUNTS.md`](../../docs/ACCOUNTS.md) for OAuth client types, admin license management, and troubleshooting.
+
+### Admin license changes (no UI)
+
+- **API:** `POST /admin/licenses`, `PATCH /admin/licenses/:id` with admin entitlement (see `docs/ACCOUNTS.md`).
+- **D1:** direct `UPDATE` on `licenses` + bump `users.license_version` when Wrangler access is enough.
 
 ---
 

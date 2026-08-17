@@ -2,6 +2,9 @@ export interface Env {
   BACKUP_BUCKET: R2Bucket;
   DB: D1Database;
   GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_ID_DESKTOP?: string;
+  /** Optional — desktop token exchange only; set via `wrangler secret put` (never in the app). */
+  GOOGLE_CLIENT_SECRET?: string;
   ENTITLEMENT_PRIVATE_KEY: string;
   ENTITLEMENT_PUBLIC_KEY: string;
   INITIAL_ADMIN_GOOGLE_SUB?: string;

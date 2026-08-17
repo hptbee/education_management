@@ -226,8 +226,10 @@ fn clear_entitlement(app: AppHandle) -> Result<(), String> {
 fn open_system_url(url: &str) -> Result<(), String> {
   #[cfg(target_os = "windows")]
   {
-    std::process::Command::new("cmd")
-      .args(["/C", "start", "", url])
+    // `cmd /C start` parses `&` in the URL as a command separator unless the URL is quoted,
+    // which drops OAuth params (e.g. response_type) and triggers Google 400 invalid_request.
+    std::process::Command::new("rundll32")
+      .args(["url.dll,FileProtocolHandler", url])
       .spawn()
       .map_err(|e| format!("Failed to open browser: {}", e))?;
   }
@@ -248,9 +250,45 @@ fn open_system_url(url: &str) -> Result<(), String> {
   Ok(())
 }
 
+#[derive(serde::Serialize)]
+struct GoogleOAuthCallback {
+  code: String,
+  redirect_uri: String,
+}
+
+fn extract_oauth_code(path: &str) -> Option<String> {
+  if !path.starts_with("/oauth/callback") {
+    return None;
+  }
+
+  let query = path.split('?').nth(1)?;
+  for pair in query.split('&') {
+    let (key, value) = pair.split_once('=')?;
+    if key == "code" {
+      return urlencoding::decode(value)
+        .map(|decoded| decoded.into_owned())
+        .ok();
+    }
+  }
+
+  None
+}
+
+fn write_http_response(stream: &mut std::net::TcpStream, status: &str, body: &str) {
+  use std::io::Write;
+  let response = format!(
+    "HTTP/1.1 {}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+    status,
+    body.len(),
+    body
+  );
+  let _ = stream.write_all(response.as_bytes());
+  let _ = stream.flush();
+}
+
 #[tauri::command]
-async fn start_google_oauth(client_id: String, code_challenge: String) -> Result<String, String> {
-  use std::io::{Read, Write};
+async fn start_google_oauth(client_id: String, code_challenge: String) -> Result<GoogleOAuthCallback, String> {
+  use std::io::Read;
   use std::net::TcpListener;
   use std::time::{Duration, Instant};
 
@@ -281,7 +319,7 @@ async fn start_google_oauth(client_id: String, code_challenge: String) -> Result
     }
 
     if let Ok((mut stream, _)) = listener.accept() {
-      let mut buffer = [0u8; 4096];
+      let mut buffer = [0u8; 8192];
       let read = stream
         .read(&mut buffer)
         .map_err(|e| format!("Failed to read OAuth callback: {}", e))?;
@@ -291,17 +329,20 @@ async fn start_google_oauth(client_id: String, code_challenge: String) -> Result
         .split_whitespace()
         .nth(1)
         .unwrap_or("/");
-      let callback = format!("http://127.0.0.1:{port}{path}");
 
-      let response_body = "Đăng nhập thành công. Bạn có thể quay lại ứng dụng.";
-      let response = format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-        response_body.len(),
-        response_body
-      );
-      let _ = stream.write_all(response.as_bytes());
-      let _ = stream.flush();
-      return Ok(callback);
+      if let Some(code) = extract_oauth_code(path) {
+        write_http_response(
+          &mut stream,
+          "200 OK",
+          "Đăng nhập thành công. Bạn có thể quay lại ứng dụng.",
+        );
+        return Ok(GoogleOAuthCallback {
+          code,
+          redirect_uri,
+        });
+      }
+
+      write_http_response(&mut stream, "404 Not Found", "Not found");
     }
 
     std::thread::sleep(Duration::from_millis(50));

@@ -128,10 +128,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const denied = mapApiCodeToAccessState(result.code) ?? "AUTH_REQUIRED";
           setServerDenied(denied);
           setAccessState(denied);
-          return;
+          throw new Error(result.error || "Đăng nhập thất bại. Kiểm tra cấu hình Worker (GOOGLE_CLIENT_ID_DESKTOP).");
         }
 
         const verified = await verifyEntitlementToken(result.entitlement);
+        if (!verified) {
+          throw new Error(
+            "Không xác minh được phiên đăng nhập. Kiểm tra NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY trong bản build.",
+          );
+        }
         const next: StoredAuthSession = {
           entitlement: result.entitlement,
           user: result.user,
