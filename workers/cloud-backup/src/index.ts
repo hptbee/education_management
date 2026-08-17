@@ -12,7 +12,7 @@ import {
   handleMe,
 } from "./auth-handlers";
 import { handleBackupPut, handleListClassrooms, handleRestore } from "./backup-handlers";
-import { CORS_HEADERS, errorResponse, jsonResponse } from "./http";
+import { applyCorsHeaders, errorResponse, jsonResponse, resolveCorsHeaders } from "./http";
 import type { Env } from "./types";
 
 export { sanitizeBackupIdentifier, buildUserClassroomKey, buildLegacyBackupStorageKey as buildBackupStorageKey } from "./paths";
@@ -20,59 +20,52 @@ export { signEntitlement, verifyEntitlement, importPublicKeyFromPem } from "./en
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const cors = resolveCorsHeaders(request, env);
+
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+      return new Response(null, { status: 204, headers: cors });
     }
 
     const url = new URL(request.url);
 
     try {
+      let response: Response;
+
       if (request.method === "POST" && url.pathname === "/auth/google") {
-        return await handleAuthGoogle(request, env);
-      }
-      if (request.method === "GET" && url.pathname === "/me") {
-        return await handleMe(request, env);
-      }
-      if (request.method === "POST" && url.pathname === "/auth/refresh") {
-        return await handleAuthRefresh(request, env);
-      }
-      if (request.method === "POST" && url.pathname === "/auth/logout") {
-        return await handleAuthLogout();
-      }
-
-      if (request.method === "PUT" && url.pathname === "/backup") {
-        return await handleBackupPut(request, env);
-      }
-      if (request.method === "GET" && url.pathname === "/classrooms") {
-        return await handleListClassrooms(request, env);
-      }
-      if (request.method === "GET" && url.pathname.startsWith("/restore/")) {
+        response = await handleAuthGoogle(request, env);
+      } else if (request.method === "GET" && url.pathname === "/me") {
+        response = await handleMe(request, env);
+      } else if (request.method === "POST" && url.pathname === "/auth/refresh") {
+        response = await handleAuthRefresh(request, env);
+      } else if (request.method === "POST" && url.pathname === "/auth/logout") {
+        response = await handleAuthLogout();
+      } else if (request.method === "PUT" && url.pathname === "/backup") {
+        response = await handleBackupPut(request, env);
+      } else if (request.method === "GET" && url.pathname === "/classrooms") {
+        response = await handleListClassrooms(request, env);
+      } else if (request.method === "GET" && url.pathname.startsWith("/restore/")) {
         const classroomId = decodeURIComponent(url.pathname.slice("/restore/".length));
-        return await handleRestore(request, env, classroomId);
-      }
-
-      if (request.method === "GET" && url.pathname === "/admin/users") {
-        return await handleAdminListUsers(request, env);
-      }
-      if (request.method === "PATCH" && url.pathname.startsWith("/admin/users/")) {
+        response = await handleRestore(request, env, classroomId);
+      } else if (request.method === "GET" && url.pathname === "/admin/users") {
+        response = await handleAdminListUsers(request, env);
+      } else if (request.method === "PATCH" && url.pathname.startsWith("/admin/users/")) {
         const userId = decodeURIComponent(url.pathname.slice("/admin/users/".length));
-        return await handleAdminPatchUser(request, env, userId);
-      }
-      if (request.method === "GET" && url.pathname === "/admin/licenses") {
-        return await handleAdminListLicenses(request, env);
-      }
-      if (request.method === "POST" && url.pathname === "/admin/licenses") {
-        return await handleAdminCreateLicense(request, env);
-      }
-      if (request.method === "PATCH" && url.pathname.startsWith("/admin/licenses/")) {
+        response = await handleAdminPatchUser(request, env, userId);
+      } else if (request.method === "GET" && url.pathname === "/admin/licenses") {
+        response = await handleAdminListLicenses(request, env);
+      } else if (request.method === "POST" && url.pathname === "/admin/licenses") {
+        response = await handleAdminCreateLicense(request, env);
+      } else if (request.method === "PATCH" && url.pathname.startsWith("/admin/licenses/")) {
         const licenseId = decodeURIComponent(url.pathname.slice("/admin/licenses/".length));
-        return await handleAdminPatchLicense(request, env, licenseId);
+        response = await handleAdminPatchLicense(request, env, licenseId);
+      } else {
+        response = jsonResponse({ ok: false, error: "Not found" }, 404);
       }
 
-      return jsonResponse({ ok: false, error: "Not found" }, 404);
+      return applyCorsHeaders(response, cors);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      return errorResponse("VALIDATION_ERROR", message, 400);
+      return applyCorsHeaders(errorResponse("VALIDATION_ERROR", message, 400), cors);
     }
   },
 };

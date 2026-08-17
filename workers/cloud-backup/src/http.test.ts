@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { MAX_BODY_BYTES, MAX_JSON_BODY_BYTES, readBodyWithLimit, readJsonWithLimit } from "./http";
+import {
+  MAX_BODY_BYTES,
+  MAX_JSON_BODY_BYTES,
+  readBodyWithLimit,
+  readJsonWithLimit,
+  resolveCorsHeaders,
+} from "./http";
+import type { Env } from "./types";
 
 describe("readBodyWithLimit", () => {
   it("rejects Content-Length above MAX_BODY_BYTES", async () => {
@@ -59,5 +66,28 @@ describe("readJsonWithLimit", () => {
     });
 
     await expect(readJsonWithLimit<{ idToken: string }>(request)).resolves.toEqual({ idToken: "x" });
+  });
+});
+
+describe("resolveCorsHeaders", () => {
+  const baseEnv = {} as Env;
+
+  it("defaults to wildcard when allowlist is unset", () => {
+    const request = new Request("https://example.com/me", {
+      headers: { Origin: "https://app.example.com" },
+    });
+
+    expect(resolveCorsHeaders(request, baseEnv)["Access-Control-Allow-Origin"]).toBe("*");
+  });
+
+  it("echoes matching Origin when allowlist is set", () => {
+    const request = new Request("https://example.com/me", {
+      headers: { Origin: "https://app.example.com" },
+    });
+    const env = { CORS_ALLOWED_ORIGINS: "https://app.example.com" } as Env;
+
+    const headers = resolveCorsHeaders(request, env);
+    expect(headers["Access-Control-Allow-Origin"]).toBe("https://app.example.com");
+    expect(headers.Vary).toBe("Origin");
   });
 });

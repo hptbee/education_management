@@ -109,7 +109,6 @@ export async function handleRestore(request: Request, env: Env, classroomId: str
     status: 200,
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
     },
   });
 }

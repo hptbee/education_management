@@ -6,6 +6,7 @@ export interface Env {
   ENTITLEMENT_PUBLIC_KEY: string;
   INITIAL_ADMIN_GOOGLE_SUB?: string;
   DEFAULT_TRIAL_DAYS?: string;
+  CORS_ALLOWED_ORIGINS?: string;
 }
 
 export type UserRole = "admin" | "teacher";

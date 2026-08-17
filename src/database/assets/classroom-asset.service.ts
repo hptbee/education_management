@@ -137,23 +137,6 @@ export class ClassroomAssetService {
     }
   }
 
-  async moveClassroomAssets(fromClassroomId: string, toClassroomId: string): Promise<void> {
-    if (fromClassroomId === toClassroomId) return;
-
-    if (isTauri()) {
-      const fs = await this.getFs();
-      const dataDir = await fs!.getDataDirectory();
-      const fromPath = fs!.joinPath(dataDir, classroomAssetRootRelative(fromClassroomId));
-      const toPath = fs!.joinPath(dataDir, classroomAssetRootRelative(toClassroomId));
-      const exists = await fs!.fileExists(fromPath);
-      if (!exists) return;
-      await fs!.renamePath(fromPath, toPath);
-      return;
-    }
-
-    await this.webStore.renamePath(fromClassroomId, toClassroomId);
-  }
-
   async deleteClassroomAssets(classroomId: string): Promise<void> {
     if (isTauri()) {
       const fs = await this.getFs();
@@ -164,11 +147,6 @@ export class ClassroomAssetService {
     }
 
     await this.webStore.removeDir(classroomId);
-  }
-
-  async listClassroomAssetPaths(classroomId: string): Promise<string[]> {
-    // Reserved for future folder backup — list gift images only for now.
-    return [];
   }
 }
 

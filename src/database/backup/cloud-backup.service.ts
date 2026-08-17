@@ -238,6 +238,8 @@ export class CloudBackupScheduler {
     this.uploading = true;
     this.setState("uploading", null);
 
+    let needsFollowUpFlush = false;
+
     try {
       await uploadClassroomBackup(db, this.fetchImpl);
       const hasNewerPending =
@@ -247,7 +249,7 @@ export class CloudBackupScheduler {
       if (hasNewerPending) {
         this.failureCount = 0;
         this.setState("pending", null);
-        void this.flushPending();
+        needsFollowUpFlush = true;
       } else {
         this.pendingDb = null;
         this.failureCount = 0;
@@ -261,6 +263,9 @@ export class CloudBackupScheduler {
       this.scheduleRetry();
     } finally {
       this.uploading = false;
+      if (needsFollowUpFlush) {
+        queueMicrotask(() => void this.flushPending());
+      }
     }
   }
 

@@ -149,6 +149,41 @@ describe("CloudBackupScheduler", () => {
     expect(states).toContain("failed");
   });
 
+  it("uploads newer pending snapshot after the first upload completes", async () => {
+    let releaseFirstUpload!: () => void;
+    const firstUploadGate = new Promise<void>((resolve) => {
+      releaseFirstUpload = resolve;
+    });
+
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        await firstUploadGate;
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      })
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);
+    const db1 = makeDb();
+    const db2 = makeDb();
+    db2.metadata.updatedAt = new Date(Date.now() + 60_000).toISOString();
+
+    scheduler.scheduleAfterLocalSave(db1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const firstFlush = scheduler.flushPending();
+
+    scheduler.scheduleAfterLocalSave(db2);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    releaseFirstUpload();
+    await firstFlush;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(secondBody.timestamp).toBe(db2.metadata.updatedAt);
+  });
+
   it("does not enter pending when entitlement lacks cloudBackup permission", async () => {
     vi.mocked(verifyEntitlementToken).mockResolvedValueOnce({
       claims: {

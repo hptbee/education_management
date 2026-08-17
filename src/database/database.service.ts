@@ -249,10 +249,6 @@ export class DatabaseService {
     return normalized;
   }
 
-  async loadDatabase(id: string): Promise<ClassroomDatabase | null> {
-    return this.openDatabase(id);
-  }
-
   async saveDatabase(db: ClassroomDatabase): Promise<ClassroomDatabase> {
     const storage = await this.getStorage();
     const normalized = normalizeClassroomDatabase(db);

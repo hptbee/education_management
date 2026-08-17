@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function GamesRedirectPage() {
-  redirect('/tools?tool=wheel')
+  redirect('/tools')
 }

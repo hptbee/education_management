@@ -409,6 +409,27 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   }
 
   const isBusy = isSpinning || isPreparing
+  const isCloseBlocked = isBusy || isBatchActive
+
+  const requestClose = useCallback(() => {
+    if (isCloseBlocked) return
+    onClose()
+  }, [isCloseBlocked, onClose])
+
+  const handleCloseClick = useCallback(() => {
+    if (isCloseBlocked) {
+      void showConfirm('Vòng quay đang chạy. Bạn có muốn đóng?', {
+        title: 'Đóng vòng quay',
+        confirmLabel: 'Đóng',
+        variant: 'warning',
+      }).then((confirmed) => {
+        if (confirmed) onClose()
+      })
+      return
+    }
+    onClose()
+  }, [isCloseBlocked, onClose, showConfirm])
+
   const noStudents = students.length === 0
   const emptyTeam =
     session.scopeType === 'team' && session.teamId && scopedStudents.length === 0
@@ -445,11 +466,11 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   useEffect(() => {
     if (!isOpen) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') requestClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [isOpen, onClose])
+  }, [isOpen, requestClose])
 
   const wheelSizeClass = showStudentList
     ? 'max-w-[min(100%,280px)] sm:max-w-[320px] lg:max-w-[380px]'
@@ -460,7 +481,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={requestClose}
       role="presentation"
     >
       <div
@@ -476,7 +497,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
             <p className="text-xs font-semibold text-slate-500">Chọn học sinh và quay để chọn ngẫu nhiên</p>
           </div>
           <IconTouchButton
-            onClick={onClose}
+            onClick={handleCloseClick}
             aria-label="Đóng"
             className="text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >

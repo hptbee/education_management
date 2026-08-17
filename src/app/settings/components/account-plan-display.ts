@@ -123,15 +123,6 @@ export function getRemainingUsageLabel(
   return `Còn ${days} ngày`
 }
 
-/** @deprecated Use getRemainingUsageLabel */
-export function getTrialRemainingLabel(
-  plan: LicensePlan | string | undefined,
-  expiresAt: string | null | undefined,
-  now: Date = new Date(),
-): string | null {
-  return getRemainingUsageLabel(plan, expiresAt, now)
-}
-
 export function getCloudBackupStatusText(hasCloudBackup: boolean): string {
   return hasCloudBackup ? 'Đã có trong gói' : 'Chưa có trong gói hiện tại'
 }

@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Disc3, Sparkles } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { LuckyWheelDialog } from './lucky-wheel-dialog'
 import { WheelPreview } from './named-wheel'
@@ -10,6 +10,7 @@ import { ClassroomCard, ClassroomButton, EmptyState } from '@/src/components/cla
 
 export function LuckyWheelTool() {
   const { data } = useAppData()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const students = data?.students ?? []
   const teams = data?.teams ?? []
@@ -20,6 +21,17 @@ export function LuckyWheelTool() {
       setDialogOpen(true)
     }
   }, [searchParams])
+
+  const handleDialogClose = useCallback(() => {
+    setDialogOpen(false)
+
+    if (searchParams?.get('tool') !== 'wheel') return
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('tool')
+    const query = params.toString()
+    router.replace(query ? `/tools?${query}` : '/tools')
+  }, [router, searchParams])
 
   return (
     <>
@@ -62,7 +74,7 @@ export function LuckyWheelTool() {
 
       <LuckyWheelDialog
         isOpen={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={handleDialogClose}
         students={students}
         teams={teams}
       />

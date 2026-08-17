@@ -1,17 +1,68 @@
 import type { ApiErrorCode } from "./types";
+import type { Env } from "./types";
+
+const CORS_METHODS = "GET, PUT, POST, PATCH, OPTIONS";
+const CORS_HEADERS_LIST = "Content-Type, Authorization";
 
 export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, PUT, POST, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": CORS_METHODS,
+  "Access-Control-Allow-Headers": CORS_HEADERS_LIST,
 };
+
+function buildCorsHeaders(origin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": CORS_METHODS,
+    "Access-Control-Allow-Headers": CORS_HEADERS_LIST,
+    Vary: "Origin",
+  };
+}
+
+export function resolveCorsHeaders(request: Request, env: Env): Record<string, string> {
+  const allowlist = env.CORS_ALLOWED_ORIGINS?.trim();
+  if (!allowlist) {
+    return CORS_HEADERS;
+  }
+
+  const origin = request.headers.get("Origin");
+  if (!origin) {
+    return CORS_HEADERS;
+  }
+
+  const allowedOrigins = allowlist
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (allowedOrigins.includes(origin)) {
+    return buildCorsHeaders(origin);
+  }
+
+  return {
+    "Access-Control-Allow-Methods": CORS_METHODS,
+    "Access-Control-Allow-Headers": CORS_HEADERS_LIST,
+  };
+}
+
+export function applyCorsHeaders(response: Response, cors: Record<string, string>): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(cors)) {
+    headers.set(key, value);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json",
-      ...CORS_HEADERS,
     },
   });
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { isTopTrap, pushTrapStack, removeTrapStack } from './modalTrapStack'
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -12,9 +13,18 @@ export function useModalFocusTrap(
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const trapIdRef = useRef<number | null>(null)
+  const onCancelRef = useRef(onCancel)
+  const initialFocusSelectorRef = useRef(options?.initialFocusSelector)
+
+  onCancelRef.current = onCancel
+  initialFocusSelectorRef.current = options?.initialFocusSelector
 
   useEffect(() => {
     if (!open) return
+
+    const trapId = pushTrapStack()
+    trapIdRef.current = trapId
 
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
@@ -22,8 +32,9 @@ export function useModalFocusTrap(
       const container = containerRef.current
       if (!container) return
 
-      if (options?.initialFocusSelector) {
-        const preferred = container.querySelector<HTMLElement>(options.initialFocusSelector)
+      const initialFocusSelector = initialFocusSelectorRef.current
+      if (initialFocusSelector) {
+        const preferred = container.querySelector<HTMLElement>(initialFocusSelector)
         if (preferred) {
           preferred.focus()
           return
@@ -41,9 +52,12 @@ export function useModalFocusTrap(
     const frame = requestAnimationFrame(focusInitial)
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isTopTrap(trapId)) return
+
       if (event.key === 'Escape') {
         event.preventDefault()
-        onCancel?.()
+        event.stopPropagation()
+        onCancelRef.current?.()
         return
       }
 
@@ -57,6 +71,7 @@ export function useModalFocusTrap(
       )
       if (focusable.length === 0) {
         event.preventDefault()
+        event.stopPropagation()
         return
       }
 
@@ -67,10 +82,12 @@ export function useModalFocusTrap(
       if (event.shiftKey) {
         if (active === first || !container.contains(active)) {
           event.preventDefault()
+          event.stopPropagation()
           last.focus()
         }
       } else if (active === last) {
         event.preventDefault()
+        event.stopPropagation()
         first.focus()
       }
     }
@@ -80,10 +97,12 @@ export function useModalFocusTrap(
     return () => {
       cancelAnimationFrame(frame)
       document.removeEventListener('keydown', handleKeyDown)
+      removeTrapStack(trapId)
+      trapIdRef.current = null
       previousFocusRef.current?.focus()
       previousFocusRef.current = null
     }
-  }, [open, onCancel, options?.initialFocusSelector])
+  }, [open])
 
   return containerRef
 }
