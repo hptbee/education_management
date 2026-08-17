@@ -105,7 +105,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - The source of truth for classroom data is local JSON files in the OS app-data directory (`classrooms/*.json` plus `index.json`).
 - A valid `index.json` is still reconciled against `classrooms/*.json` so a classroom file is not hidden if the index write was interrupted.
 - IndexedDB → JSON migration writes `indexeddb-migration.complete` only after every IDB classroom is verified. If the marker is missing, remaining IDs are copied without overwriting JSON that already exists.
-- The **Dữ liệu** settings tab (open data folder, cloud restore, rename DB) is implemented but **hidden** by default (`SETTINGS_TABS.showDataTab`).
+- The **Dữ liệu** settings tab (rename DB, export, data folder, cloud backup toggle) is **hidden** by default (`SETTINGS_TABS.showDataTab`). **Khôi phục từ đám mây** is on the classroom selector when no class is open (and when switching classes).
 
 ## Current Features
 
@@ -146,7 +146,7 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - Local image uploads (stored as base64 strings in the JSON database)
 - Export / Import JSON database backups
 - **Cloud backup** (opt-in per class; requires **premium** or **lifetime** plan) — automatic upload to R2 after local save when signed in
-- **Cloud restore** — list and import classrooms from the teacher's cloud account (Settings → Dữ liệu when that tab is enabled). Cloud list HTTP errors surface as errors instead of an empty list.
+- **Cloud restore** — list and import classrooms from the teacher's cloud account (**Cài đặt** classroom selector, or **Dữ liệu** when that tab is enabled). Premium/lifetime only. Cloud list HTTP errors surface as errors instead of an empty list.
 - Duplicate databases for new school years
 
 ## Design System

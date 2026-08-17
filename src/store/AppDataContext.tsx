@@ -57,6 +57,7 @@ interface AppDataContextValue {
   closeDatabase: () => Promise<void>;
   createDatabase: (settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   importDatabase: (file: File) => Promise<void>;
+  importDatabaseFromJson: (payload: unknown) => Promise<ClassroomDatabase>;
   renameDatabase: (newClassName: string, newSchoolYear: string) => Promise<void>;
   duplicateDatabase: (newClassName: string, newSchoolYear: string, mode: "settings-only" | "full-copy") => Promise<void>;
   deleteDatabase: (id: string) => Promise<void>;
@@ -398,6 +399,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         try {
           const db = await databaseService.importDatabase(file);
           applyLoadedDatabase(db);
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      importDatabaseFromJson: async (payload) => {
+        setIsLoading(true);
+        try {
+          const db = await databaseService.importDatabaseFromJson(payload);
+          applyLoadedDatabase(db);
+          return db;
         } finally {
           setIsLoading(false);
         }

@@ -46,7 +46,7 @@ Inspect:
 | `/recognition` | Recognition ceremony, badge roster, title catalog, Wall of Fame |
 | `/ranking` | Student & team rankings |
 | `/history` | Activity history |
-| `/settings` | Classroom selector; in-class settings (Tài khoản, Hồ sơ, Vai trò; **Dữ liệu** hidden by flag) |
+| `/settings` | Classroom selector (create / import JSON / **cloud restore** when no class open); in-class tabs: Tài khoản, Hồ sơ, Vai trò; **Dữ liệu** hidden by flag |
 
 ## Settings (`/settings`)
 
@@ -57,7 +57,7 @@ Route: `src/app/settings/page.tsx`. When `data` is null, render `ClassroomSelect
 | Tài khoản | `account-section.tsx` | Google account, plan, verification, logout; backup prompt |
 | Hồ sơ | `profile-section.tsx` | Teacher name, display class name, avatar, home banner |
 | Vai trò | `classroom-roles-section.tsx` | Role catalog CRUD |
-| Dữ liệu | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder, cloud backup opt-in, cloud restore (**hidden:** `SETTINGS_TABS.showDataTab`) |
+| Dữ liệu | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder, cloud backup opt-in, cloud restore (**hidden:** `SETTINGS_TABS.showDataTab`). Cloud restore also on `classroom-selector-screen.tsx` via `cloud-restore-card.tsx`. |
 
 **Nguy hiểm** (delete classroom) exists in `settings-page.tsx` but is hidden by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` — currently `false`).
 

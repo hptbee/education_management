@@ -193,7 +193,11 @@ Legacy `backups/{deviceId}/...` objects are **not** migrated automatically.
 
 ### Restore
 
-**Cài đặt → Dữ liệu → Khôi phục từ đám mây** — lists cloud classrooms; confirm before import. Non-2xx list responses throw a parsed Worker error (empty list only when HTTP 200 returns no classrooms). The **Dữ liệu** tab is hidden by default (`SETTINGS_TABS.showDataTab`).
+**Cài đặt** classroom selector (when no class is open) → **Khôi phục từ đám mây** — lists cloud classrooms; confirm before import. Same card also appears on the selector when local classes already exist (e.g. after closing the current class).
+
+**Cài đặt → Dữ liệu → Khôi phục từ đám mây** — same restore UI when the **Dữ liệu** tab is enabled (`SETTINGS_TABS.showDataTab`; hidden by default).
+
+Non-2xx list responses throw a parsed Worker error (empty list only when HTTP 200 returns no classrooms).
 
 Import does **not** overwrite a classroom that already exists locally with the same `metadata.id` — delete or export the local class first, or restore onto a machine that does not already have that id.
 
@@ -207,7 +211,7 @@ Cloud backup is **upload + manual restore**, not bidirectional sync between PCs.
 | Does login on PC2 pull cloud data? | **No.** Each PC keeps its own local JSON files. |
 | When does cloud update? | After a **local save** on that PC, when cloud backup is **enabled for that class** (~30s debounce). |
 | What if PC2 saves with an old local copy? | **Last upload wins** — `PUT /backup` replaces the whole cloud file; no merge. |
-| How to get PC1’s data on PC2? | Manual **Khôi phục từ đám mây** (Dữ liệu tab), before editing, if that class id is not already on PC2. |
+| How to get PC1’s data on PC2? | **Cài đặt** classroom selector → **Khôi phục từ đám mây** (before editing), or Dữ liệu tab when `showDataTab` is enabled. |
 | Back on PC1 the next day? | PC1 still shows **PC1 local** until you restore from cloud or edit locally; saving may upload PC1 local and overwrite cloud again. |
 
 **Recommended workflow when switching machines:**
@@ -217,6 +221,20 @@ Cloud backup is **upload + manual restore**, not bidirectional sync between PCs.
 3. Avoid editing the same class on two PCs without restore — otherwise whichever PC uploads last replaces the cloud copy.
 
 `checkStartupBackup` only compares **local** `metadata.updatedAt` to this device’s backup metadata — it does **not** compare to the cloud timestamp.
+
+### New device / first login
+
+First Google sign-in on a **new PC** (or empty app data folder):
+
+| Layer | What you get |
+|---|---|
+| **Account & license** | Same D1 user and plan as other devices (trial / basic / premium / lifetime). `AccessGate` unlocks if the license is valid. |
+| **Local classrooms** | **Empty** until you create a class, import JSON, or manually restore from cloud. The app shows **Cài đặt** classroom selector (“Tạo lớp học mới”). |
+| **Classes from another PC** | **Not downloaded** on login. They exist in the cloud only if the other PC uploaded them (premium/lifetime + cloud backup enabled for that class + upload completed). |
+| **Getting another PC’s class** | **Cài đặt** classroom selector → **Khôi phục từ đám mây** (or Dữ liệu tab when enabled). Restore fails if that `metadata.id` already exists locally. |
+| **Creating a new class on PC2 by mistake** | A **new** `classroomId` — separate from PC1’s class in cloud. Does not update PC1’s data. |
+
+**Typical experience:** logged in, correct plan in **Tài khoản**, but **no classes** until create / import / restore.
 
 ---
 
@@ -328,6 +346,28 @@ There is **no admin UI** in the app — API + Wrangler D1 only.
 |---|---|---|
 | Tauri | OS keychain (`keyring`) | Legacy `entitlement.sec` is migrated into the keyring once, then deleted. If the keyring write fails, the file contents are **not** returned — the teacher must sign in again. |
 | Web dev | `sessionStorage` | Weaker; dev-only |
+
+### Session persistence (close & reopen)
+
+| Runtime | After close & reopen | Must sign in again when |
+|---|---|---|
+| **Tauri `.exe`** | **Usually stays signed in.** `AuthProvider.bootstrap()` loads keychain on startup; refreshes online when possible. | **Đăng xuất**; license expired / account disabled; offline grace ended (~30 days without online refresh); invalid entitlement or wrong `NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY` in build; keyring save failed at login. |
+| **Web dev** (`npm run dev`) | **Same browser tab refresh:** stays signed in. **Close tab/browser:** `sessionStorage` cleared → sign in again. | Closing the browser window or tab; opening a new session without stored entitlement. |
+
+JWT `exp` ≈ **7 days**, but offline use is allowed while `offlineValidUntil` (~30 days from issue) still verifies locally (see **Offline grace** above).
+
+### Web vs desktop — separate sessions
+
+Web (`npm run dev`) and Tauri `.exe` do **not** share a login session:
+
+| | Web | Desktop `.exe` |
+|---|---|---|
+| Login | Google Identity Services button in browser | “Đăng nhập bằng Google” → PKCE loopback in system browser |
+| OAuth client env | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` |
+| Session storage | `sessionStorage` | OS keychain |
+| Logs in the other app automatically? | **No** | **No** |
+
+Signing in on web does **not** sign you into the `.exe`, and vice versa. Same Google account still shares **license** (D1) and **cloud backup namespace** (R2), not local classroom JSON or entitlement files on disk.
 
 Session refresh (`bootstrap` / `refreshSession`) keeps the previous session if `saveAuthSession` fails; it logs and does not throw from `online` / `visibilitychange` handlers.
 

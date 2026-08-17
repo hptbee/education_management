@@ -1,15 +1,15 @@
 'use client'
 
-import { CloudDownload, Copy, Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
+import { Copy, Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
-import { ClassroomButton, ClassroomCard, useClassroomDialog } from '@/src/components/classroom'
-import { listCloudClassrooms, restoreCloudClassroom } from '@/src/auth/api'
+import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
 import { databaseService } from '@/src/database/database.service'
 import { isCloudBackupConfigured } from '@/src/database/backup/cloud-backup.service'
 import type { ClassroomDatabase, DatabaseSummary } from '@/src/database/types'
 import { useAuth } from '@/src/store/AuthContext'
 import { ClassroomList } from './classroom-list'
+import { CloudRestoreCard } from './cloud-restore-card'
 
 interface DataSectionProps {
   data: ClassroomDatabase
@@ -45,15 +45,8 @@ export function DataSection({
   onCloudBackupEnabledChange,
 }: DataSectionProps) {
   const { entitlement, permissions } = useAuth()
-  const { showConfirm } = useClassroomDialog()
   const [databases, setDatabases] = useState<DatabaseSummary[]>([])
   const [cloudConfigured, setCloudConfigured] = useState(false)
-  const [cloudClassrooms, setCloudClassrooms] = useState<
-    { classroomId: string; updatedAt: string | null; size: number }[]
-  >([])
-  const [loadingCloud, setLoadingCloud] = useState(false)
-  const [restoringId, setRestoringId] = useState<string | null>(null)
-  const [cloudError, setCloudError] = useState<string | null>(null)
   const [listError, setListError] = useState<string | null>(null)
 
   const loadDatabases = useCallback(async () => {
@@ -73,49 +66,6 @@ export function DataSection({
   useEffect(() => {
     void loadDatabases()
   }, [data.metadata.id, loadDatabases])
-
-  useEffect(() => {
-    if (!cloudConfigured || !entitlement) {
-      setCloudClassrooms([])
-      return
-    }
-
-    setLoadingCloud(true)
-    setCloudError(null)
-    void listCloudClassrooms(entitlement)
-      .then(setCloudClassrooms)
-      .catch(() => setCloudError('Không tải được danh sách lớp trên đám mây.'))
-      .finally(() => setLoadingCloud(false))
-  }, [cloudConfigured, entitlement, data.metadata.id])
-
-  const handleRestoreFromCloud = async (classroomId: string) => {
-    if (!entitlement) return
-    const confirmed = await showConfirm(
-      `Khôi phục lớp "${classroomId}" từ đám mây? Dữ liệu sẽ được nhập vào thiết bị này (không ghi đè lớp trùng mã).`,
-      {
-        title: 'Khôi phục từ đám mây',
-        confirmLabel: 'Khôi phục',
-        cancelLabel: 'Hủy bỏ',
-        variant: 'warning',
-      },
-    )
-    if (!confirmed) return
-
-    setRestoringId(classroomId)
-    setCloudError(null)
-    try {
-      const payload = await restoreCloudClassroom(entitlement, classroomId)
-      if (!payload) {
-        throw new Error('Không tìm thấy bản sao lưu trên đám mây.')
-      }
-      await databaseService.importDatabaseFromJson(payload)
-      await loadDatabases()
-    } catch (err) {
-      setCloudError(err instanceof Error ? err.message : 'Khôi phục thất bại.')
-    } finally {
-      setRestoringId(null)
-    }
-  }
 
   const otherClasses = databases.filter((db) => db.id !== data.metadata.id)
   const hasCloudBackupPermission = permissions?.cloudBackup === true
@@ -275,54 +225,11 @@ export function DataSection({
         </div>
       </ClassroomCard>
 
-      {showCloudFeatures ? (
-        <ClassroomCard>
-          <h2 className="font-display text-lg font-extrabold text-slate-800">Khôi phục từ đám mây</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            Tải lớp đã sao lưu trên tài khoản của cô về thiết bị này.
-          </p>
-          {cloudError ? (
-            <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
-              {cloudError}
-            </p>
-          ) : null}
-          {loadingCloud ? (
-            <p className="mt-4 text-sm font-semibold text-slate-500">Đang tải danh sách...</p>
-          ) : cloudClassrooms.length === 0 ? (
-            <p className="mt-4 rounded-2xl bg-surface-soft px-4 py-3 text-sm font-semibold text-slate-500">
-              Chưa có lớp nào được sao lưu trên đám mây.
-            </p>
-          ) : (
-            <ul className="mt-4 grid gap-2">
-              {cloudClassrooms.map((item) => (
-                <li
-                  key={item.classroomId}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-surface-soft px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{item.classroomId}</p>
-                    <p className="text-xs font-semibold text-slate-400">
-                      {item.updatedAt
-                        ? new Date(item.updatedAt).toLocaleString('vi-VN')
-                        : '—'}
-                      {' · '}
-                      {Math.round(item.size / 1024)} KB
-                    </p>
-                  </div>
-                  <ClassroomButton
-                    variant="outline"
-                    disabled={restoringId === item.classroomId}
-                    onClick={() => void handleRestoreFromCloud(item.classroomId)}
-                  >
-                    <CloudDownload className="size-4" />
-                    {restoringId === item.classroomId ? 'Đang khôi phục...' : 'Khôi phục'}
-                  </ClassroomButton>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ClassroomCard>
-      ) : null}
+      <CloudRestoreCard
+        reloadKey={data.metadata.id}
+        importFromCloudPayload={(payload) => databaseService.importDatabaseFromJson(payload)}
+        onRestored={() => loadDatabases()}
+      />
     </div>
   )
 }

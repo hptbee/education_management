@@ -15,9 +15,11 @@ import type { DatabaseSummary } from '@/src/database/types'
 import { useAppData } from '@/src/store/AppDataContext'
 import { Settings } from 'lucide-react'
 import { ClassroomList } from './classroom-list'
+import { CloudRestoreCard } from './cloud-restore-card'
 
 export function ClassroomSelectorScreen() {
-  const { switchDatabase, createDatabase, importDatabase, data, isLoading } = useAppData()
+  const { switchDatabase, createDatabase, importDatabase, importDatabaseFromJson, data, isLoading } =
+    useAppData()
   const { showAlert } = useClassroomDialog()
   const [draft, setDraft] = useState({ className: '', teacherName: '', schoolYear: '' })
   const [databases, setDatabases] = useState<DatabaseSummary[]>([])
@@ -53,6 +55,13 @@ export function ClassroomSelectorScreen() {
   }
 
   const hasClasses = databases.length > 0
+
+  const cloudRestoreCard = (
+    <CloudRestoreCard
+      reloadKey={databases.map((db) => db.id).join(',')}
+      importFromCloudPayload={(payload) => importDatabaseFromJson(payload)}
+    />
+  )
 
   const createForm = (
     <ClassroomCard>
@@ -173,22 +182,25 @@ export function ClassroomSelectorScreen() {
             {createForm}
             {importCard}
           </div>
+          {cloudRestoreCard}
         </div>
       ) : listError ? (
         <div className="grid gap-6">
           {createForm}
           {importCard}
+          {cloudRestoreCard}
         </div>
       ) : listLoading ? null : (
         <div className="grid gap-6">
           <EmptyState
             icon={BookOpen}
             title="Chưa có lớp học nào"
-            description="Tạo lớp mới hoặc nhập dữ liệu JSON để bắt đầu."
+            description="Tạo lớp mới, nhập JSON, hoặc khôi phục từ đám mây để bắt đầu."
             compact
           />
           {createForm}
           {importCard}
+          {cloudRestoreCard}
         </div>
       )}
     </div>
