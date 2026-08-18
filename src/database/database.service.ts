@@ -12,6 +12,7 @@ import { assertImportFileSize } from "./importLimits";
 import { getLastClassroomId, setLastClassroomId, clearLastClassroomId } from "../utils/lastClassroom";
 import { isCloudBackupConfigured } from "./backup/cloud-backup.service";
 import type { CloudClassroomRegistryEntry } from "./backup/cloud-types";
+import { restoreCloudAssetsLocally } from "./backup/cloud-asset-sync";
 
 function assertEntityArray(
   record: Record<string, unknown>,
@@ -217,13 +218,18 @@ export class DatabaseService {
     return summary?.hydrated !== false;
   }
 
-  async saveCloudRestoredDatabase(data: unknown): Promise<ClassroomDatabase> {
+  async saveCloudRestoredDatabase(
+    data: unknown,
+    options?: {
+      cloudAssets?: Array<{ path: string; content: string; encoding?: string }>;
+    },
+  ): Promise<ClassroomDatabase> {
     const record = data as Record<string, unknown>;
     const classroomData =
       record.payload && typeof record.payload === "object" ? record.payload : data;
     assertImportShape(classroomData);
 
-    const db = normalizeClassroomDatabase(classroomData as ClassroomDatabase);
+    let db = normalizeClassroomDatabase(classroomData as ClassroomDatabase);
     if (db.metadata.cloudStub) {
       delete db.metadata.cloudStub;
     }
@@ -231,8 +237,16 @@ export class DatabaseService {
       db.appSettings.cloudBackupEnabled = true;
     }
 
+    if (options?.cloudAssets?.length) {
+      await restoreCloudAssetsLocally(db.metadata.id, options.cloudAssets);
+    }
+
+    const { database: migrated } = await migrateLegacyClassroomImages(db);
+    db = migrated;
+
     const storage = await this.getStorage();
     await storage.save(db);
+    await persistActiveClassroomId(db.metadata.id);
     return db;
   }
 

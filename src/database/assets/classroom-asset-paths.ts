@@ -111,8 +111,10 @@ export function resolveClassroomAssetAbsolute(
   joinPath: (...parts: string[]) => string,
 ): string {
   assertSafeClassroomId(classroomId, "classroomId");
-  assertSafeRelativeAssetPath(relativePath);
-  return joinPath(dataDir, "classrooms", classroomId, relativePath);
+  const normalized = relativePath.replace(/\\/g, "/");
+  assertSafeRelativeAssetPath(normalized);
+  const segments = normalized.split("/").filter(Boolean);
+  return joinPath(dataDir, "classrooms", classroomId, ...segments);
 }
 
 export function parentDirForAsset(relativePath: string): string {

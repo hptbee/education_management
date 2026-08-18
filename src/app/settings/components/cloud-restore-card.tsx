@@ -4,7 +4,6 @@ import { CloudDownload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ClassroomButton, ClassroomCard, useClassroomDialog } from '@/src/components/classroom'
 import { listCloudClassrooms, restoreCloudClassroom, restoreCloudClassroomAssets } from '@/src/auth/api'
-import { restoreCloudAssetsLocally } from '@/src/database/backup/cloud-asset-sync'
 import {
   getCloudBackupUrl,
   isEntitlementConfigured,
@@ -14,7 +13,10 @@ import { useAuth } from '@/src/store/AuthContext'
 
 interface CloudRestoreCardProps {
   /** Re-import cloud JSON into local storage (e.g. AppData or databaseService). */
-  importFromCloudPayload: (payload: unknown) => Promise<ClassroomDatabase>
+  importFromCloudPayload: (
+    payload: unknown,
+    cloudAssets?: Array<{ path: string; content: string; encoding?: string }>,
+  ) => Promise<ClassroomDatabase>
   /** Called after a successful import (e.g. refresh local list or open class). */
   onRestored?: (db: ClassroomDatabase) => void | Promise<void>
   /** Bumps cloud list reload when local classroom context changes. */
@@ -27,7 +29,7 @@ export function CloudRestoreCard({
   reloadKey,
 }: CloudRestoreCardProps) {
   const { entitlement, permissions } = useAuth()
-  const { showConfirm } = useClassroomDialog()
+  const { showConfirm, showAlert } = useClassroomDialog()
   const [cloudClassrooms, setCloudClassrooms] = useState<
     { classroomId: string; updatedAt: string | null; size: number; name?: string | null; schoolYear?: string | null }[]
   >([])
@@ -59,7 +61,7 @@ export function CloudRestoreCard({
   const handleRestoreFromCloud = async (classroomId: string) => {
     if (!entitlement) return
     const confirmed = await showConfirm(
-      `Khôi phục lớp "${classroomId}" từ đám mây? Dữ liệu sẽ được nhập vào thiết bị này (không ghi đè lớp trùng mã).`,
+      `Khôi phục lớp "${classroomId}" từ đám mây? Dữ liệu local của lớp này sẽ được thay bằng bản trên đám mây.`,
       {
         title: 'Khôi phục từ đám mây',
         confirmLabel: 'Khôi phục',
@@ -76,12 +78,17 @@ export function CloudRestoreCard({
       if (!payload) {
         throw new Error('Không tìm thấy bản sao lưu trên đám mây.')
       }
-      const db = await importFromCloudPayload(payload)
       const assets = await restoreCloudClassroomAssets(entitlement, classroomId)
-      if (assets.length > 0) {
-        await restoreCloudAssetsLocally(db.metadata.id, assets)
-      }
+      const db = await importFromCloudPayload(payload, assets)
       await onRestored?.(db)
+      const assetNote =
+        assets.length > 0
+          ? ` (${assets.length} ảnh)`
+          : ' — không có ảnh trên đám mây; chỉ khôi phục dữ liệu JSON.'
+      void showAlert(
+        `Đã khôi phục lớp "${db.classroomSettings.className}" (${db.classroomSettings.schoolYear}) từ đám mây${assetNote}`,
+        { variant: 'success' },
+      )
     } catch (err) {
       setCloudError(err instanceof Error ? err.message : 'Khôi phục thất bại.')
     } finally {

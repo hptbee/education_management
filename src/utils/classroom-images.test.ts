@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createEmptyDatabase } from "../database/database.factory";
-import { teacherAvatarAssetKey } from "../database/assets/classroom-asset-paths";
+import { giftImageAssetKey, teacherAvatarAssetKey } from "../database/assets/classroom-asset-paths";
+import { classroomAssetService } from "../database/assets/classroom-asset.service";
 
 function makeSettings(className = "1A", schoolYear = "2025-2026") {
   return {
@@ -51,6 +52,31 @@ describe("migrateLegacyClassroomImages", () => {
     expect(database.classroomSettings.teacher.avatarAssetKey).toBe(teacherAvatarAssetKey());
     expect(database.classroomSettings.teacher.avatar).toBeUndefined();
     expect(saveAsset).toHaveBeenCalled();
+  });
+
+  it("rewrites missing legacy gift path to assets/rewards key", async () => {
+    const { migrateLegacyClassroomImages } = await import("./classroom-images");
+    const giftId = "gift-b8ae641d-ea2c-4e24-b92b-169a3c3457a8";
+    const legacyPath = `images/gifts/${giftId}.png`;
+    vi.mocked(classroomAssetService.readAsset).mockResolvedValue(null);
+
+    const db = createEmptyDatabase(makeSettings());
+    db.rewards = [
+      {
+        id: giftId,
+        name: "Sticker",
+        imagePath: legacyPath,
+        requiredPoints: 1,
+        isActive: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    const { database, didMigrate } = await migrateLegacyClassroomImages(db);
+
+    expect(didMigrate).toBe(true);
+    expect(database.rewards[0]?.imagePath).toBe(giftImageAssetKey(giftId));
   });
 
   it("export JSON shape has no data:image after normalization path", async () => {

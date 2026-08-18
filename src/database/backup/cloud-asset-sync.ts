@@ -90,15 +90,19 @@ export async function collectAssetKeysForCloudSync(
 export async function restoreCloudAssetsLocally(
   classroomId: string,
   assets: Array<{ path: string; content: string; encoding?: string }>,
-): Promise<void> {
+): Promise<number> {
+  let written = 0;
   for (const asset of assets) {
-    if (!isAllowedCloudAssetPath(asset.path)) continue;
+    const path = normalizeAssetPath(asset.path);
+    if (!path || !isAllowedCloudAssetPath(path)) continue;
     if (asset.encoding !== "base64") continue;
     const binary = atob(asset.content);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-    await classroomAssetService.saveAsset(classroomId, asset.path, bytes);
+    await classroomAssetService.saveAsset(classroomId, path, bytes);
+    written += 1;
   }
+  return written;
 }

@@ -4,6 +4,7 @@ import {
   giftImageAssetKey,
   isAllowedCloudAssetPath,
   isLegacyGiftImagePath,
+  resolveClassroomAssetAbsolute,
   studentAvatarAssetKey,
   teacherAvatarAssetKey,
 } from "./classroom-asset-paths";
@@ -26,5 +27,18 @@ describe("classroom asset paths", () => {
     expect(isAllowedCloudAssetPath("assets/students/s1/avatar.webp")).toBe(true);
     expect(isAllowedCloudAssetPath("assets/evil/../secret.webp")).toBe(false);
     expect(isAllowedCloudAssetPath("classroom.json")).toBe(false);
+  });
+
+  it("resolves nested asset paths on Windows-style joinPath", () => {
+    const winJoin = (...parts: string[]) => parts.join("\\");
+    const absolute = resolveClassroomAssetAbsolute(
+      "C:\\AppData\\ClassroomManagement",
+      "2-7_2026-2027",
+      bannerAssetKey(),
+      winJoin,
+    );
+    expect(absolute).toBe(
+      "C:\\AppData\\ClassroomManagement\\classrooms\\2-7_2026-2027\\assets\\banner.webp",
+    );
   });
 });

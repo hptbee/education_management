@@ -18,7 +18,7 @@ import { ClassroomList } from './classroom-list'
 import { CloudRestoreCard } from './cloud-restore-card'
 
 export function ClassroomSelectorScreen() {
-  const { switchDatabase, createDatabase, importDatabase, importDatabaseFromJson, data, isLoading } =
+  const { switchDatabase, createDatabase, importDatabase, restoreFromCloudPayload, data, isLoading } =
     useAppData()
   const { showAlert } = useClassroomDialog()
   const [draft, setDraft] = useState({ className: '', teacherName: '', schoolYear: '' })
@@ -59,7 +59,8 @@ export function ClassroomSelectorScreen() {
   const cloudRestoreCard = (
     <CloudRestoreCard
       reloadKey={databases.map((db) => db.id).join(',')}
-      importFromCloudPayload={(payload) => importDatabaseFromJson(payload)}
+      importFromCloudPayload={(payload) => restoreFromCloudPayload(payload)}
+      onRestored={() => void loadDatabases()}
     />
   )
 

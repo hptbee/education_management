@@ -77,6 +77,11 @@ interface AppDataContextValue {
   ) => Promise<ClassroomDatabase>;
   importDatabase: (file: File) => Promise<void>;
   importDatabaseFromJson: (payload: unknown) => Promise<ClassroomDatabase>;
+  /** Overwrite local classroom JSON from cloud restore payload. */
+  restoreFromCloudPayload: (
+    payload: unknown,
+    cloudAssets?: Array<{ path: string; content: string; encoding?: string }>,
+  ) => Promise<ClassroomDatabase>;
   renameDatabase: (newClassName: string, newSchoolYear: string) => Promise<void>;
   duplicateDatabase: (
     sourceId: string,
@@ -541,6 +546,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         try {
           const db = await databaseService.importDatabaseFromJson(payload);
           applyLoadedDatabase(db);
+          return db;
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      restoreFromCloudPayload: async (payload, cloudAssets) => {
+        setIsLoading(true);
+        try {
+          const db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets });
+          applyLoadedDatabase(db);
+          await refreshCloudRegistrySummaries();
           return db;
         } finally {
           setIsLoading(false);

@@ -200,8 +200,8 @@ async function migrateGiftPath(db: ClassroomDatabase, gift: Gift): Promise<{ gif
       changed: true,
     };
   } catch (error) {
-    console.warn("[migrateLegacyClassroomImages] gift path failed", gift.id, error);
-    return { gift, changed: false };
+    // Legacy file missing locally (common after cloud JSON restore before assets download).
+    return { gift: { ...gift, imagePath: targetKey }, changed: true };
   }
 }
 

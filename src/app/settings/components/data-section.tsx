@@ -172,8 +172,13 @@ export function DataSection({
 
       <CloudRestoreCard
         reloadKey={data.metadata.id}
-        importFromCloudPayload={(payload) => databaseService.importDatabaseFromJson(payload)}
-        onRestored={() => loadDatabases()}
+        importFromCloudPayload={(payload, cloudAssets) =>
+          databaseService.saveCloudRestoredDatabase(payload, { cloudAssets })
+        }
+        onRestored={(db) => {
+          void loadDatabases()
+          onSwitchDatabase(db.metadata.id)
+        }}
       />
     </div>
   )

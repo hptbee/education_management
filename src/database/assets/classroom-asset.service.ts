@@ -66,9 +66,13 @@ export class ClassroomAssetService {
       const fs = await this.getFs();
       const dataDir = await fs!.getDataDirectory();
       const absolutePath = resolveClassroomAssetAbsolute(dataDir, classroomId, relativePath, fs!.joinPath);
-      const exists = await fs!.fileExists(absolutePath);
-      if (!exists) return null;
-      return fs!.readBinaryFile(absolutePath);
+      try {
+        const exists = await fs!.fileExists(absolutePath);
+        if (!exists) return null;
+        return await fs!.readBinaryFile(absolutePath);
+      } catch {
+        return null;
+      }
     }
 
     const key = webAssetStorageKey(classroomId, relativePath);

@@ -305,7 +305,7 @@ export function ClassroomsPage() {
     archiveClassroom,
     restoreClassroom,
     deleteDatabase,
-    importDatabaseFromJson,
+    restoreFromCloudPayload,
   } = useAppData()
 
   const [refreshKey, setRefreshKey] = useState(0)
@@ -595,7 +595,7 @@ export function ClassroomsPage() {
 
       <CloudRestoreCard
         reloadKey={String(refreshKey)}
-        importFromCloudPayload={(payload) => importDatabaseFromJson(payload)}
+        importFromCloudPayload={(payload) => restoreFromCloudPayload(payload)}
         onRestored={() => bumpList()}
       />
 

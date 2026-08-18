@@ -94,6 +94,33 @@ describe("DatabaseService", () => {
     expect(imported.metadata.id).toBe(db.metadata.id);
   });
 
+  it("saveCloudRestoredDatabase overwrites an existing classroom", async () => {
+    const { service } = makeService();
+    const original = await service.createDatabase(makeSettings("2/7", "2026-2027"));
+    original.students.push({
+      id: "local-only",
+      name: "Local",
+      points: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    await service.saveDatabase(original);
+
+    const cloud = createEmptyDatabase(makeSettings("2/7", "2026-2027"));
+    cloud.metadata.id = original.metadata.id;
+    cloud.students.push({
+      id: "cloud-only",
+      name: "Cloud",
+      points: 5,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const restored = await service.saveCloudRestoredDatabase(cloud);
+    expect(restored.students.some((s) => s.id === "cloud-only")).toBe(true);
+    expect(restored.students.some((s) => s.id === "local-only")).toBe(false);
+  });
+
   it("rejects unsafe metadata id on import", async () => {
     const { service } = makeService();
     const db = createEmptyDatabase(makeSettings());

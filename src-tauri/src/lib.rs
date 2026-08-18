@@ -571,8 +571,11 @@ async fn remove_file(app: AppHandle, path: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn file_exists(app: AppHandle, path: String) -> Result<bool, String> {
-    let safe_path = assert_under_data_dir(&app, &path, false)?;
-    Ok(safe_path.exists())
+    match assert_under_data_dir(&app, &path, false) {
+        Ok(safe_path) => Ok(safe_path.exists()),
+        Err(err) if err.starts_with("Path not found:") => Ok(false),
+        Err(err) => Err(err),
+    }
 }
 
 #[tauri::command]

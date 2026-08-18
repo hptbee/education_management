@@ -11,7 +11,6 @@ import {
   visibleRegistryEntries,
 } from "./cloud-serializer";
 import type { CloudClassroomsRegistryFile } from "./cloud-types";
-import { restoreCloudAssetsLocally } from "./cloud-asset-sync";
 import {
   cloudBackupScheduler,
   getCloudBackupUrl,
@@ -197,11 +196,8 @@ export async function hydrateClassroomFromCloud(classroomKey: string): Promise<C
     throw new Error("Không tìm thấy bản sao lưu trên đám mây.");
   }
 
-  const db = await databaseService.saveCloudRestoredDatabase(payload);
   const assets = await restoreCloudClassroomAssets(token, classroomKey);
-  if (assets.length > 0) {
-    await restoreCloudAssetsLocally(db.metadata.id, assets);
-  }
+  const db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets: assets });
 
   await refreshCloudRegistrySummaries();
   return db;
