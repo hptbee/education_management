@@ -512,6 +512,248 @@ describe("classroom list and restore", () => {
     const body = (await response.json()) as { students: unknown[] };
     expect(body.students.length).toBe(1);
   });
+
+  it("PUT /sync writes structured files under classroom prefix", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const putKeys: string[] = [];
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    env.BACKUP_BUCKET = {
+      put: async (key: string) => {
+        putKeys.push(key);
+      },
+      get: async () => null,
+      list: async () => ({ objects: [] }),
+    } as unknown as R2Bucket;
+
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "sync-sub" }, "teacher");
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const response = await worker.fetch(
+      new Request("https://example.com/sync", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${entitlement}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          classroomKey: "2-7_2026-2027",
+          files: [
+            {
+              path: "manifest.json",
+              content: JSON.stringify({
+                version: 2,
+                format: "structured-classroom-storage",
+                classroomKey: "2-7_2026-2027",
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-02T00:00:00.000Z",
+                schemaVersion: 1,
+                migrationComplete: true,
+              }),
+            },
+            {
+              path: "classroom.json",
+              content: JSON.stringify({
+                version: 1,
+                updatedAt: "2026-01-02T00:00:00.000Z",
+                metadata: {
+                  id: "2-7_2026-2027",
+                  version: 1,
+                  createdAt: "2026-01-01T00:00:00.000Z",
+                  updatedAt: "2026-01-02T00:00:00.000Z",
+                },
+                classroomSettings: { className: "2-7", schoolYear: "2026-2027" },
+              }),
+            },
+            {
+              path: "students.json",
+              content: JSON.stringify({
+                version: 1,
+                updatedAt: "2026-01-02T00:00:00.000Z",
+                students: [{ id: "s1", name: "Alice" }],
+              }),
+            },
+          ],
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(putKeys).toContain(`users/${user.id}/classrooms/2-7_2026-2027/manifest.json`);
+    expect(putKeys).toContain(`users/${user.id}/classrooms/2-7_2026-2027/students.json`);
+  });
+
+  it("lists classrooms from registry when present", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "registry-sub" }, "teacher");
+    env.BACKUP_BUCKET = {
+      put: async () => undefined,
+      get: async (key: string) => {
+        if (key === `users/${user.id}/classrooms.json`) {
+          return {
+            text: async () =>
+              JSON.stringify({
+                version: 1,
+                updatedAt: "2026-01-02T00:00:00.000Z",
+                classrooms: [
+                  {
+                    key: "2-7_2026-2027",
+                    name: "2-7",
+                    schoolYear: "2026-2027",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-02T00:00:00.000Z",
+                    archived: false,
+                  },
+                ],
+              }),
+            uploaded: new Date("2026-01-02T00:00:00.000Z"),
+          };
+        }
+        return null;
+      },
+      list: async () => ({ objects: [] }),
+    } as unknown as R2Bucket;
+
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const response = await worker.fetch(
+      new Request("https://example.com/classrooms", {
+        headers: { Authorization: `Bearer ${entitlement}` },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      classrooms: Array<{ classroomId: string; name: string | null }>;
+      source: string;
+    };
+    expect(body.source).toBe("registry");
+    expect(body.classrooms[0].classroomId).toBe("2-7_2026-2027");
+    expect(body.classrooms[0].name).toBe("2-7");
+  });
+
+  it("restores structured classroom as monolith JSON", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "restore-structured" }, "teacher");
+    const prefix = `users/${user.id}/classrooms/2-7_2026-2027/`;
+    const files: Record<string, string> = {
+      [`${prefix}manifest.json`]: JSON.stringify({
+        version: 2,
+        format: "structured-classroom-storage",
+        classroomKey: "2-7_2026-2027",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        schemaVersion: 1,
+        migrationComplete: true,
+      }),
+      [`${prefix}classroom.json`]: JSON.stringify({
+        version: 1,
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        metadata: {
+          id: "2-7_2026-2027",
+          version: 1,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+        },
+        classroomSettings: { className: "2-7", schoolYear: "2026-2027" },
+      }),
+      [`${prefix}students.json`]: JSON.stringify({
+        version: 1,
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        students: [{ id: "s1", name: "Structured" }],
+      }),
+      [`${prefix}activity/index.json`]: JSON.stringify({
+        version: 1,
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        dates: [{ date: "2026-03-15", count: 1, updatedAt: "2026-01-02T00:00:00.000Z" }],
+      }),
+      [`${prefix}activity/2026-03-15.json`]: JSON.stringify({
+        version: 1,
+        date: "2026-03-15",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        activities: [
+          {
+            id: "ph1",
+            type: "points",
+            studentId: "s1",
+            title: "Good",
+            pointDelta: 5,
+            createdAt: "2026-03-15T10:00:00.000Z",
+            metadata: {
+              source: "points",
+              payload: {
+                id: "ph1",
+                studentId: "s1",
+                actionId: "a1",
+                actionName: "Good",
+                points: 5,
+                createdAt: "2026-03-15T10:00:00.000Z",
+              },
+            },
+          },
+        ],
+      }),
+    };
+
+    env.BACKUP_BUCKET = {
+      put: async () => undefined,
+      get: async (key: string) => {
+        const content = files[key];
+        if (!content) return null;
+        return { text: async () => content };
+      },
+      list: async () => ({ objects: [] }),
+    } as unknown as R2Bucket;
+
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const response = await worker.fetch(
+      new Request("https://example.com/restore/2-7_2026-2027", {
+        headers: { Authorization: `Bearer ${entitlement}` },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      students: Array<{ name: string }>;
+      pointHistory: Array<{ actionName: string }>;
+    };
+    expect(body.students[0].name).toBe("Structured");
+    expect(body.pointHistory[0].actionName).toBe("Good");
+  });
 });
 
 describe("admin patch handlers", () => {

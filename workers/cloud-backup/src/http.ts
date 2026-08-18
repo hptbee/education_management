@@ -77,6 +77,8 @@ export function readBearerToken(request: Request): string | null {
 
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
 export const MAX_JSON_BODY_BYTES = 64 * 1024;
+export const MAX_SYNC_BATCH_FILES = 64;
+export const MAX_SYNC_FILE_BYTES = 5 * 1024 * 1024;
 
 export async function readBodyWithLimit(request: Request): Promise<string> {
   const contentLength = request.headers.get("content-length");

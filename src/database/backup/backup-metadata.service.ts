@@ -1,3 +1,5 @@
+import type { CloudSyncStateEntry } from "./cloud-types";
+import { CLOUD_SYNC_STATE_VERSION } from "./cloud-types";
 import type { FileStorageAdapter } from "../storage/storage.interface";
 import { tauriFs, isTauri } from "../tauri-fs.service";
 
@@ -9,6 +11,7 @@ export interface ClassroomBackupMeta {
   lastCloudBackupStatus: CloudBackupStatus;
   lastCloudBackupError: string | null;
   lastBackedUpUpdatedAt: string | null;
+  cloudSyncState?: CloudSyncStateEntry;
 }
 
 export interface BackupStatusFile {
@@ -150,6 +153,26 @@ export class BackupMetadataService {
       lastCloudBackupStatus: "failed",
       lastCloudBackupError: error,
     });
+  }
+
+  async getCloudSyncState(classroomId: string): Promise<CloudSyncStateEntry> {
+    const meta = await this.getClassroomMeta(classroomId);
+    return meta.cloudSyncState ?? {
+      formatVersion: CLOUD_SYNC_STATE_VERSION,
+      fileHashes: {},
+      migratedToStructured: false,
+    };
+  }
+
+  async updateCloudSyncState(classroomId: string, patch: Partial<CloudSyncStateEntry>): Promise<CloudSyncStateEntry> {
+    const current = await this.getCloudSyncState(classroomId);
+    const next: CloudSyncStateEntry = {
+      ...current,
+      ...patch,
+      fileHashes: patch.fileHashes ?? current.fileHashes,
+    };
+    await this.updateClassroomMeta(classroomId, { cloudSyncState: next });
+    return next;
   }
 }
 

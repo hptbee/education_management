@@ -6,6 +6,8 @@ import { loadAuthSession } from "@/src/auth/secure-storage";
 import { verifyEntitlementToken } from "@/src/auth/entitlement";
 import { sanitizeBackupIdentifier } from "../safeIdentifiers";
 import { logAppEvent } from "@/src/logging/app-log";
+import { cloudDirtyTracker } from "./cloud-dirty-tracker";
+import { uploadCloudSyncBatch } from "./cloud-sync.service";
 
 export interface BackupUploadRequest {
   classroomId: string;
@@ -68,6 +70,7 @@ export function buildBackupStorageKey(deviceId: string, classroomId: string): st
   return `backups/${safeDevice}/${safeClassroom}/latest.json`;
 }
 
+/** @deprecated Monolithic upload — use structured sync via CloudBackupScheduler */
 export async function uploadClassroomBackup(
   db: ClassroomDatabase,
   fetchImpl: typeof fetch = fetch,
@@ -122,6 +125,15 @@ export class CloudBackupScheduler {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private periodicTimer: ReturnType<typeof setInterval> | null = null;
   private pendingDb: ClassroomDatabase | null = null;
+  private pendingClassroomId: string | null = null;
+  private allLocalClassrooms: ClassroomDatabase[] = [];
+  private registrySummaries: Array<{
+    id: string;
+    className: string;
+    schoolYear: string;
+    createdAt: string;
+    updatedAt: string;
+  }> = [];
   private uploading = false;
   private failureCount = 0;
   private state: CloudBackupState = "disabled";
@@ -146,6 +158,22 @@ export class CloudBackupScheduler {
     this.state = state;
     this.lastError = error;
     this.emit();
+  }
+
+  setLocalClassroomRegistry(classrooms: ClassroomDatabase[]): void {
+    this.allLocalClassrooms = classrooms;
+  }
+
+  setRegistrySummaries(
+    summaries: Array<{
+      id: string;
+      className: string;
+      schoolYear: string;
+      createdAt: string;
+      updatedAt: string;
+    }>,
+  ): void {
+    this.registrySummaries = summaries;
   }
 
   private async canUpload(db: ClassroomDatabase): Promise<boolean> {
@@ -188,6 +216,7 @@ export class CloudBackupScheduler {
   private async scheduleAfterLocalSaveIfAllowed(db: ClassroomDatabase): Promise<void> {
     if (!(await this.canUpload(db))) {
       this.pendingDb = null;
+      this.pendingClassroomId = null;
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer);
         this.debounceTimer = null;
@@ -197,6 +226,7 @@ export class CloudBackupScheduler {
     }
 
     this.pendingDb = db;
+    this.pendingClassroomId = db.metadata.id;
     void backupMetadataService.recordCloudBackupPending(db.metadata.id);
     this.setState("pending", null);
 
@@ -214,11 +244,16 @@ export class CloudBackupScheduler {
     }
 
     const meta = await backupMetadataService.getClassroomMeta(db.metadata.id);
+    const syncState = await backupMetadataService.getCloudSyncState(db.metadata.id);
     const needsBackup =
       !meta.lastBackedUpUpdatedAt ||
-      new Date(db.metadata.updatedAt).getTime() > new Date(meta.lastBackedUpUpdatedAt).getTime();
+      new Date(db.metadata.updatedAt).getTime() > new Date(meta.lastBackedUpUpdatedAt).getTime() ||
+      !syncState.migratedToStructured;
 
     if (needsBackup) {
+      if (!syncState.migratedToStructured) {
+        cloudDirtyTracker.markAll(db.metadata.id);
+      }
       this.scheduleAfterLocalSave(db);
     } else if (meta.lastCloudBackupStatus === "success") {
       this.setState("synced", null);
@@ -229,6 +264,10 @@ export class CloudBackupScheduler {
     if (this.uploading || !this.pendingDb) return;
 
     const db = this.pendingDb;
+    if (db.metadata.id !== this.pendingClassroomId) {
+      return;
+    }
+
     if (!(await this.canUpload(db))) {
       this.setState("disabled", null);
       return;
@@ -242,22 +281,36 @@ export class CloudBackupScheduler {
     let needsFollowUpFlush = false;
 
     try {
-      await uploadClassroomBackup(db, this.fetchImpl);
+      const dirty = cloudDirtyTracker.get(uploadedId);
+      const syncState = await backupMetadataService.getCloudSyncState(uploadedId);
+      const result = await uploadCloudSyncBatch(db, dirty, {
+        allLocalClassrooms: this.allLocalClassrooms,
+        registrySummaries: this.registrySummaries,
+        fetchImpl: this.fetchImpl,
+        forceFull: !syncState.migratedToStructured,
+      });
+
       const hasNewerPending =
         this.pendingDb !== null &&
         (this.pendingDb.metadata.id !== uploadedId ||
           this.pendingDb.metadata.updatedAt !== uploadedAt);
+
       if (hasNewerPending) {
         this.failureCount = 0;
         this.setState("pending", null);
         needsFollowUpFlush = true;
       } else {
         this.pendingDb = null;
+        this.pendingClassroomId = null;
+        cloudDirtyTracker.clear(uploadedId);
         this.failureCount = 0;
         this.setState("synced", null);
-        logAppEvent("info", "cloud-backup", "Cloud backup uploaded", {
+        await backupMetadataService.recordCloudBackupSuccess(uploadedId, uploadedAt);
+        logAppEvent("info", "cloud-backup", "Cloud sync uploaded", {
           classroomId: uploadedId,
           updatedAt: uploadedAt,
+          uploadedPaths: result.uploadedPaths.length,
+          skippedPaths: result.skippedPaths.length,
         });
       }
     } catch (error) {
@@ -275,6 +328,22 @@ export class CloudBackupScheduler {
       if (needsFollowUpFlush) {
         queueMicrotask(() => void this.flushPending());
       }
+    }
+  }
+
+  /** Await pending cloud sync for classroom switch — flushes dirty state for a specific class. */
+  async flushCloudSyncForClassroom(classroomKey: string): Promise<void> {
+    if (this.pendingDb?.metadata.id === classroomKey) {
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = null;
+      }
+      await this.flushPending();
+      return;
+    }
+
+    if (cloudDirtyTracker.hasDirty(classroomKey) && this.pendingDb?.metadata.id === classroomKey) {
+      await this.flushPending();
     }
   }
 
@@ -300,11 +369,14 @@ export class CloudBackupScheduler {
   async triggerUploadNow(db: ClassroomDatabase): Promise<void> {
     if (!(await this.canUpload(db))) {
       this.pendingDb = null;
+      this.pendingClassroomId = null;
       this.setState("disabled", null);
       return;
     }
 
+    cloudDirtyTracker.markAll(db.metadata.id);
     this.pendingDb = db;
+    this.pendingClassroomId = db.metadata.id;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
@@ -316,3 +388,7 @@ export class CloudBackupScheduler {
 }
 
 export const cloudBackupScheduler = new CloudBackupScheduler();
+
+export async function flushCloudSync(): Promise<void> {
+  await cloudBackupScheduler.flushPending();
+}

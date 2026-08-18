@@ -37,6 +37,16 @@ vi.mock("./backup-metadata.service", () => ({
       lastBackedUpUpdatedAt: null,
       lastCloudBackupStatus: "pending",
     }),
+    getCloudSyncState: vi.fn().mockResolvedValue({
+      formatVersion: 1,
+      fileHashes: {},
+      migratedToStructured: false,
+    }),
+    updateCloudSyncState: vi.fn().mockResolvedValue({
+      formatVersion: 1,
+      fileHashes: {},
+      migratedToStructured: true,
+    }),
   },
 }));
 
@@ -180,8 +190,8 @@ describe("CloudBackupScheduler", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const secondBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
-    expect(secondBody.timestamp).toBe(db2.metadata.updatedAt);
+    const secondUrl = String(fetchMock.mock.calls[1][0]);
+    expect(secondUrl).toContain("/sync");
   });
 
   it("does not enter pending when entitlement lacks cloudBackup permission", async () => {

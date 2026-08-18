@@ -17,8 +17,8 @@ App (Tauri / Next.js)
       Desktop: PKCE loopback → POST /auth/google { code, codeVerifier, redirectUri }
   → D1 (users + licenses)
   → signed entitlement JWT
-  → Bearer on PUT /backup, GET /classrooms, GET /restore/:id
-  → R2 users/{userId}/classrooms/{classroomId}/database.json
+  → Bearer on PUT /backup, PUT /sync, GET /classrooms, GET /restore/:id
+  → R2 structured tree under users/{userId}/ (see docs/DATA_ARCHITECTURE.md)
 ```
 
 | Runtime | App OAuth client env | Worker secret |
@@ -49,9 +49,10 @@ Requires Bearer entitlement with `permissions.cloudBackup`.
 
 | Method | Path | Description |
 |---|---|---|
-| `PUT` | `/backup` | Upload classroom JSON wrapper |
-| `GET` | `/classrooms` | List user's classroom backups |
-| `GET` | `/restore/:classroomId` | Download backup JSON |
+| `PUT` | `/backup` | Legacy monolith classroom JSON upload |
+| `PUT` | `/sync` | Batch upload structured domain files (+ optional `classrooms.json` registry) |
+| `GET` | `/classrooms` | List classrooms (prefers `classrooms.json` registry) |
+| `GET` | `/restore/:classroomKey` | Download assembled monolith JSON for import |
 
 ### Admin
 
@@ -169,6 +170,21 @@ See [`docs/ACCOUNTS.md`](../../docs/ACCOUNTS.md) for OAuth client types, admin l
 
 ## R2 object layout
 
+Structured backup (incremental sync):
+
+```
+users/<user-id>/classrooms.json
+users/<user-id>/classrooms/<classroom-key>/
+  manifest.json, classroom.json, students.json, teams.json, roles.json,
+  recognitions.json, rewards.json, settings.json, catalog.json,
+  activity/index.json, activity/YYYY-MM-DD.json
+  database.json   # legacy monolith — kept after migration
+```
+
+Full field mapping and client sync flow: [`docs/DATA_ARCHITECTURE.md`](../../docs/DATA_ARCHITECTURE.md).
+
+Legacy layout (still supported for restore):
+
 ```
 users/<user-id>/classrooms/<classroom-id>/database.json
 ```
@@ -198,6 +214,7 @@ Legacy `backups/<device-id>/...` is **no longer written**. Pre-account backups a
 - Backup routes require a valid **signed entitlement** JWT.
 - Legacy shared `BACKUP_API_TOKEN` / `CLOUD_BACKUP_TOKEN` are **removed**.
 - PUT backup body limit: **25 MB** (`readBodyWithLimit`); `payload` must be a JSON object.
+- PUT sync body limit: **25 MB** total batch; max **64** files, **5 MB** per file.
 - Auth and admin JSON body limit: **64 KB** (`readJsonWithLimit` on `POST /auth/google` and admin JSON handlers).
 - Upload ownership comes from JWT `userId` only — client cannot spoof another user's prefix.
 - Client uploads only when teacher opts in per class (`cloudBackupEnabled`).

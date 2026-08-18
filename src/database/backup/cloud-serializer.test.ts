@@ -1,0 +1,137 @@
+import { describe, expect, it } from "vitest";
+import { createEmptyDatabase } from "../database.factory";
+import { toLocalDateKey } from "./local-date";
+import {
+  buildActivityLogsFromDatabase,
+  mergeCloudFilesToClassroom,
+  pathsForDomains,
+  serializeCloudFilesForUpload,
+  splitClassroomToCloudFiles,
+} from "./cloud-serializer";
+
+function makeDb(className = "2/7", schoolYear = "2026-2027") {
+  const db = createEmptyDatabase({
+    className,
+    schoolYear,
+    teacher: {
+      id: "teacher-1",
+      name: "Cô Thu",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  });
+  return db;
+}
+
+describe("toLocalDateKey", () => {
+  it("uses local calendar date not UTC slice", () => {
+    const iso = "2026-03-15T23:30:00.000Z";
+    const local = toLocalDateKey(iso);
+    const utcSlice = iso.slice(0, 10);
+    expect(local).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    if (utcSlice !== local) {
+      expect(local).not.toBe(utcSlice);
+    }
+  });
+});
+
+describe("cloud-serializer", () => {
+  it("split maps ClassroomDatabase fields to domain files", () => {
+    const db = makeDb("2-7", "2026-2027");
+    db.students = [
+      {
+        id: "s1",
+        name: "Alice",
+        points: 10,
+        classroomRoleIds: [],
+        badgeIds: [],
+        totalRewards: 0,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    db.pointHistory = [
+      {
+        id: "ph1",
+        studentId: "s1",
+        actionId: "a1",
+        actionName: "Good work",
+        points: 5,
+        source: "manual",
+        createdAt: "2026-03-15T10:00:00.000Z",
+      },
+    ];
+
+    const split = splitClassroomToCloudFiles(db);
+    expect(split.paths).toContain("students.json");
+    expect(split.paths).toContain("classroom.json");
+    expect(split.paths).toContain("activity/index.json");
+
+    const students = split.files["students.json"] as { students: typeof db.students };
+    expect(students.students).toHaveLength(1);
+    expect(students.students[0].points).toBe(10);
+
+    const activities = buildActivityLogsFromDatabase(db);
+    expect(activities).toHaveLength(1);
+    expect(activities[0].metadata?.payload).toEqual(db.pointHistory[0]);
+  });
+
+  it("merge round-trips split files to ClassroomDatabase", () => {
+    const db = makeDb("3-1", "2026-2027");
+    db.classroomSettings.className = "Class 3-1";
+    db.rewards = [
+      {
+        id: "r1",
+        name: "Sticker",
+        requiredPoints: 5,
+        isActive: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    db.rewardHistory = [
+      {
+        id: "rh1",
+        studentId: "s1",
+        rewardId: "r1",
+        rewardName: "Sticker",
+        pointsSpent: 5,
+        createdAt: "2026-03-16T08:00:00.000Z",
+      },
+    ];
+    db.students = [
+      {
+        id: "s1",
+        name: "Bob",
+        points: 0,
+        classroomRoleIds: [],
+        badgeIds: [],
+        totalRewards: 0,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    const split = splitClassroomToCloudFiles(db);
+    const uploads = serializeCloudFilesForUpload(split.files, split.paths);
+    const fileMap: Record<string, string> = {};
+    for (const u of uploads) fileMap[u.path] = u.content;
+
+    const merged = mergeCloudFilesToClassroom(fileMap);
+    expect(merged.metadata.id).toBe(db.metadata.id);
+    expect(merged.classroomSettings.className).toBe("Class 3-1");
+    expect(merged.rewards).toHaveLength(1);
+    expect(merged.rewardHistory).toHaveLength(1);
+    expect(merged.rewardHistory[0].rewardName).toBe("Sticker");
+  });
+
+  it("pathsForDomains selects only dirty domains plus manifest", () => {
+    const db = makeDb("1-1", "2026-2027");
+    const split = splitClassroomToCloudFiles(db);
+    const paths = pathsForDomains(["students", "settings"], split);
+    expect(paths).toContain("students.json");
+    expect(paths).toContain("settings.json");
+    expect(paths).toContain("manifest.json");
+    expect(paths).not.toContain("teams.json");
+  });
+});

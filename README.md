@@ -20,7 +20,7 @@ The app is designed for a single classroom and focuses on student profiles, clas
 
 ## Architecture & Constraints
 
-- **Local-first Desktop App**: Runs natively on Windows/macOS/Linux via Tauri.
+- **Local-first Desktop App**: Runs natively on **Windows** and **macOS** via Tauri (no Linux desktop builds in the release pipeline).
 - **Classroom data stays local**: `ClassroomDatabase` JSON on disk (Tauri) or IndexedDB (web dev) is the source of truth for students, points, teams, etc.
 - **Google sign-in required**: Teachers authenticate via Google; the app receives a signed **entitlement** from the Cloudflare Worker.
 - **7-day trial**: New Google accounts get a one-time 7-day trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **no license rows** also receive that one-time trial. Expired trials are not reminted. Upgrade to Basic or Premium 1 năm for continued access; **lifetime** is admin-assigned (not shown in the public plan comparison).
@@ -81,20 +81,22 @@ npm run tauri:build
 
 ## GitHub Releases
 
-This repo builds desktop installers automatically via [GitHub Actions](.github/workflows/release.yml).
+Desktop installers are built via [GitHub Actions](.github/workflows/release.yml). Full process: [docs/build-and-release.md](./docs/build-and-release.md).
 
-1. Bump the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
-2. Commit and push to the `release` branch, **or** push a version tag:
+1. Bump version: `npm run version:bump -- 0.1.13` (syncs `package.json`, `tauri.conf.json`, `Cargo.toml`)
+2. Commit and push a version tag:
 
 ```bash
-git tag v0.1.8
-git push origin v0.1.8
+git tag v0.1.13
+git push origin v0.1.13
 ```
 
-3. GitHub Actions builds Windows, macOS, and Linux bundles and creates a **draft** release.
-4. Review the draft on GitHub, edit release notes if needed, then publish it.
+3. GitHub Actions builds **Windows** (NSIS + MSI) and **macOS** (Apple Silicon + Intel DMG) and creates a **draft** release.
+4. Review the draft on GitHub, edit release notes if needed, then publish.
 
 You can also trigger a release manually from the **Actions** tab (`Release` workflow → **Run workflow**).
+
+Configure repository secrets (`NEXT_PUBLIC_*`) before the first CI build — see [docs/build-and-release.md](./docs/build-and-release.md).
 
 If the workflow fails with "Resource not accessible by integration", enable **Read and write permissions** for GitHub Actions under repository **Settings → Actions → General → Workflow permissions**.
 

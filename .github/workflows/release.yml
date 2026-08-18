@@ -3,10 +3,13 @@ name: Release
 on:
   workflow_dispatch:
   push:
-    branches:
-      - release
     tags:
-      - 'v*'
+      - "v*"
+
+# Future code signing (do not enable until certificates are configured):
+# Windows: APPLE_SIGNING_* / TAURI_SIGNING_PRIVATE_KEY for updater
+# macOS: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
+# See docs/build-and-release.md
 
 jobs:
   create-release:
@@ -15,12 +18,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Get version
         id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches package version
+        if: github.ref_type == 'tag'
+        env:
+          PKG_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag v${TAG_VERSION} does not match package.json version ${PKG_VERSION}"
+            exit 1
+          fi
 
       - name: Create release
         id: create-release
@@ -41,9 +56,11 @@ jobs:
                 target_commitish: context.sha,
                 name: `QuanLyLopHoc v${process.env.APP_VERSION}`,
                 body: [
-                  'Desktop builds for Windows, macOS (Intel + Apple Silicon), and Linux.',
+                  'Desktop installers for **Windows** (x64) and **macOS** (Apple Silicon + Intel).',
                   '',
-                  'Download the installer or bundle for your platform from the assets below.',
+                  '**Unsigned builds:** Windows SmartScreen and macOS Gatekeeper may warn on first launch.',
+                  '',
+                  'Download the installer or DMG for your platform from the assets below.',
                 ].join('\n'),
                 draft: true,
                 prerelease: false,
@@ -70,24 +87,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
-          - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
-          - platform: ubuntu-22.04
-            args: ''
           - platform: windows-latest
-            args: ''
+            args: ""
+            label: windows-x64
+          - platform: macos-latest
+            args: "--target aarch64-apple-darwin"
+            label: macos-aarch64
+          - platform: macos-latest
+            args: "--target x86_64-apple-darwin"
+            label: macos-x64
 
     runs-on: ${{ matrix.platform }}
+    env:
+      NEXT_PUBLIC_CLOUD_BACKUP_URL: ${{ secrets.NEXT_PUBLIC_CLOUD_BACKUP_URL }}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP }}
+      NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Verify build secrets
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+          test -n "$NEXT_PUBLIC_CLOUD_BACKUP_URL" || { echo "::error::Missing secret NEXT_PUBLIC_CLOUD_BACKUP_URL"; exit 1; }
+          test -n "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" || { echo "::error::Missing secret NEXT_PUBLIC_GOOGLE_CLIENT_ID"; exit 1; }
+          test -n "$NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP" || { echo "::error::Missing secret NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP"; exit 1; }
+          test -n "$NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY" || { echo "::error::Missing secret NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY"; exit 1; }
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -103,7 +127,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Install frontend dependencies
         run: npm ci
@@ -116,9 +140,6 @@ jobs:
 
       - name: Run Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
-
-      - name: Build frontend
-        run: npm run build
 
       - uses: tauri-apps/tauri-action@v1
         env:

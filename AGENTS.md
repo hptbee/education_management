@@ -6,8 +6,9 @@ Always read before implementing:
 
 1. PROJECT_SCOPE.md
 2. PROJECT_RULES.md
-3. [docs/ACCOUNTS.md](docs/ACCOUNTS.md) — when touching auth, entitlements, or cloud backup
-4. Relevant existing feature files
+3. [docs/DATA_ARCHITECTURE.md](docs/DATA_ARCHITECTURE.md) — local vs cloud R2 layout and sync
+4. [docs/ACCOUNTS.md](docs/ACCOUNTS.md) — when touching auth, entitlements, or cloud backup
+5. Relevant existing feature files
 
 ## Critical Rule
 

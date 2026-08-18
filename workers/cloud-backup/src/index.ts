@@ -11,7 +11,7 @@ import {
   handleAuthRefresh,
   handleMe,
 } from "./auth-handlers";
-import { handleBackupPut, handleListClassrooms, handleRestore } from "./backup-handlers";
+import { handleBackupPut, handleListClassrooms, handleRestore, handleSyncPut } from "./backup-handlers";
 import { applyCorsHeaders, errorResponse, jsonResponse, resolveCorsHeaders } from "./http";
 import type { Env } from "./types";
 
@@ -41,6 +41,8 @@ export default {
         response = await handleAuthLogout();
       } else if (request.method === "PUT" && url.pathname === "/backup") {
         response = await handleBackupPut(request, env);
+      } else if (request.method === "PUT" && url.pathname === "/sync") {
+        response = await handleSyncPut(request, env);
       } else if (request.method === "GET" && url.pathname === "/classrooms") {
         response = await handleListClassrooms(request, env);
       } else if (request.method === "GET" && url.pathname.startsWith("/restore/")) {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildClassroomFileKey,
+  buildClassroomsRegistryKey,
   buildLegacyBackupStorageKey,
   buildUserClassroomKey,
   buildUserClassroomsPrefix,
@@ -30,5 +32,12 @@ describe("paths", () => {
 
   it("builds classrooms prefix", () => {
     expect(buildUserClassroomsPrefix("usr_abc")).toBe("users/usr_abc/classrooms/");
+  });
+
+  it("builds classroom file and registry keys", () => {
+    expect(buildClassroomFileKey("usr_abc", "2-7_2026-2027", "students.json")).toBe(
+      "users/usr_abc/classrooms/2-7_2026-2027/students.json",
+    );
+    expect(buildClassroomsRegistryKey("usr_abc")).toBe("users/usr_abc/classrooms.json");
   });
 });

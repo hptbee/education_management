@@ -31,3 +31,33 @@ export function buildUserClassroomsPrefix(userId: string): string {
   }
   return `users/${safeUser}/classrooms/`;
 }
+
+export function buildClassroomPrefix(userId: string, classroomKey: string): string {
+  const safeUser = sanitizeBackupIdentifier(userId);
+  const safeClassroom = sanitizeBackupIdentifier(classroomKey);
+  if (!safeUser || !safeClassroom) {
+    throw new Error("Invalid backup identifiers");
+  }
+  return `users/${safeUser}/classrooms/${safeClassroom}/`;
+}
+
+export function buildClassroomFileKey(userId: string, classroomKey: string, relativePath: string): string {
+  const prefix = buildClassroomPrefix(userId, classroomKey);
+  const normalized = relativePath.replace(/^\/+/, "");
+  if (!normalized || normalized.includes("..") || normalized.includes("//")) {
+    throw new Error("Invalid relative path");
+  }
+  return `${prefix}${normalized}`;
+}
+
+export function buildClassroomsRegistryKey(userId: string): string {
+  const safeUser = sanitizeBackupIdentifier(userId);
+  if (!safeUser) {
+    throw new Error("Invalid user id");
+  }
+  return `users/${safeUser}/classrooms.json`;
+}
+
+export function buildClassroomManifestKey(userId: string, classroomKey: string): string {
+  return buildClassroomFileKey(userId, classroomKey, "manifest.json");
+}

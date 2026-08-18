@@ -80,3 +80,15 @@ export interface BackupUploadBody {
   timestamp: string;
   payload: unknown;
 }
+
+export interface SyncFileUpload {
+  path: string;
+  content: string;
+  contentType?: string;
+}
+
+export interface SyncUploadBody {
+  classroomKey: string;
+  files: SyncFileUpload[];
+  registry?: string;
+}
