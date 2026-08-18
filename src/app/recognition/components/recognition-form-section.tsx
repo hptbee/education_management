@@ -7,6 +7,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentAvatar } from '@/src/utils/student'
 import { resolveBadgeIdForTitle } from '@/src/utils/recognition'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { playRecognitionCelebration } from '@/src/utils/sounds'
 import { RecognitionStudentPicker } from './recognition-student-picker'
 import { CelebrationOverlay } from './celebration-overlay'
 import { TitleFormDialog } from './title-form-dialog'
@@ -73,6 +74,7 @@ export function RecognitionFormSection({
         awardedPoints: awardPoints ? pointsAmount : 0,
       })
       if (created.length > 0) {
+        playRecognitionCelebration(data?.appSettings.soundEnabled ?? true)
         setCelebrationRecords(created)
         resetForm()
       }

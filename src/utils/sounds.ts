@@ -17,6 +17,8 @@ const SOUND_PATHS: Record<SoundId, string> = {
   applause: '/sounds/applause.wav',
 }
 
+const SOUND_MIME = 'audio/wav'
+
 const DEFAULT_VOLUMES: Partial<Record<SoundId, number>> = {
   applause: 0.55,
   recognition: 0.7,
@@ -32,15 +34,103 @@ export interface PlaySoundOptions {
   volume?: number
 }
 
+const blobUrlCache = new Map<SoundId, string>()
+let preloadStarted = false
+let audioUnlocked = false
+
+/** Resolve a public-folder path against the current page origin (Tauri + static export). */
+export function resolvePublicAssetPath(path: string): string {
+  if (typeof window === 'undefined') return path
+  return new URL(path, window.location.origin).href
+}
+
+async function loadSoundUrl(id: SoundId): Promise<string | null> {
+  const cached = blobUrlCache.get(id)
+  if (cached) return cached
+
+  const assetUrl = resolvePublicAssetPath(SOUND_PATHS[id])
+  try {
+    const response = await fetch(assetUrl)
+    if (!response.ok) {
+      console.warn(`[sounds] Failed to load ${assetUrl}: HTTP ${response.status}`)
+      return null
+    }
+    const buffer = await response.arrayBuffer()
+    const blob = new Blob([buffer], { type: SOUND_MIME })
+    const blobUrl = URL.createObjectURL(blob)
+    blobUrlCache.set(id, blobUrl)
+    return blobUrl
+  } catch (error) {
+    console.warn(`[sounds] Failed to fetch ${assetUrl}:`, error)
+    return null
+  }
+}
+
+/** Preload bundled sounds into blob URLs (explicit MIME helps Tauri WebView2). */
+export function preloadSounds(): void {
+  if (preloadStarted || typeof window === 'undefined') return
+  preloadStarted = true
+  const ids = Object.keys(SOUND_PATHS) as SoundId[]
+  void Promise.all(ids.map((id) => loadSoundUrl(id)))
+}
+
+/**
+ * Unlock HTML audio after the first user gesture so delayed SFX (wheel, overlay) can play.
+ * Safe to call multiple times.
+ */
+export function unlockSounds(): void {
+  if (audioUnlocked || typeof window === 'undefined') return
+  audioUnlocked = true
+  preloadSounds()
+  void loadSoundUrl('click').then((url) => {
+    if (!url) return
+    const audio = new Audio(url)
+    audio.volume = 0.001
+    void audio.play().catch(() => {
+      // Strict autoplay — later play() calls may still work after explicit actions.
+    })
+  })
+}
+
+export function initSoundSystem(): void {
+  if (typeof window === 'undefined') return
+
+  const onFirstGesture = () => {
+    unlockSounds()
+    window.removeEventListener('pointerdown', onFirstGesture)
+    window.removeEventListener('keydown', onFirstGesture)
+  }
+
+  window.addEventListener('pointerdown', onFirstGesture, { passive: true })
+  window.addEventListener('keydown', onFirstGesture, { passive: true })
+  preloadSounds()
+}
+
 export function playSound(id: SoundId, options: PlaySoundOptions = {}): void {
   if (options.enabled === false) return
   if (typeof window === 'undefined') return
 
-  const audio = new Audio(SOUND_PATHS[id])
-  audio.volume = options.volume ?? DEFAULT_VOLUMES[id] ?? 0.6
-  void audio.play().catch(() => {
-    // Autoplay blocked or missing asset — ignore.
-  })
+  void (async () => {
+    const url = await loadSoundUrl(id)
+    if (!url) return
+
+    const audio = new Audio(url)
+    audio.volume = options.volume ?? DEFAULT_VOLUMES[id] ?? 0.6
+    try {
+      await audio.play()
+    } catch (error) {
+      console.warn(`[sounds] play() blocked for ${id}:`, error)
+    }
+  })()
+}
+
+/** Recognition ceremony sting — call from the submit click handler (user gesture). */
+export function playRecognitionCelebration(enabled = true): void {
+  if (!enabled) return
+  playSound('recognition', { enabled })
+  window.setTimeout(() => {
+    playSound('applause', { enabled })
+  }, 400)
 }
 
 const WHEEL_TICK_INTERVAL_MS = 140

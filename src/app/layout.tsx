@@ -32,6 +32,7 @@ import { AppShell } from '@/src/components/AppShell'
 import { AccessGate } from '@/src/components/access-gate'
 import { ClassroomDocumentTitle } from '@/src/components/ClassroomDocumentTitle'
 import { DesktopLoggingInit } from '@/src/components/DesktopLoggingInit'
+import { SoundInit } from '@/src/components/SoundInit'
 
 export default function RootLayout({
   children,
@@ -42,6 +43,7 @@ export default function RootLayout({
     <html lang="vi" className={`light ${nunito.variable} ${baloo.variable} bg-page`}>
       <body className="antialiased font-sans">
         <DesktopLoggingInit />
+        <SoundInit />
         <AuthProvider>
           <AppDataProvider>
             <PresentationModeProvider>
