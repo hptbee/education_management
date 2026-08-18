@@ -73,7 +73,8 @@ export function SidebarClassContext() {
         )}
       >
         <TeacherAvatar
-          src={teacher?.avatar}
+          assetKey={teacher?.avatarAssetKey}
+          classroomId={database?.metadata.id}
           name={teacherName}
           className="size-16 shrink-0 rounded-2xl text-3xl shadow-sm"
         />

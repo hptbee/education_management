@@ -17,7 +17,9 @@ export interface Badge {
 export interface TeacherProfile {
   id: string;
   name: string;
+  /** @deprecated Inline data URL — use avatarAssetKey */
   avatar?: string;
+  avatarAssetKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,9 +27,12 @@ export interface TeacherProfile {
 export interface ClassroomSettings {
   id: string;
   className: string;
+  /** @deprecated Inline data URL — use classAvatarAssetKey */
   classAvatar?: string;
-  /** Custom home-page banner image (data URL). Falls back to the default hero when empty. */
+  classAvatarAssetKey?: string;
+  /** @deprecated Inline data URL — use bannerAssetKey */
   homeBannerImage?: string;
+  bannerAssetKey?: string;
   teacher: TeacherProfile;
   schoolYear: string;
   createdAt: string;
@@ -42,7 +47,9 @@ export interface ParentInfo {
 export interface Student {
   id: string;
   name: string;
+  /** @deprecated Inline data URL — use avatarAssetKey */
   avatar?: string;
+  avatarAssetKey?: string;
   dateOfBirth?: string;
   gender?: "male" | "female" | "other" | "unknown";
   hometown?: string;

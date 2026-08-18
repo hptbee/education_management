@@ -2,19 +2,26 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useAssetUrl } from '@/src/hooks/useAssetUrl'
 import { getTeacherAvatar } from '@/src/utils/teacher'
 
 export function TeacherAvatar({
   src,
+  assetKey,
+  classroomId,
   name,
   className,
 }: {
+  /** @deprecated Legacy inline data URL */
   src?: string
+  assetKey?: string
+  classroomId?: string
   name: string
   className?: string
 }) {
   const [broken, setBroken] = useState(false)
-  const photo = getTeacherAvatar({ avatar: src })
+  const assetUrl = useAssetUrl(classroomId, assetKey)
+  const photo = assetUrl ?? getTeacherAvatar({ avatar: src })
 
   if (photo && !broken) {
     return (

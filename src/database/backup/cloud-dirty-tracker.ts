@@ -25,16 +25,18 @@ export class CloudDirtyTracker {
       dirty.catalog ||
       dirty.activityIndex ||
       dirty.activityDates.length > 0 ||
-      dirty.registry
+      dirty.registry ||
+      dirty.dirtyAssets.length > 0
     );
   }
 
-  mark(classroomKey: string, patch: Partial<Omit<CloudDirtyState, "activityDates">>): void {
+  mark(classroomKey: string, patch: Partial<Omit<CloudDirtyState, "activityDates" | "dirtyAssets"> & { dirtyAssets?: string[] }>): void {
     const current = this.get(classroomKey);
     this.byClassroom.set(classroomKey, {
       ...current,
       ...patch,
       activityDates: current.activityDates,
+      dirtyAssets: patch.dirtyAssets ?? current.dirtyAssets,
     });
   }
 
@@ -62,6 +64,7 @@ export class CloudDirtyTracker {
       activityIndex: true,
       activityDates: [],
       registry: true,
+      dirtyAssets: [],
     });
   }
 

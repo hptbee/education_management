@@ -3,7 +3,8 @@
 import { CloudDownload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ClassroomButton, ClassroomCard, useClassroomDialog } from '@/src/components/classroom'
-import { listCloudClassrooms, restoreCloudClassroom } from '@/src/auth/api'
+import { listCloudClassrooms, restoreCloudClassroom, restoreCloudClassroomAssets } from '@/src/auth/api'
+import { restoreCloudAssetsLocally } from '@/src/database/backup/cloud-asset-sync'
 import {
   getCloudBackupUrl,
   isEntitlementConfigured,
@@ -28,7 +29,7 @@ export function CloudRestoreCard({
   const { entitlement, permissions } = useAuth()
   const { showConfirm } = useClassroomDialog()
   const [cloudClassrooms, setCloudClassrooms] = useState<
-    { classroomId: string; updatedAt: string | null; size: number }[]
+    { classroomId: string; updatedAt: string | null; size: number; name?: string | null; schoolYear?: string | null }[]
   >([])
   const [loadingCloud, setLoadingCloud] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
@@ -76,6 +77,10 @@ export function CloudRestoreCard({
         throw new Error('Không tìm thấy bản sao lưu trên đám mây.')
       }
       const db = await importFromCloudPayload(payload)
+      const assets = await restoreCloudClassroomAssets(entitlement, classroomId)
+      if (assets.length > 0) {
+        await restoreCloudAssetsLocally(db.metadata.id, assets)
+      }
       await onRestored?.(db)
     } catch (err) {
       setCloudError(err instanceof Error ? err.message : 'Khôi phục thất bại.')
@@ -117,8 +122,7 @@ export function CloudRestoreCard({
     <ClassroomCard>
       <h2 className="font-display text-lg font-extrabold text-slate-800">Khôi phục từ đám mây</h2>
       <p className="mt-1 text-sm font-semibold text-slate-500">
-        Tải lớp đã sao lưu trên tài khoản của cô về thiết bị này (không tự đồng bộ — bấm Khôi phục cho
-        mỗi lớp).
+        Tải lại dữ liệu lớp từ đám mây (ghi đè bản local). Danh sách lớp được đồng bộ tự động khi đăng nhập.
       </p>
       {cloudError ? (
         <p className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
@@ -140,11 +144,13 @@ export function CloudRestoreCard({
               className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-surface-soft px-4 py-3"
             >
               <div>
-                <p className="text-sm font-bold text-slate-800">{item.classroomId}</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {item.name?.trim() ? item.name : item.classroomId}
+                </p>
                 <p className="text-xs font-semibold text-slate-400">
+                  {item.schoolYear ? `Năm học ${item.schoolYear} · ` : ''}
                   {item.updatedAt ? new Date(item.updatedAt).toLocaleString('vi-VN') : '—'}
-                  {' · '}
-                  {Math.round(item.size / 1024)} KB
+                  {item.size > 0 ? ` · ${Math.round(item.size / 1024)} KB` : ''}
                 </p>
               </div>
               <ClassroomButton

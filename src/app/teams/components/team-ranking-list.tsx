@@ -1,7 +1,11 @@
+'use client'
+
 import { useState } from 'react'
 import { Trophy, Medal, ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react'
 import type { Team, Student } from '@/src/types/models'
-import { getStudentAvatar, getStudentRosterOrder } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
+import { getStudentRosterOrder } from '@/src/utils/student'
 import { timeAgo } from '@/src/utils/teams'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 import {
@@ -118,6 +122,8 @@ interface TeamRankingListProps {
 }
 
 export function TeamRankingList({ teams, allTeams, roster, getMembers }: TeamRankingListProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set([teams[0]?.id]))
   const [sortByTeam, setSortByTeam] = useState<Record<string, TeamSortState>>({})
 
@@ -280,10 +286,11 @@ export function TeamRankingList({ teams, allTeams, roster, getMembers }: TeamRan
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <div className="relative shrink-0">
-                                  <img
-                                    src={getStudentAvatar(student)}
+                                  <StudentAvatar
+                                    student={student}
+                                    classroomId={classroomId}
                                     alt={student.name}
-                                    className={`size-9 rounded-full border-2 object-cover ${
+                                    className={`size-9 rounded-full border-2 ${
                                       leadershipRole === 'leader'
                                         ? 'border-amber-300'
                                         : leadershipRole === 'vice'

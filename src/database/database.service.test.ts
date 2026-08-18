@@ -7,6 +7,7 @@ import { TauriFsClassroomStorage } from "./storage/tauri-fs.storage";
 vi.mock("./assets/classroom-asset.service", () => ({
   classroomAssetService: {
     copyClassroomGiftImages: vi.fn().mockResolvedValue(undefined),
+    copyClassroomAssets: vi.fn().mockResolvedValue(undefined),
     deleteClassroomAssets: vi.fn().mockResolvedValue(undefined),
   },
 }));

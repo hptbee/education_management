@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react'
 import { Minus, Plus, Search, Star, Users, X } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
-import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import type { Student } from '@/src/types/models'
 import { StudentPointsDialog, type PointsDialogMode } from './components/student-points-dialog'
 import { PointActionsCatalogSection } from './components/point-actions-catalog-section'
@@ -15,6 +16,7 @@ const RECENT_HISTORY_LIMIT = 8
 
 export default function PointsPage() {
   const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const { isLoaded } = useActiveClassroom()
   const [searchQuery, setSearchQuery] = useState('')
   const [dialogStudent, setDialogStudent] = useState<Student | null>(null)
@@ -115,10 +117,11 @@ export default function PointsPage() {
                       key={student.id}
                       className="flex flex-wrap items-center gap-3 rounded-2xl border border-sky-100 bg-white px-3 py-2.5"
                     >
-                      <img
-                        src={getStudentAvatar(student)}
+                      <StudentAvatar
+                        student={student}
+                        classroomId={classroomId}
                         alt={student.name}
-                        className="size-11 shrink-0 rounded-full object-cover ring-2 ring-white"
+                        className="size-11 shrink-0 rounded-full ring-2 ring-white"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-extrabold text-slate-800">{student.name}</p>

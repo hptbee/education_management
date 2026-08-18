@@ -127,6 +127,22 @@ export class IndexedDbAssetAdapter implements Pick<
       request.onsuccess = () => resolve(request.result !== undefined);
     });
   }
+
+  async listKeys(classroomId: string, prefix: string): Promise<string[]> {
+    const db = await openDb();
+    const keyPrefix = `${classroomId}::${prefix}`;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const request = tx.objectStore(STORE_NAME).getAllKeys();
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const keys = (request.result as string[])
+          .filter((key) => key.startsWith(keyPrefix))
+          .map((key) => key.slice(`${classroomId}::`.length));
+        resolve(keys);
+      };
+    });
+  }
 }
 
 export function webAssetStorageKey(classroomId: string, relativePath: string): string {

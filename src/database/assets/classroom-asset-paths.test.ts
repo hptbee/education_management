@@ -1,50 +1,30 @@
 import { describe, expect, it } from "vitest";
 import {
-  extensionFromMime,
-  giftImageRelativePath,
-  isGiftImagePath,
-  resolveClassroomAssetAbsolute,
+  bannerAssetKey,
+  giftImageAssetKey,
+  isAllowedCloudAssetPath,
+  isLegacyGiftImagePath,
+  studentAvatarAssetKey,
+  teacherAvatarAssetKey,
 } from "./classroom-asset-paths";
 
-describe("classroom-asset-paths", () => {
-  it("builds relative gift image paths", () => {
-    expect(giftImageRelativePath("gift-1", "jpg")).toBe("images/gifts/gift-1.jpg");
-    expect(giftImageRelativePath("gift-1", ".png")).toBe("images/gifts/gift-1.png");
+describe("classroom asset paths", () => {
+  it("builds stable asset keys", () => {
+    expect(teacherAvatarAssetKey()).toBe("assets/teacher/avatar.webp");
+    expect(bannerAssetKey()).toBe("assets/banner.webp");
+    expect(studentAvatarAssetKey("s1")).toBe("assets/students/s1/avatar.webp");
+    expect(giftImageAssetKey("g1")).toBe("assets/rewards/g1/image.webp");
   });
 
-  it("rejects unsafe gift image paths", () => {
-    expect(isGiftImagePath("images/gifts/a.jpg")).toBe(true);
-    expect(isGiftImagePath("../secrets.jpg")).toBe(false);
-    expect(isGiftImagePath("images/other/a.jpg")).toBe(false);
+  it("detects legacy gift paths", () => {
+    expect(isLegacyGiftImagePath("images/gifts/gift-1.jpg")).toBe(true);
+    expect(isLegacyGiftImagePath("../secrets.jpg")).toBe(false);
   });
 
-  it("maps mime types to extensions", () => {
-    expect(extensionFromMime("image/png")).toBe("png");
-    expect(extensionFromMime("image/jpeg")).toBe("jpg");
-  });
-
-  it("resolves absolute paths under classroom folder", () => {
-    const absolute = resolveClassroomAssetAbsolute(
-      "C:/data",
-      "2-7_2026-2027",
-      "images/gifts/gift-1.jpg",
-      (...parts) => parts.join("/"),
-    );
-    expect(absolute).toBe("C:/data/classrooms/2-7_2026-2027/images/gifts/gift-1.jpg");
-    expect(absolute.startsWith("C:/")).toBe(true);
-  });
-
-  it("rejects unsafe classroom ids and relative paths", () => {
-    expect(() =>
-      resolveClassroomAssetAbsolute("C:/data", "../evil", "images/gifts/a.jpg", (...p) => p.join("/")),
-    ).toThrow();
-    expect(() =>
-      resolveClassroomAssetAbsolute(
-        "C:/data",
-        "2-7_2026-2027",
-        "../secrets.jpg",
-        (...p) => p.join("/"),
-      ),
-    ).toThrow();
+  it("allowlists cloud asset paths", () => {
+    expect(isAllowedCloudAssetPath("assets/banner.webp")).toBe(true);
+    expect(isAllowedCloudAssetPath("assets/students/s1/avatar.webp")).toBe(true);
+    expect(isAllowedCloudAssetPath("assets/evil/../secret.webp")).toBe(false);
+    expect(isAllowedCloudAssetPath("classroom.json")).toBe(false);
   });
 });

@@ -5,10 +5,11 @@ import { ArrowRight, Trophy, Star } from 'lucide-react'
 import { ClassroomCard } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import { formatRecognitionRelativeDate } from '@/src/utils/recognition'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 
 export function RecentPraise() {
   const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const recognitions = data?.recognitions ?? []
   const latest = [...recognitions].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -33,11 +34,20 @@ export function RecentPraise() {
         </p>
       ) : (
         <div className="flex items-center gap-3 rounded-2xl bg-pastel-yellow/70 p-3">
-          <img
-            src={student ? getStudentAvatar(student) : '/placeholder.svg'}
-            alt={studentName}
-            className="size-12 shrink-0 rounded-full object-cover ring-2 ring-white"
-          />
+          {student ? (
+            <StudentAvatar
+              student={student}
+              classroomId={classroomId}
+              alt={studentName}
+              className="size-12 shrink-0 rounded-full ring-2 ring-white"
+            />
+          ) : (
+            <img
+              src="/placeholder.svg"
+              alt={studentName}
+              className="size-12 shrink-0 rounded-full object-cover ring-2 ring-white"
+            />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <p className="truncate text-sm font-extrabold text-slate-800">{studentName}</p>

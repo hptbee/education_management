@@ -63,6 +63,8 @@ export interface CloudClassroomRegistryEntry {
   createdAt: string;
   updatedAt: string;
   archived: boolean;
+  /** When set and newer than updatedAt, entry is permanently deleted from the registry. */
+  deletedAt?: string;
 }
 
 export interface CloudClassroomsRegistryFile {
@@ -74,6 +76,8 @@ export interface CloudClassroomsRegistryFile {
 export interface CloudFileUpload {
   path: string;
   content: string;
+  contentType?: string;
+  encoding?: "base64";
 }
 
 export interface CloudSyncBatchBody {
@@ -93,6 +97,7 @@ export interface CloudDirtyState {
   activityIndex: boolean;
   activityDates: string[];
   registry: boolean;
+  dirtyAssets: string[];
 }
 
 export function emptyCloudDirtyState(): CloudDirtyState {
@@ -108,6 +113,7 @@ export function emptyCloudDirtyState(): CloudDirtyState {
     activityIndex: false,
     activityDates: [],
     registry: false,
+    dirtyAssets: [],
   };
 }
 

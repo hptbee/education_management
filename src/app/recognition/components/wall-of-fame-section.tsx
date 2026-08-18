@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { PencilLine, Sprout, Star, Trash2 } from 'lucide-react'
 import type { Recognition, Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 import {
   filterRecognitionsByTime,
   formatRecognitionRelativeDate,
@@ -26,6 +26,7 @@ export function WallOfFameSection({
   presentation = false,
 }: WallOfFameSectionProps) {
   const { data, updateRecognitionMessage, deleteRecognition } = useAppData()
+  const classroomId = data?.metadata.id
   const recognitions = data?.recognitions ?? []
   const titles = data?.recognitionTitles ?? []
 
@@ -74,10 +75,7 @@ export function WallOfFameSection({
     return live?.name ?? rec.studentName ?? 'Học sinh'
   }
 
-  const getAvatar = (rec: Recognition) => {
-    const live = students.find((s) => s.id === rec.studentId)
-    return live ? getStudentAvatar(live) : '/placeholder.svg'
-  }
+  const getLiveStudent = (rec: Recognition) => students.find((s) => s.id === rec.studentId)
 
   const timeOptions: { id: RecognitionTimeFilter; label: string }[] = [
     { id: 'today', label: 'Hôm nay' },
@@ -174,18 +172,30 @@ export function WallOfFameSection({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((rec) => {
+            const liveStudent = getLiveStudent(rec)
             const cardClass =
               'flex flex-col items-center rounded-3xl border border-sky-100 bg-gradient-to-b from-white to-pastel-sky/40 p-5 text-center shadow-sm'
             const content = (
               <>
                 <span className={presentation ? 'text-4xl' : 'text-2xl'}>{rec.titleIcon ?? '🌟'}</span>
-                <img
-                  src={getAvatar(rec)}
-                  alt=""
-                  className={`mt-4 rounded-full object-cover ring-4 ring-white shadow-md ${
-                    presentation ? 'size-24' : 'size-16'
-                  }`}
-                />
+                {liveStudent ? (
+                  <StudentAvatar
+                    student={liveStudent}
+                    classroomId={classroomId}
+                    alt=""
+                    className={`mt-4 rounded-full ring-4 ring-white shadow-md ${
+                      presentation ? 'size-24' : 'size-16'
+                    }`}
+                  />
+                ) : (
+                  <img
+                    src="/placeholder.svg"
+                    alt=""
+                    className={`mt-4 rounded-full object-cover ring-4 ring-white shadow-md ${
+                      presentation ? 'size-24' : 'size-16'
+                    }`}
+                  />
+                )}
                 <p
                   className={`mt-3 font-display font-black text-slate-800 ${
                     presentation ? 'text-2xl' : 'text-base'
@@ -249,11 +259,23 @@ export function WallOfFameSection({
             className="w-full max-w-md rounded-3xl bg-white shadow-2xl"
           >
             <header className="border-b border-slate-100 p-5 text-center">
-              <img
-                src={getAvatar(detailTarget)}
-                alt=""
-                className="mx-auto size-20 rounded-full object-cover ring-4 ring-pastel-sky"
-              />
+              {(() => {
+                const liveStudent = detailTarget ? getLiveStudent(detailTarget) : undefined
+                return liveStudent ? (
+                  <StudentAvatar
+                    student={liveStudent}
+                    classroomId={classroomId}
+                    alt=""
+                    className="mx-auto size-20 rounded-full ring-4 ring-pastel-sky"
+                  />
+                ) : (
+                  <img
+                    src="/placeholder.svg"
+                    alt=""
+                    className="mx-auto size-20 rounded-full object-cover ring-4 ring-pastel-sky"
+                  />
+                )
+              })()}
               <h3 id="recognition-detail-title" className="mt-3 font-display text-xl font-black text-slate-800">
                 {getDisplayName(detailTarget)}
               </h3>

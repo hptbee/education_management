@@ -4,13 +4,15 @@ import {
   buildClassroomsRegistry,
   buildClassroomsRegistryFromSummaries,
   buildRegistryEntry,
+  mergeClassroomRegistries,
   pathsForDomains,
   serializeCloudFilesForUpload,
   simpleHash,
   splitClassroomToCloudFiles,
   domainsFromDirty,
 } from "./cloud-serializer";
-import type { CloudDirtyState, CloudSyncDomain } from "./cloud-types";
+import { serializeDirtyAssetsForUpload } from "./cloud-asset-sync";
+import type { CloudDirtyState, CloudSyncDomain, CloudClassroomsRegistryFile } from "./cloud-types";
 import { CLOUD_SYNC_STATE_VERSION } from "./cloud-types";
 import {
   getCloudBackupUrl,
@@ -31,7 +33,11 @@ export interface CloudSyncUploadOptions {
     schoolYear: string;
     createdAt: string;
     updatedAt: string;
+    archived?: boolean;
+    deletedAt?: string;
   }>;
+  remoteRegistry?: CloudClassroomsRegistryFile | null;
+  allowRegistryUpload?: boolean;
   fetchImpl?: typeof fetch;
   forceFull?: boolean;
 }
@@ -96,10 +102,18 @@ export async function uploadCloudSyncBatch(
   }
 
   const uploads = serializeCloudFilesForUpload(split.files, paths);
-  const toUpload: typeof uploads = [];
+  let assetUploads = await serializeDirtyAssetsForUpload(classroomKey, dirty.dirtyAssets);
+  if (forceFull) {
+    const { classroomAssetService } = await import("../assets/classroom-asset.service");
+    const allKeys = classroomAssetService.collectReferencedAssetKeys(db);
+    assetUploads = await serializeDirtyAssetsForUpload(classroomKey, allKeys);
+  }
+
+  const combinedUploads = [...uploads, ...assetUploads];
+  const toUpload: typeof combinedUploads = [];
   const skippedPaths: string[] = [];
 
-  for (const file of uploads) {
+  for (const file of combinedUploads) {
     const hash = simpleHash(file.content);
     if (!forceFull && syncState.fileHashes[file.path] === hash) {
       skippedPaths.push(file.path);
@@ -113,21 +127,30 @@ export async function uploadCloudSyncBatch(
   }
 
   let registry: string | undefined;
-  if (dirty.registry || forceFull) {
+  const mayUploadRegistry = dirty.registry || forceFull;
+  if (mayUploadRegistry && options?.allowRegistryUpload !== false) {
+    let localRegistry: CloudClassroomsRegistryFile | null = null;
     if (options?.allLocalClassrooms?.length) {
       const entries = options.allLocalClassrooms.map(buildRegistryEntry);
-      const registryFile = buildClassroomsRegistry(entries, db.metadata.updatedAt);
-      registry = JSON.stringify(registryFile, null, 2);
+      localRegistry = buildClassroomsRegistry(entries, db.metadata.updatedAt);
     } else if (options?.registrySummaries?.length) {
-      const registryFile = buildClassroomsRegistryFromSummaries(
+      localRegistry = buildClassroomsRegistryFromSummaries(
         options.registrySummaries,
         db.metadata.updatedAt,
       );
-      registry = JSON.stringify(registryFile, null, 2);
     } else {
-      const registryFile = buildClassroomsRegistry([buildRegistryEntry(db)], db.metadata.updatedAt);
-      registry = JSON.stringify(registryFile, null, 2);
+      localRegistry = buildClassroomsRegistry([buildRegistryEntry(db)], db.metadata.updatedAt);
     }
+
+    if (options?.remoteRegistry) {
+      localRegistry = mergeClassroomRegistries(localRegistry, options.remoteRegistry);
+    }
+
+    registry = JSON.stringify(localRegistry, null, 2);
+  }
+
+  if (toUpload.length === 0 && !registry) {
+    return { uploadedPaths: [], skippedPaths };
   }
 
   const body = {
@@ -181,6 +204,42 @@ export async function uploadStructuredMigration(
     activityIndex: true,
     activityDates: [],
     registry: true,
+    dirtyAssets: [],
   };
   await uploadCloudSyncBatch(db, dirty, { ...options, forceFull: true });
+}
+
+export async function uploadRegistryMerge(
+  mergedRegistry: CloudClassroomsRegistryFile,
+  fetchImpl?: typeof fetch,
+): Promise<void> {
+  const baseUrl = getCloudBackupUrl();
+  if (!baseUrl) return;
+
+  const token = await resolveEntitlementToken();
+  if (!token) {
+    throw new Error("Cloud backup not authorized");
+  }
+
+  const fetchImplResolved = fetchImpl ?? fetch;
+  const classroomKey = mergedRegistry.classrooms[0]?.key ?? "registry-only";
+  const body = {
+    classroomKey,
+    files: [],
+    registry: JSON.stringify(mergedRegistry, null, 2),
+  };
+
+  const response = await fetchImplResolved(`${baseUrl.replace(/\/$/, "")}/sync`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(text || `Cloud registry sync failed (${response.status})`);
+  }
 }

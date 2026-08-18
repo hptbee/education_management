@@ -2,10 +2,12 @@
 
 import { HeroBanner } from './hero-banner'
 import { useAppData } from '@/src/store/AppDataContext'
+import { useAssetUrl } from '@/src/hooks/useAssetUrl'
 
 export function TopBanner() {
   const { data } = useAppData()
-  const customImage = data?.classroomSettings.homeBannerImage?.trim() || ''
+  const bannerKey = data?.classroomSettings.bannerAssetKey
+  const customImage = useAssetUrl(data?.metadata.id, bannerKey)
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pastel-sky via-white to-pastel-pink/50">

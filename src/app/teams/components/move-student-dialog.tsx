@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { X, ArrowRight } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface MoveStudentDialogProps {
@@ -15,6 +16,8 @@ interface MoveStudentDialogProps {
 }
 
 export function MoveStudentDialog({ isOpen, onClose, onMove, student, teams }: MoveStudentDialogProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const [selectedTeamId, setSelectedTeamId] = useState<string>('none')
 
   useEffect(() => {
@@ -55,10 +58,11 @@ export function MoveStudentDialog({ isOpen, onClose, onMove, student, teams }: M
         <div className="p-5 flex flex-col gap-4">
           {/* Student info */}
           <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
-            <img
-              src={getStudentAvatar(student)}
+            <StudentAvatar
+              student={student}
+              classroomId={classroomId}
               alt={student.name}
-              className="size-11 rounded-full object-cover ring-2 ring-white"
+              className="size-11 rounded-full ring-2 ring-white"
             />
             <div>
               <p className="font-bold text-slate-800">{student.name}</p>

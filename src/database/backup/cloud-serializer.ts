@@ -224,6 +224,7 @@ export function buildClassroomsRegistryFromSummaries(
     createdAt: string;
     updatedAt: string;
     archived?: boolean;
+    deletedAt?: string;
   }>,
   updatedAt: string,
 ): CloudClassroomsRegistryFile {
@@ -234,8 +235,71 @@ export function buildClassroomsRegistryFromSummaries(
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     archived: s.archived ?? false,
+    deletedAt: s.deletedAt,
   }));
   return buildClassroomsRegistry(entries, updatedAt);
+}
+
+function isRegistryEntryDeleted(entry: CloudClassroomRegistryEntry): boolean {
+  if (!entry.deletedAt) return false;
+  return entry.deletedAt >= entry.updatedAt;
+}
+
+function mergeRegistryEntryPair(
+  a: CloudClassroomRegistryEntry,
+  b: CloudClassroomRegistryEntry,
+): CloudClassroomRegistryEntry {
+  const aTime = new Date(a.updatedAt).getTime();
+  const bTime = new Date(b.updatedAt).getTime();
+  const winner = aTime >= bTime ? a : b;
+  const loser = aTime >= bTime ? b : a;
+  const createdAt =
+    new Date(a.createdAt).getTime() <= new Date(b.createdAt).getTime() ? a.createdAt : b.createdAt;
+  return {
+    key: winner.key,
+    name: winner.name,
+    schoolYear: winner.schoolYear,
+    createdAt,
+    updatedAt: winner.updatedAt,
+    archived: winner.archived,
+    deletedAt: winner.deletedAt ?? loser.deletedAt,
+  };
+}
+
+/** Merge account registries by stable classroom key — union keys, higher updatedAt wins per field. */
+export function mergeClassroomRegistries(
+  local: CloudClassroomsRegistryFile | null | undefined,
+  remote: CloudClassroomsRegistryFile | null | undefined,
+): CloudClassroomsRegistryFile {
+  const map = new Map<string, CloudClassroomRegistryEntry>();
+
+  for (const entry of remote?.classrooms ?? []) {
+    map.set(entry.key, { ...entry });
+  }
+  for (const entry of local?.classrooms ?? []) {
+    const existing = map.get(entry.key);
+    map.set(entry.key, existing ? mergeRegistryEntryPair(entry, existing) : { ...entry });
+  }
+
+  const localHadVisible = (local?.classrooms ?? []).some((e) => !isRegistryEntryDeleted(e));
+  const remoteHadVisible = (remote?.classrooms ?? []).some((e) => !isRegistryEntryDeleted(e));
+
+  const classrooms = [...map.values()]
+    .filter((entry) => !isRegistryEntryDeleted(entry))
+    .map(({ deletedAt: _deletedAt, ...rest }) => rest);
+
+  if (classrooms.length === 0 && (localHadVisible || remoteHadVisible)) {
+    throw new Error("Registry merge would drop all classrooms");
+  }
+
+  const updatedAt = new Date().toISOString();
+  return buildClassroomsRegistry(classrooms, updatedAt);
+}
+
+export function visibleRegistryEntries(
+  registry: CloudClassroomsRegistryFile | null | undefined,
+): CloudClassroomRegistryEntry[] {
+  return (registry?.classrooms ?? []).filter((entry) => !isRegistryEntryDeleted(entry));
 }
 
 function parseJsonFile<T>(content: string): T {

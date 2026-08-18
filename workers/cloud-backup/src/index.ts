@@ -11,7 +11,7 @@ import {
   handleAuthRefresh,
   handleMe,
 } from "./auth-handlers";
-import { handleBackupPut, handleListClassrooms, handleRestore, handleSyncPut } from "./backup-handlers";
+import { handleBackupPut, handleGetClassroomsRegistry, handleListClassrooms, handleRestore, handleRestoreAssets, handleSyncPut } from "./backup-handlers";
 import { applyCorsHeaders, errorResponse, jsonResponse, resolveCorsHeaders } from "./http";
 import type { Env } from "./types";
 
@@ -45,9 +45,16 @@ export default {
         response = await handleSyncPut(request, env);
       } else if (request.method === "GET" && url.pathname === "/classrooms") {
         response = await handleListClassrooms(request, env);
+      } else if (request.method === "GET" && url.pathname === "/classrooms/registry") {
+        response = await handleGetClassroomsRegistry(request, env);
       } else if (request.method === "GET" && url.pathname.startsWith("/restore/")) {
-        const classroomId = decodeURIComponent(url.pathname.slice("/restore/".length));
-        response = await handleRestore(request, env, classroomId);
+        const rest = decodeURIComponent(url.pathname.slice("/restore/".length));
+        if (rest.endsWith("/assets")) {
+          const classroomId = rest.slice(0, -"/assets".length);
+          response = await handleRestoreAssets(request, env, classroomId);
+        } else {
+          response = await handleRestore(request, env, rest);
+        }
       } else if (request.method === "GET" && url.pathname === "/admin/users") {
         response = await handleAdminListUsers(request, env);
       } else if (request.method === "PATCH" && url.pathname.startsWith("/admin/users/")) {

@@ -37,8 +37,20 @@ import {
   cloudBackupScheduler,
   type CloudBackupState,
 } from "../database/backup/cloud-backup.service";
+import {
+  hydrateClassroomFromCloud,
+  pullAndMergeAccountRegistry,
+  pushClassroomRegistryMerge,
+  refreshCloudRegistrySummaries,
+} from "../database/backup/cloud-registry.service";
+import {
+  activityDatesFromHistoryChange,
+  cloudDirtyTracker,
+  inferDirtyFromDatabaseChange,
+} from "../database/backup/cloud-dirty-tracker";
 import { toastError, toastSuccess } from "../utils/toast";
 import { logAppEvent } from "../logging/app-log";
+import { useAuth } from "./AuthContext";
 
 export type { RecognizeStudentsInput };
 
@@ -87,7 +99,7 @@ interface AppDataContextValue {
   toggleStudentBadge: (studentId: string, badgeId: string) => void;
   saveStudent: (student: Student) => void;
   saveStudents: (students: Student[]) => void;
-  deleteStudent: (studentId: string) => void;
+  deleteStudent: (studentId: string) => Promise<void>;
   saveTeam: (team: Team) => void;
   deleteTeam: (teamId: string) => void;
   updateTeamScore: (teamId: string, delta: number, note?: string) => void;
@@ -111,6 +123,8 @@ interface AppDataContextValue {
   addRecognition: (recognition: Omit<Recognition, "id" | "createdAt">) => Recognition;
   setWheelStudentBag: (bag: string[]) => void;
   recordLuckyWheelSelection: (studentIds: string[]) => void;
+  persistNow: () => Promise<boolean>;
+  markDirtyAsset: (assetKey: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
@@ -120,6 +134,7 @@ const SAVE_BACKOFF_MS = [1000, 2000, 5000];
 const MAX_AUTO_SAVE_ATTEMPTS = 3;
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { permissions, entitlement } = useAuth();
   const [data, setDataState] = useState<ClassroomDatabase | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -170,11 +185,52 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const syncRegistryAfterChange = useCallback(async (options?: { markDeletedKey?: string }) => {
+    try {
+      const summaries = await databaseService.listDatabases();
+      await pushClassroomRegistryMerge(
+        summaries.map((s) => ({
+          id: s.id,
+          className: s.className,
+          schoolYear: s.schoolYear,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+          archived: s.archived,
+        })),
+        { markDeletedKey: options?.markDeletedKey },
+      );
+      await refreshCloudRegistrySummaries();
+    } catch (error) {
+      console.warn("[AppDataProvider] registry sync failed:", error);
+    }
+  }, []);
+
+  const openClassroomById = useCallback(
+    async (id: string): Promise<ClassroomDatabase | null> => {
+      const hydrated = await databaseService.isClassroomHydrated(id);
+      if (!hydrated) {
+        return await hydrateClassroomFromCloud(id);
+      }
+      const db = await databaseService.openDatabase(id);
+      if (!db) {
+        return await hydrateClassroomFromCloud(id);
+      }
+      return db;
+    },
+    [],
+  );
+
   const loadInitialDatabase = useCallback(async () => {
     setIsLoading(true);
     setInitError(null);
     try {
       await databaseService.initializeAndMigrate();
+      try {
+        await pullAndMergeAccountRegistry();
+      } catch (error) {
+        console.warn("[AppDataProvider] account registry pull failed:", error);
+      }
+
       const databases = await databaseService.listDatabases();
       const activeDatabases = databases.filter((item) => !item.archived);
       if (activeDatabases.length > 0) {
@@ -182,8 +238,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const preferred = preferredId
           ? activeDatabases.find((item) => item.id === preferredId)
           : undefined;
-        const targetId = preferred?.id ?? activeDatabases[0].id;
-        const db = await databaseService.openDatabase(targetId);
+        const hydratedActive = activeDatabases.filter((item) => item.hydrated !== false);
+        const targetId =
+          preferred && !preferred.archived
+            ? preferred.id
+            : (hydratedActive[0]?.id ?? activeDatabases[0]?.id);
+        const db = targetId ? await openClassroomById(targetId) : null;
         applyLoadedDatabase(db);
         if (db) {
           await cloudBackupScheduler.checkStartupBackup(db);
@@ -200,7 +260,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [applyLoadedDatabase]);
+  }, [applyLoadedDatabase, openClassroomById]);
+
+  useEffect(() => {
+    if (!permissions?.cloudBackup || !entitlement) return;
+    void pullAndMergeAccountRegistry().then(async (result) => {
+      if (result.ok) {
+        await refreshCloudRegistrySummaries();
+      }
+    });
+  }, [permissions?.cloudBackup, entitlement]);
 
   useEffect(() => {
     void loadInitialDatabase();
@@ -357,12 +426,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const commitData = useCallback(
     (next: ClassroomDatabase) => {
+      const prev = dataRef.current;
+      if (prev && prev.metadata.id === next.metadata.id) {
+        const patch = inferDirtyFromDatabaseChange(prev, next);
+        if (Object.keys(patch).length > 0) {
+          cloudDirtyTracker.mark(prev.metadata.id, patch);
+        }
+        const activityDates = activityDatesFromHistoryChange(prev, next);
+        if (activityDates.length > 0) {
+          cloudDirtyTracker.markActivityDates(prev.metadata.id, activityDates);
+        }
+      }
       setDataState(next);
       dataRef.current = next;
       scheduleSave();
     },
     [scheduleSave],
   );
+
+  const markDirtyAsset = useCallback((assetKey: string) => {
+    const classroomId = dataRef.current?.metadata.id;
+    if (!classroomId || !assetKey) return;
+    const current = cloudDirtyTracker.get(classroomId);
+    if (current.dirtyAssets.includes(assetKey)) return;
+    cloudDirtyTracker.mark(classroomId, {
+      dirtyAssets: [...current.dirtyAssets, assetKey],
+    });
+  }, []);
 
   const setData = useCallback(
     (updater: (current: ClassroomDatabase) => ClassroomDatabase) => {
@@ -395,7 +485,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const persisted = await persistNow();
           if (!persisted) return;
           await cloudBackupScheduler.flushPending();
-          const db = await databaseService.openDatabase(id);
+          const db = await openClassroomById(id);
           if (!db) {
             setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
             return;
@@ -431,6 +521,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           if (options?.activate !== false) {
             applyLoadedDatabase(db);
           }
+          await syncRegistryAfterChange();
           return db;
         } finally {
           setIsLoading(false);
@@ -469,6 +560,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             newSchoolYear,
           );
           applyLoadedDatabase(db);
+          await syncRegistryAfterChange();
         } finally {
           setIsLoading(false);
         }
@@ -492,6 +584,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           if (options?.activate !== false) {
             applyLoadedDatabase(db);
           }
+          await syncRegistryAfterChange();
           return db;
         } finally {
           setIsLoading(false);
@@ -502,6 +595,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (dataRef.current?.metadata.id === id) {
           applyLoadedDatabase(updated);
         }
+        await syncRegistryAfterChange();
       },
       archiveClassroom: async (id) => {
         if (dataRef.current?.metadata.id === id) {
@@ -511,11 +605,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           }
         }
         await databaseService.setClassroomArchived(id, true);
+        await syncRegistryAfterChange();
         if (dataRef.current?.metadata.id === id) {
           const list = await databaseService.listDatabases();
           const next = list.find((entry) => !entry.archived);
           if (next) {
-            const db = await databaseService.openDatabase(next.id);
+            const db = await openClassroomById(next.id);
             applyLoadedDatabase(db);
             if (db) {
               await cloudBackupScheduler.checkStartupBackup(db);
@@ -527,6 +622,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       restoreClassroom: async (id) => {
         await databaseService.setClassroomArchived(id, false);
+        await syncRegistryAfterChange();
       },
       deleteDatabase: async (id) => {
         setIsLoading(true);
@@ -536,6 +632,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             if (!persisted) return;
           }
           await databaseService.deleteDatabase(id);
+          await syncRegistryAfterChange({ markDeletedKey: id });
           if (data?.metadata.id === id) {
             applyLoadedDatabase(null);
           }
@@ -658,13 +755,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             badgeAwardHistory: capHistory([historyEntry, ...(current.badgeAwardHistory ?? [])]),
           };
         }),
-      saveStudent: (student) =>
-        setData((current) => {
-          const existing = current.students.find((item) => item.id === student.id);
+      saveStudent: (student) => {
+        const current = dataRef.current;
+        const existing = current?.students.find((item) => item.id === student.id);
+        const previousAvatarKey =
+          existing?.avatarAssetKey && existing.avatarAssetKey !== student.avatarAssetKey
+            ? existing.avatarAssetKey
+            : undefined;
+
+        setData((prev) => {
           const now = new Date().toISOString();
           const saved: Student = {
             ...student,
             name: student.name.trim(),
+            avatar: undefined,
             classroomRole: undefined,
             classroomRoleIds: student.classroomRoleIds ?? existing?.classroomRoleIds ?? [],
             badgeIds: student.badgeIds ?? existing?.badgeIds ?? [],
@@ -675,17 +779,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           };
 
           let students = existing
-            ? current.students.map((item) => (item.id === student.id ? saved : item))
-            : [...current.students, saved];
+            ? prev.students.map((item) => (item.id === student.id ? saved : item))
+            : [...prev.students, saved];
 
-          let teams = current.teams;
+          let teams = prev.teams;
           if (existing?.teamId !== saved.teamId) {
             teams = clearStudentLeadershipFromTeams(teams, saved.id);
           }
           teams = sanitizeAllTeamLeadership(teams, students);
 
-          return { ...current, students, teams };
-        }),
+          return { ...prev, students, teams };
+        });
+
+        if (student.avatarAssetKey) {
+          markDirtyAsset(student.avatarAssetKey);
+        }
+
+        void (async () => {
+          if (!current || !previousAvatarKey) return;
+          const persisted = await persistNow();
+          if (!persisted) return;
+          try {
+            await classroomAssetService.deleteAsset(current.metadata.id, previousAvatarKey);
+            markDirtyAsset(previousAvatarKey);
+          } catch (error) {
+            console.warn("[saveStudent] failed to remove replaced avatar", error);
+          }
+        })();
+      },
       saveStudents: (studentsToSave) =>
         setData((current) => {
           if (studentsToSave.length === 0) return current;
@@ -741,9 +862,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
           return { ...current, students, teams };
         }),
-      deleteStudent: (studentId) =>
-        setData((current) => {
-          const luckyWheelHistory = (current.luckyWheelHistory ?? [])
+      deleteStudent: async (studentId) => {
+        const current = dataRef.current;
+        if (!current) return;
+        const student = current.students.find((item) => item.id === studentId);
+        const avatarKey = student?.avatarAssetKey;
+        const classroomId = current.metadata.id;
+
+        setData((prev) => {
+          const luckyWheelHistory = (prev.luckyWheelHistory ?? [])
             .map((entry) => {
               const ids = entry.studentIds?.length ? entry.studentIds : [entry.studentId];
               const remainingIds = ids.filter((id) => id !== studentId);
@@ -756,7 +883,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             })
             .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
-          const badgeAwardHistory = (current.badgeAwardHistory ?? [])
+          const badgeAwardHistory = (prev.badgeAwardHistory ?? [])
             .map((entry) => {
               const remainingIds = entry.studentIds.filter((id) => id !== studentId);
               if (remainingIds.length === 0) return null;
@@ -765,17 +892,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
           return {
-            ...current,
-            students: current.students.filter((student) => student.id !== studentId),
-            teams: clearStudentLeadershipFromTeams(current.teams, studentId),
-            pointHistory: current.pointHistory.filter((item) => item.studentId !== studentId),
-            rewardHistory: current.rewardHistory.filter((item) => item.studentId !== studentId),
-            recognitions: current.recognitions.filter((item) => item.studentId !== studentId),
+            ...prev,
+            students: prev.students.filter((item) => item.id !== studentId),
+            teams: clearStudentLeadershipFromTeams(prev.teams, studentId),
+            pointHistory: prev.pointHistory.filter((item) => item.studentId !== studentId),
+            rewardHistory: prev.rewardHistory.filter((item) => item.studentId !== studentId),
+            recognitions: prev.recognitions.filter((item) => item.studentId !== studentId),
             luckyWheelHistory,
             badgeAwardHistory,
-            wheelStudentBag: current.wheelStudentBag.filter((id) => id !== studentId),
+            wheelStudentBag: prev.wheelStudentBag.filter((id) => id !== studentId),
           };
-        }),
+        });
+
+        const persisted = await persistNow();
+        if (!persisted) return;
+
+        if (avatarKey) {
+          try {
+            await classroomAssetService.deleteAsset(classroomId, avatarKey);
+            markDirtyAsset(avatarKey);
+          } catch (error) {
+            console.warn("[deleteStudent] failed to remove avatar asset", error);
+          }
+        }
+      },
       saveTeam: (team) =>
         setData((current) => {
           const existing = current.teams.find((item) => item.id === team.id);
@@ -905,10 +1045,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         if (previousImagePath && previousImagePath !== gift.imagePath) {
           try {
-            await classroomAssetService.deleteGiftImage(classroomId, previousImagePath);
+            await classroomAssetService.deleteAsset(classroomId, previousImagePath);
+            markDirtyAsset(previousImagePath);
           } catch (error) {
             console.warn("[saveGift] failed to remove replaced image file", error);
           }
+        }
+        if (gift.imagePath) {
+          markDirtyAsset(gift.imagePath);
         }
       },
       deleteGift: async (giftId) => {
@@ -931,7 +1075,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (!gift?.imagePath) return;
 
         try {
-          await classroomAssetService.deleteGiftImage(classroomId, gift.imagePath);
+          await classroomAssetService.deleteAsset(classroomId, gift.imagePath);
+          markDirtyAsset(gift.imagePath);
         } catch (error) {
           console.warn("[deleteGift] failed to remove image file", error);
         }
@@ -1086,8 +1231,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           };
         });
       },
+      persistNow,
+      markDirtyAsset,
     }),
-    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, cloudBackupError, loadInitialDatabase, applyLoadedDatabase, setData, commitData, retrySave, retryCloudBackup, persistNow],
+    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, cloudBackupError, loadInitialDatabase, applyLoadedDatabase, openClassroomById, syncRegistryAfterChange, setData, commitData, retrySave, retryCloudBackup, persistNow, markDirtyAsset],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

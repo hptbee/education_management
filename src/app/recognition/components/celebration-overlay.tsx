@@ -6,7 +6,8 @@ import confetti from 'canvas-confetti'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PartyPopper, Sparkles, Star, X } from 'lucide-react'
 import type { Recognition, Student } from '@/src/types/models'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { dedupeRecognitionsByStudent } from '@/src/utils/recognition'
 import { canAnimate } from '@/src/utils/motion'
 import { ClassroomButton, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
@@ -164,6 +165,8 @@ export function CelebrationOverlay({
   onClose,
   onRecognizeMore,
 }: CelebrationOverlayProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const [stepIndex, setStepIndex] = useState(0)
   const [showFinale, setShowFinale] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -217,7 +220,6 @@ export function CelebrationOverlay({
 
   const renderStudentCard = (item: (typeof items)[0], large = true) => {
     const name = item.student?.name ?? item.recognition.studentName ?? 'Học sinh'
-    const avatar = item.student ? getStudentAvatar(item.student) : '/placeholder.svg'
 
     return (
       <motion.div
@@ -290,13 +292,24 @@ export function CelebrationOverlay({
               />
             </>
           ) : null}
-          <img
-            src={avatar}
-            alt={name}
-            className={`relative rounded-full object-cover ring-4 ring-white shadow-xl ${
-              large ? 'size-32' : 'size-24'
-            }`}
-          />
+          {item.student ? (
+            <StudentAvatar
+              student={item.student}
+              classroomId={classroomId}
+              alt={name}
+              className={`relative rounded-full ring-4 ring-white shadow-xl ${
+                large ? 'size-32' : 'size-24'
+              }`}
+            />
+          ) : (
+            <img
+              src="/placeholder.svg"
+              alt={name}
+              className={`relative rounded-full object-cover ring-4 ring-white shadow-xl ${
+                large ? 'size-32' : 'size-24'
+              }`}
+            />
+          )}
         </motion.div>
 
         <motion.h2
@@ -438,11 +451,20 @@ export function CelebrationOverlay({
                       transition={{ delay: index * 0.08 }}
                       className="flex flex-col items-center rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-sky-100"
                     >
-                      <img
-                        src={item.student ? getStudentAvatar(item.student) : '/placeholder.svg'}
-                        alt={name}
-                        className="size-16 rounded-full object-cover ring-2 ring-white"
-                      />
+                      {item.student ? (
+                        <StudentAvatar
+                          student={item.student}
+                          classroomId={classroomId}
+                          alt={name}
+                          className="size-16 rounded-full ring-2 ring-white"
+                        />
+                      ) : (
+                        <img
+                          src="/placeholder.svg"
+                          alt={name}
+                          className="size-16 rounded-full object-cover ring-2 ring-white"
+                        />
+                      )}
                       <p className="mt-2 text-sm font-extrabold text-slate-800">{name}</p>
                     </motion.div>
                   )

@@ -4,7 +4,8 @@ import { Star } from 'lucide-react'
 import type { ClassroomRole, Team } from '@/src/types/models'
 import type { RankedStudent } from '@/src/utils/ranking'
 import { RANK_BADGE_CLASS, RANK_MEDAL, RANK_ROW_CLASS } from '@/src/utils/ranking'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,8 @@ export function RankingRow({
   classroomRoles: ClassroomRole[]
   onClick?: () => void
 }) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const { student, rank, points } = entry
   const team = teams.find((t) => t.id === student.teamId)
   const roles = getStudentClassroomRoles(student, classroomRoles)
@@ -37,10 +40,11 @@ export function RankingRow({
       >
         {medal ?? rank}
       </span>
-      <img
-        src={getStudentAvatar(student)}
+      <StudentAvatar
+        student={student}
+        classroomId={classroomId}
         alt={student.name}
-        className="size-11 shrink-0 rounded-full object-cover ring-2 ring-white"
+        className="size-11 shrink-0 rounded-full ring-2 ring-white"
       />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-extrabold text-slate-800">{student.name}</p>

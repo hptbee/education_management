@@ -4,12 +4,14 @@ import { IndexedDbClassroomStorage } from "./storage/indexed-db.storage";
 import { createEmptyDatabase, DATABASE_VERSION } from "./database.factory";
 import { assertSafeClassroomId, generateDatabaseId, generateExportFilename } from "./database.utils";
 import { normalizeClassroomDatabase } from "../utils/classroomRoles";
-import { migrateLegacyGiftImages } from "../utils/gifts";
+import { migrateLegacyClassroomImages } from "../utils/classroom-images";
 import { classroomAssetService } from "./assets/classroom-asset.service";
 import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
 import { assertImportFileSize } from "./importLimits";
 import { getLastClassroomId, setLastClassroomId, clearLastClassroomId } from "../utils/lastClassroom";
+import { isCloudBackupConfigured } from "./backup/cloud-backup.service";
+import type { CloudClassroomRegistryEntry } from "./backup/cloud-types";
 
 function assertEntityArray(
   record: Record<string, unknown>,
@@ -199,12 +201,67 @@ export class DatabaseService {
     return storage.list();
   }
 
+  async mergeRegistryStubs(entries: CloudClassroomRegistryEntry[]): Promise<void> {
+    const storage = await this.getStorage();
+    if (storage.mergeRegistryStubs) {
+      await storage.mergeRegistryStubs(entries);
+    }
+  }
+
+  async isClassroomHydrated(id: string): Promise<boolean> {
+    const storage = await this.getStorage();
+    if (storage.isClassroomHydrated) {
+      return storage.isClassroomHydrated(id);
+    }
+    const summary = (await storage.list()).find((item) => item.id === id);
+    return summary?.hydrated !== false;
+  }
+
+  async saveCloudRestoredDatabase(data: unknown): Promise<ClassroomDatabase> {
+    const record = data as Record<string, unknown>;
+    const classroomData =
+      record.payload && typeof record.payload === "object" ? record.payload : data;
+    assertImportShape(classroomData);
+
+    const db = normalizeClassroomDatabase(classroomData as ClassroomDatabase);
+    if (db.metadata.cloudStub) {
+      delete db.metadata.cloudStub;
+    }
+    if (await isCloudBackupConfigured()) {
+      db.appSettings.cloudBackupEnabled = true;
+    }
+
+    const storage = await this.getStorage();
+    await storage.save(db);
+    return db;
+  }
+
+  async enableCloudBackupOnAllHydratedClassrooms(): Promise<void> {
+    if (!(await isCloudBackupConfigured())) return;
+
+    const storage = await this.getStorage();
+    const summaries = await storage.list();
+    for (const summary of summaries) {
+      if (!summary.hydrated) continue;
+      const loaded = await storage.load(summary.id);
+      if (!loaded || loaded.appSettings.cloudBackupEnabled) continue;
+      const updated = normalizeClassroomDatabase({
+        ...loaded,
+        appSettings: { ...loaded.appSettings, cloudBackupEnabled: true },
+      });
+      await storage.save(updated);
+    }
+  }
+
   async createDatabase(
     settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">,
     options?: { activate?: boolean },
   ): Promise<ClassroomDatabase> {
     const storage = await this.getStorage();
     const db = normalizeClassroomDatabase(createEmptyDatabase(settings));
+    if (await isCloudBackupConfigured()) {
+      db.appSettings.cloudBackupEnabled = true;
+    }
     const existing = await storage.load(db.metadata.id);
     if (existing) {
       throw new Error(
@@ -245,7 +302,7 @@ export class DatabaseService {
     }
 
     let normalized = normalizeClassroomDatabase(db);
-    const { database: migrated, didMigrate } = await migrateLegacyGiftImages(normalized);
+    const { database: migrated, didMigrate } = await migrateLegacyClassroomImages(normalized);
     normalized = migrated;
     if (didMigrate) {
       await storage.save(normalized);
@@ -370,11 +427,7 @@ export class DatabaseService {
       },
     };
 
-    await classroomAssetService.copyClassroomGiftImages(
-      currentId,
-      newId,
-      currentDb.rewards ?? [],
-    );
+    await classroomAssetService.copyClassroomAssets(currentId, newId, currentDb);
     try {
       await storage.save(updatedDb);
     } catch (error) {
@@ -436,9 +489,12 @@ export class DatabaseService {
       newDb = createEmptyDatabase({
         className: newClassName,
         schoolYear: newSchoolYear,
-        classAvatar: sourceDb.classroomSettings.classAvatar,
-        homeBannerImage: sourceDb.classroomSettings.homeBannerImage,
-        teacher: sourceDb.classroomSettings.teacher,
+        classAvatarAssetKey: sourceDb.classroomSettings.classAvatarAssetKey,
+        bannerAssetKey: sourceDb.classroomSettings.bannerAssetKey,
+        teacher: {
+          ...sourceDb.classroomSettings.teacher,
+          avatar: undefined,
+        },
       });
       newDb.pointActions = sourceDb.pointActions;
       newDb.rewards = sourceDb.rewards;
@@ -465,7 +521,7 @@ export class DatabaseService {
       });
     }
 
-    await classroomAssetService.copyClassroomGiftImages(sourceId, newId, newDb.rewards ?? []);
+    await classroomAssetService.copyClassroomAssets(sourceId, newId, newDb);
     try {
       await storage.save(newDb);
     } catch (error) {
@@ -480,14 +536,25 @@ export class DatabaseService {
     if (options?.activate !== false) {
       await persistActiveClassroomId(newDb.metadata.id);
     }
+
+    if (await isCloudBackupConfigured()) {
+      newDb.appSettings.cloudBackupEnabled = true;
+      await storage.save(newDb);
+    }
+
     return newDb;
   }
 
   async deleteDatabase(id: string): Promise<void> {
     const storage = await this.getStorage();
+    const summaries = await storage.list();
+    const summary = summaries.find((item) => item.id === id);
     const db = await storage.load(id);
-    if (!db) return;
-    if (!db.metadata.archived) {
+
+    if (!db && !summary) return;
+
+    const isArchived = db?.metadata.archived ?? summary?.archived ?? false;
+    if (!isArchived) {
       throw new Error("Chỉ có thể xóa lớp đã lưu trữ. Hãy lưu trữ lớp trước.");
     }
 
@@ -497,10 +564,12 @@ export class DatabaseService {
     }
 
     await storage.delete(id);
-    try {
-      await classroomAssetService.deleteClassroomAssets(id);
-    } catch (error) {
-      console.warn("[deleteDatabase] failed to remove classroom assets", error);
+    if (db) {
+      try {
+        await classroomAssetService.deleteClassroomAssets(id);
+      } catch (error) {
+        console.warn("[deleteDatabase] failed to remove classroom assets", error);
+      }
     }
   }
 
@@ -514,10 +583,16 @@ export class DatabaseService {
     const db = normalizeClassroomDatabase(classroomData);
     const storage = await this.getStorage();
     const existing = await storage.load(db.metadata.id);
-    if (existing) {
+    if (existing && !existing.metadata.cloudStub) {
       throw new Error(
         `Đã có lớp "${existing.classroomSettings.className}" (${existing.classroomSettings.schoolYear}) với cùng mã dữ liệu. Hãy xóa lớp cũ hoặc chỉnh tên lớp/năm học trong file trước khi nhập.`,
       );
+    }
+    if (db.metadata.cloudStub) {
+      delete db.metadata.cloudStub;
+    }
+    if (await isCloudBackupConfigured()) {
+      db.appSettings.cloudBackupEnabled = true;
     }
     const saved = await this.saveDatabase(db);
     await persistActiveClassroomId(saved.metadata.id);

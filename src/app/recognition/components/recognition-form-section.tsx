@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Minus, PartyPopper, Plus, Star, Users } from 'lucide-react'
 import type { ClassroomRole, Recognition, RecognitionTitle, Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { resolveBadgeIdForTitle } from '@/src/utils/recognition'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
 import { playRecognitionCelebration } from '@/src/utils/sounds'
@@ -28,6 +28,7 @@ export function RecognitionFormSection({
   onGoToTitles,
 }: RecognitionFormSectionProps) {
   const { recognizeStudents, saveRecognitionTitle, data } = useAppData()
+  const classroomId = data?.metadata.id
   const badges = data?.badges ?? []
 
   const [mode, setMode] = useState<'single' | 'multiple'>('single')
@@ -226,10 +227,11 @@ export function RecognitionFormSection({
               </p>
               {selectedStudents.map((student) => (
                 <div key={student.id} className="flex items-center gap-3">
-                  <img
-                    src={getStudentAvatar(student)}
+                  <StudentAvatar
+                    student={student}
+                    classroomId={classroomId}
                     alt=""
-                    className="size-10 rounded-full object-cover ring-2 ring-white"
+                    className="size-10 rounded-full ring-2 ring-white"
                   />
                   <span className="font-extrabold text-slate-800">{student.name}</span>
                 </div>

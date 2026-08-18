@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import { Crown, Star, ArrowRight } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 import {
   buildStudentRanking,
   RANK_BADGE_CLASS,
@@ -14,6 +14,7 @@ import { ClassroomCard, EmptyState } from '@/src/components/classroom'
 
 export function Leaderboard() {
   const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const students = data?.students || []
   const teams = data?.teams || []
   const pointHistory = data?.pointHistory || []
@@ -60,10 +61,11 @@ export function Leaderboard() {
                 >
                   {rank}
                 </span>
-                <img
-                  src={getStudentAvatar(s)}
+                <StudentAvatar
+                  student={s}
+                  classroomId={classroomId}
                   alt={s.name}
-                  className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
+                  className="size-9 shrink-0 rounded-full ring-2 ring-white"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-extrabold text-slate-800">{s.name}</p>

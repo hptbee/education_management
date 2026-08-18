@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import type { ClassroomRole, Student, Team } from '@/src/types/models'
-import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
+import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import { IconTouchButton } from '@/src/components/classroom'
 import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
@@ -28,6 +30,8 @@ export function RecognitionStudentPicker({
   selectedIds,
   onChange,
 }: RecognitionStudentPickerProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const [searchQuery, setSearchQuery] = useState('')
 
   const sortedStudents = useMemo(
@@ -101,10 +105,11 @@ export function RecognitionStudentPicker({
               key={student.id}
               className="inline-flex items-center gap-2 rounded-2xl bg-pastel-pink px-3 py-1.5 text-sm font-bold text-slate-800 ring-1 ring-accent-pink/30"
             >
-              <img
-                src={getStudentAvatar(student)}
+              <StudentAvatar
+                student={student}
+                classroomId={classroomId}
                 alt=""
-                className="size-6 rounded-full object-cover ring-1 ring-white"
+                className="size-6 rounded-full ring-1 ring-white"
               />
               {student.name}
               {mode === 'multiple' ? (
@@ -168,10 +173,11 @@ export function RecognitionStudentPicker({
                       : 'bg-white hover:bg-brand-soft'
                   }`}
                 >
-                  <img
-                    src={getStudentAvatar(student)}
+                  <StudentAvatar
+                    student={student}
+                    classroomId={classroomId}
                     alt={student.name}
-                    className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
+                    className="size-9 shrink-0 rounded-full ring-2 ring-white"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-extrabold text-slate-800">{student.name}</p>

@@ -3,7 +3,8 @@
 import { Star } from 'lucide-react'
 import type { RankedStudent } from '@/src/utils/ranking'
 import { getPodiumEntries, groupRankedByRank } from '@/src/utils/ranking'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { cn } from '@/lib/utils'
 
 const PODIUM_STYLE: Record<number, { card: string; label: string; header: string }> = {
@@ -103,6 +104,8 @@ function PodiumCard({
   onStudentClick?: (entry: RankedStudent) => void
   compact?: boolean
 }) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const style = PODIUM_STYLE[entry.rank] ?? PODIUM_STYLE[3]
   const isFirst = entry.rank === 1 && !compact
   const label = `${style.label}, ${entry.student.name}, ${entry.points} điểm`
@@ -122,11 +125,12 @@ function PodiumCard({
       <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
         {style.label}
       </p>
-      <img
-        src={getStudentAvatar(entry.student)}
+      <StudentAvatar
+        student={entry.student}
+        classroomId={classroomId}
         alt=""
         className={cn(
-          'mt-3 rounded-full object-cover ring-4 ring-white',
+          'mt-3 rounded-full ring-4 ring-white',
           isFirst ? 'size-16' : 'size-14',
         )}
       />

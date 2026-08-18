@@ -82,13 +82,19 @@ export interface CloudClassroomSummary {
   key: string;
   updatedAt: string | null;
   size: number;
+  name?: string | null;
+  schoolYear?: string | null;
+  archived?: boolean;
 }
 
-export async function listCloudClassrooms(entitlement: string): Promise<CloudClassroomSummary[]> {
+export async function listCloudClassrooms(
+  entitlement: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CloudClassroomSummary[]> {
   const baseUrl = getWorkerBaseUrl();
   if (!baseUrl) return [];
 
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/classrooms`, {
+  const response = await fetchImpl(`${baseUrl.replace(/\/$/, "")}/classrooms`, {
     headers: { Authorization: `Bearer ${entitlement}` },
   });
 
@@ -106,15 +112,78 @@ export async function listCloudClassrooms(entitlement: string): Promise<CloudCla
   return json.classrooms ?? [];
 }
 
-export async function restoreCloudClassroom(entitlement: string, classroomId: string): Promise<unknown | null> {
+export interface FetchClassroomsRegistryResult {
+  registry: import("@/src/database/backup/cloud-types").CloudClassroomsRegistryFile | null;
+  source: "registry" | "legacy" | "missing";
+}
+
+export async function fetchClassroomsRegistry(
+  entitlement: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<FetchClassroomsRegistryResult> {
+  const baseUrl = getWorkerBaseUrl();
+  if (!baseUrl) {
+    return { registry: null, source: "missing" };
+  }
+
+  const response = await fetchImpl(`${baseUrl.replace(/\/$/, "")}/classrooms/registry`, {
+    headers: { Authorization: `Bearer ${entitlement}` },
+  });
+
+  if (response.status === 404) {
+    return { registry: null, source: "missing" };
+  }
+
+  if (!response.ok) {
+    throw new Error(`Không tải được registry lớp học (${response.status}).`);
+  }
+
+  const json = (await response.json()) as {
+    ok?: boolean;
+    registry?: FetchClassroomsRegistryResult["registry"];
+    source?: "registry";
+  };
+
+  return {
+    registry: json.registry ?? null,
+    source: json.registry ? "registry" : "missing",
+  };
+}
+
+export async function restoreCloudClassroom(
+  entitlement: string,
+  classroomId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<unknown | null> {
   const baseUrl = getWorkerBaseUrl();
   if (!baseUrl) return null;
 
-  const response = await fetch(
+  const response = await fetchImpl(
     `${baseUrl.replace(/\/$/, "")}/restore/${encodeURIComponent(classroomId)}`,
     { headers: { Authorization: `Bearer ${entitlement}` } },
   );
 
   if (!response.ok) return null;
   return response.json();
+}
+
+export async function restoreCloudClassroomAssets(
+  entitlement: string,
+  classroomId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Array<{ path: string; content: string; encoding?: string }>> {
+  const baseUrl = getWorkerBaseUrl();
+  if (!baseUrl) return [];
+
+  const response = await fetchImpl(
+    `${baseUrl.replace(/\/$/, "")}/restore/${encodeURIComponent(classroomId)}/assets`,
+    { headers: { Authorization: `Bearer ${entitlement}` } },
+  );
+
+  if (!response.ok) return [];
+
+  const json = (await response.json().catch(() => ({}))) as {
+    assets?: Array<{ path: string; content: string; encoding?: string }>;
+  };
+  return json.assets ?? [];
 }

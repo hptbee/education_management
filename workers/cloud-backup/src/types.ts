@@ -85,6 +85,7 @@ export interface SyncFileUpload {
   path: string;
   content: string;
   contentType?: string;
+  encoding?: "base64";
 }
 
 export interface SyncUploadBody {

@@ -1,5 +1,5 @@
 import { requireCloudBackup } from "./auth-handlers";
-import { MANIFEST_PATH, mergeCloudFilesToClassroom, STRUCTURED_DOMAIN_FILES } from "./cloud-serializer";
+import { MANIFEST_PATH, mergeCloudFilesToClassroom, mergeClassroomRegistries, STRUCTURED_DOMAIN_FILES, type WorkerClassroomsRegistryFile } from "./cloud-serializer";
 import {
   errorResponse,
   jsonResponse,
@@ -23,9 +23,21 @@ const ALLOWED_SYNC_PATHS = new Set<string>([
   ...STRUCTURED_DOMAIN_FILES,
 ]);
 
+function isAllowedCloudAssetPath(path: string): boolean {
+  if (!path || path.includes("..")) return false;
+  if (path === "assets/teacher/avatar.webp") return true;
+  if (path === "assets/banner.webp") return true;
+  if (path === "assets/classroom/avatar.webp") return true;
+  if (/^assets\/students\/[^/]+\/avatar\.webp$/.test(path)) return true;
+  if (/^assets\/rewards\/[^/]+\/image\.webp$/.test(path)) return true;
+  if (path.startsWith("images/gifts/") && !path.includes("..")) return true;
+  return false;
+}
+
 function isAllowedSyncPath(path: string): boolean {
   if (ALLOWED_SYNC_PATHS.has(path)) return true;
-  return ACTIVITY_DAY_PATTERN.test(path);
+  if (ACTIVITY_DAY_PATTERN.test(path)) return true;
+  return isAllowedCloudAssetPath(path);
 }
 
 export function assertUploadBody(data: unknown): BackupUploadBody {
@@ -87,7 +99,18 @@ export function assertSyncBody(data: unknown): SyncUploadBody {
     throw new Error("Invalid files");
   }
 
-  if (record.files.length === 0) {
+  let registry: string | undefined;
+  if (record.registry !== undefined && record.registry !== null) {
+    if (typeof record.registry !== "string") {
+      throw new Error("Invalid registry");
+    }
+    if (record.registry.length > MAX_SYNC_FILE_BYTES) {
+      throw new Error("Registry file too large");
+    }
+    registry = record.registry;
+  }
+
+  if (record.files.length === 0 && !registry) {
     throw new Error("files must not be empty");
   }
 
@@ -107,25 +130,17 @@ export function assertSyncBody(data: unknown): SyncUploadBody {
     if (!isAllowedSyncPath(file.path)) {
       throw new Error(`Disallowed sync path: ${file.path}`);
     }
-    if (file.content.length > MAX_SYNC_FILE_BYTES) {
+    const encoding = file.encoding === "base64" ? "base64" : undefined;
+    const contentLimit = encoding === "base64" ? Math.ceil(MAX_SYNC_FILE_BYTES * 1.37) : MAX_SYNC_FILE_BYTES;
+    if (file.content.length > contentLimit) {
       throw new Error(`File too large: ${file.path}`);
     }
     files.push({
       path: file.path,
       content: file.content,
       contentType: typeof file.contentType === "string" ? file.contentType : undefined,
+      encoding,
     });
-  }
-
-  let registry: string | undefined;
-  if (record.registry !== undefined && record.registry !== null) {
-    if (typeof record.registry !== "string") {
-      throw new Error("Invalid registry");
-    }
-    if (record.registry.length > MAX_SYNC_FILE_BYTES) {
-      throw new Error("Registry file too large");
-    }
-    registry = record.registry;
   }
 
   return {
@@ -166,9 +181,18 @@ export async function handleSyncPut(request: Request, env: Env): Promise<Respons
 
   for (const file of body.files) {
     const key = buildClassroomFileKey(auth.user.id, body.classroomKey, file.path);
-    await env.BACKUP_BUCKET.put(key, file.content, {
+    let payload: string | Uint8Array = file.content;
+    if (file.encoding === "base64") {
+      const binary = atob(file.content);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      payload = bytes;
+    }
+    await env.BACKUP_BUCKET.put(key, payload, {
       httpMetadata: {
-        contentType: file.contentType ?? "application/json",
+        contentType: file.contentType ?? (file.encoding === "base64" ? "application/octet-stream" : "application/json"),
       },
       customMetadata: {
         classroomKey: body.classroomKey,
@@ -181,7 +205,49 @@ export async function handleSyncPut(request: Request, env: Env): Promise<Respons
 
   if (body.registry) {
     const registryKey = buildClassroomsRegistryKey(auth.user.id);
-    await env.BACKUP_BUCKET.put(registryKey, body.registry, {
+    const existingObject = await env.BACKUP_BUCKET.get(registryKey);
+
+    let remoteRegistry: WorkerClassroomsRegistryFile | null = null;
+    if (existingObject) {
+      try {
+        remoteRegistry = JSON.parse(await existingObject.text()) as WorkerClassroomsRegistryFile;
+      } catch {
+        remoteRegistry = null;
+      }
+    }
+
+    let localRegistry: WorkerClassroomsRegistryFile;
+    try {
+      localRegistry = JSON.parse(body.registry) as WorkerClassroomsRegistryFile;
+    } catch {
+      return errorResponse("VALIDATION_ERROR", "Invalid registry JSON", 400);
+    }
+
+    const remoteVisible = (remoteRegistry?.classrooms ?? []).filter(
+      (e) => !e.deletedAt || e.deletedAt < e.updatedAt,
+    );
+    const localVisible = (localRegistry.classrooms ?? []).filter(
+      (e) => !e.deletedAt || e.deletedAt < e.updatedAt,
+    );
+
+    if (remoteVisible.length > 0 && localVisible.length === 0) {
+      return errorResponse(
+        "VALIDATION_ERROR",
+        "Cannot overwrite non-empty registry with empty classrooms list",
+        400,
+      );
+    }
+
+    let mergedRegistry: WorkerClassroomsRegistryFile;
+    try {
+      mergedRegistry = mergeClassroomRegistries(localRegistry, remoteRegistry);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registry merge failed";
+      return errorResponse("VALIDATION_ERROR", message, 400);
+    }
+
+    const registryPayload = JSON.stringify(mergedRegistry, null, 2);
+    await env.BACKUP_BUCKET.put(registryKey, registryPayload, {
       httpMetadata: { contentType: "application/json" },
       customMetadata: {
         userId: auth.user.id,
@@ -214,15 +280,17 @@ export async function handleListClassrooms(request: Request, env: Env): Promise<
           archived?: boolean;
         }>;
       };
-      const classrooms = (parsed.classrooms ?? []).map((entry) => ({
-        classroomId: entry.key,
-        key: buildClassroomPrefix(auth.user.id, entry.key),
-        name: entry.name ?? null,
-        schoolYear: entry.schoolYear ?? null,
-        updatedAt: entry.updatedAt ?? registryObject.uploaded?.toISOString() ?? null,
-        size: null as number | null,
-        archived: entry.archived ?? false,
-      }));
+      const classrooms = (parsed.classrooms ?? [])
+        .filter((entry) => !entry.deletedAt || entry.deletedAt < (entry.updatedAt ?? ""))
+        .map((entry) => ({
+          classroomId: entry.key,
+          key: buildClassroomPrefix(auth.user.id, entry.key),
+          name: entry.name ?? null,
+          schoolYear: entry.schoolYear ?? null,
+          updatedAt: entry.updatedAt ?? registryObject.uploaded?.toISOString() ?? null,
+          size: null as number | null,
+          archived: entry.archived ?? false,
+        }));
       return jsonResponse({ ok: true, classrooms, source: "registry" });
     } catch {
       // fall through to legacy list
@@ -232,18 +300,92 @@ export async function handleListClassrooms(request: Request, env: Env): Promise<
   const prefix = buildUserClassroomsPrefix(auth.user.id);
   const listed = await env.BACKUP_BUCKET.list({ prefix });
 
-  const classrooms = (listed.objects ?? []).map((obj) => {
+  const byClassroomId = new Map<
+    string,
+    {
+      classroomId: string;
+      key: string;
+      updatedAt: string | null;
+      size: number;
+      priority: number;
+    }
+  >();
+
+  for (const obj of listed.objects ?? []) {
     const parts = obj.key.split("/");
     const classroomId = parts[3] ?? "";
-    return {
-      classroomId,
-      key: obj.key,
-      updatedAt: obj.uploaded?.toISOString() ?? null,
-      size: obj.size,
-    };
-  });
+    if (!classroomId) continue;
+
+    const relativePath = parts.slice(4).join("/");
+    const priority =
+      relativePath === "database.json" || relativePath === "classroom.json" || relativePath === "manifest.json"
+        ? 2
+        : relativePath.endsWith(".json")
+          ? 1
+          : 0;
+
+    const existing = byClassroomId.get(classroomId);
+    if (!existing || priority > existing.priority) {
+      byClassroomId.set(classroomId, {
+        classroomId,
+        key: obj.key,
+        updatedAt: obj.uploaded?.toISOString() ?? null,
+        size: obj.size,
+        priority,
+      });
+    }
+  }
+
+  const classrooms = [...byClassroomId.values()].map(({ classroomId, key, updatedAt, size }) => ({
+    classroomId,
+    key,
+    updatedAt,
+    size,
+  }));
 
   return jsonResponse({ ok: true, classrooms, source: "legacy" });
+}
+
+export async function handleGetClassroomsRegistry(request: Request, env: Env): Promise<Response> {
+  const auth = await requireCloudBackup(request, env);
+  if ("error" in auth) return auth.error;
+
+  const registryKey = buildClassroomsRegistryKey(auth.user.id);
+  const registryObject = await env.BACKUP_BUCKET.get(registryKey);
+  if (!registryObject) {
+    return errorResponse("NOT_FOUND", "Registry not found", 404);
+  }
+
+  const text = await registryObject.text();
+  try {
+    const parsed = JSON.parse(text) as {
+      classrooms?: Array<{
+        key: string;
+        name?: string;
+        schoolYear?: string;
+        updatedAt?: string;
+        createdAt?: string;
+        archived?: boolean;
+        deletedAt?: string;
+      }>;
+      version?: number;
+      updatedAt?: string;
+    };
+    const classrooms = (parsed.classrooms ?? []).filter(
+      (entry) => !entry.deletedAt || entry.deletedAt < (entry.updatedAt ?? ""),
+    );
+    return jsonResponse({
+      ok: true,
+      source: "registry",
+      registry: {
+        version: parsed.version ?? 1,
+        updatedAt: parsed.updatedAt ?? registryObject.uploaded?.toISOString() ?? new Date().toISOString(),
+        classrooms,
+      },
+    });
+  } catch {
+    return errorResponse("VALIDATION_ERROR", "Invalid registry file", 400);
+  }
 }
 
 async function loadStructuredClassroomFiles(
@@ -289,6 +431,47 @@ async function loadStructuredClassroomFiles(
   }
 
   return files;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
+}
+
+export async function handleRestoreAssets(
+  request: Request,
+  env: Env,
+  classroomId: string,
+): Promise<Response> {
+  const auth = await requireCloudBackup(request, env);
+  if ("error" in auth) return auth.error;
+
+  if (!sanitizeBackupIdentifier(classroomId)) {
+    return errorResponse("VALIDATION_ERROR", "Invalid classroomId", 400);
+  }
+
+  const classroomPrefix = buildClassroomPrefix(auth.user.id, classroomId);
+  const assets: Array<{ path: string; content: string; encoding: "base64" }> = [];
+
+  for (const assetPrefix of [`${classroomPrefix}assets/`, `${classroomPrefix}images/gifts/`]) {
+    const listed = await env.BACKUP_BUCKET.list({ prefix: assetPrefix });
+    for (const object of listed.objects) {
+      if (!isAllowedCloudAssetPath(object.key.slice(classroomPrefix.length))) continue;
+      const file = await env.BACKUP_BUCKET.get(object.key);
+      if (!file) continue;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      assets.push({
+        path: object.key.slice(classroomPrefix.length),
+        content: bytesToBase64(bytes),
+        encoding: "base64",
+      });
+    }
+  }
+
+  return jsonResponse({ ok: true, assets });
 }
 
 export async function handleRestore(request: Request, env: Env, classroomId: string): Promise<Response> {

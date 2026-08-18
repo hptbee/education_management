@@ -4,7 +4,7 @@ import { normalizeBadgesOnDatabase } from "./badges";
 import { normalizeGiftsOnDatabase } from "./gifts";
 import { normalizeRecognitionTitlesOnDatabase } from "./recognitionTitles";
 import { createId } from "./id";
-import { HOME_BANNER, STUDENT_AVATAR, TEACHER_AVATAR, sanitizeImageDataUrl } from "./images";
+import { isDataImageUrl } from "./images";
 
 export const DEFAULT_CLASSROOM_ROLE_SEEDS: Array<Pick<ClassroomRole, "name" | "icon">> = [
   { name: "Lớp trưởng", icon: "👑" },
@@ -96,19 +96,25 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
   const students = (db.students ?? []).map((student) => ({
     ...student,
     classroomRoleIds: migrateLegacyClassroomRole(student, classroomRoles),
-    avatar: sanitizeImageDataUrl(student.avatar, STUDENT_AVATAR.maxFileBytes),
+    avatar: isDataImageUrl(student.avatar) ? undefined : student.avatar,
   }));
 
   const teams = sanitizeAllTeamLeadership(db.teams ?? [], students);
 
   const classroomSettings = {
     ...db.classroomSettings,
-    classAvatar: sanitizeImageDataUrl(db.classroomSettings.classAvatar, TEACHER_AVATAR.maxFileBytes),
-    homeBannerImage: sanitizeImageDataUrl(db.classroomSettings.homeBannerImage, HOME_BANNER.maxFileBytes),
+    classAvatar: isDataImageUrl(db.classroomSettings.classAvatar)
+      ? undefined
+      : db.classroomSettings.classAvatar,
+    homeBannerImage: isDataImageUrl(db.classroomSettings.homeBannerImage)
+      ? undefined
+      : db.classroomSettings.homeBannerImage,
     teacher: db.classroomSettings.teacher
       ? {
           ...db.classroomSettings.teacher,
-          avatar: sanitizeImageDataUrl(db.classroomSettings.teacher.avatar, TEACHER_AVATAR.maxFileBytes),
+          avatar: isDataImageUrl(db.classroomSettings.teacher.avatar)
+            ? undefined
+            : db.classroomSettings.teacher.avatar,
         }
       : db.classroomSettings.teacher,
   };

@@ -7,7 +7,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Search, Star, X } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import { pickWithoutRepeat } from '@/src/utils/randomSelection'
 import { createRandomSpinPlan, getWinnerRotation, type WheelSpinPlan } from '@/src/utils/wheelSpin'
 import {
@@ -40,6 +41,7 @@ interface LuckyWheelDialogProps {
 
 export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWheelDialogProps) {
   const { data, setWheelStudentBag, recordLuckyWheelSelection } = useAppData()
+  const classroomId = data?.metadata.id
   const { showConfirm } = useClassroomDialog()
   const animationsEnabled = data?.appSettings.animationsEnabled ?? true
   const soundEnabled = data?.appSettings.soundEnabled ?? true
@@ -587,7 +589,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
                               onChange={() => toggleStudent(student.id)}
                               className="size-4 rounded border-slate-300 text-brand-purple"
                             />
-                            <img src={getStudentAvatar(student)} alt="" className="size-6 rounded-full object-cover" />
+                            <StudentAvatar student={student} classroomId={classroomId} alt="" className="size-6 rounded-full" />
                             <span className="truncate text-xs font-bold text-slate-800">{student.name}</span>
                           </label>
                         ))}
@@ -638,10 +640,11 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
                     transition={{ type: 'spring', stiffness: 260, damping: 18 }}
                     className="flex flex-col items-center gap-2"
                   >
-                    <motion.img
-                      src={getStudentAvatar(winner)}
+                    <StudentAvatar
+                      student={winner}
+                      classroomId={classroomId}
                       alt={winner.name}
-                      className="size-20 rounded-full object-cover ring-4 ring-amber-300 shadow-lg"
+                      className="size-20 rounded-full ring-4 ring-amber-300 shadow-lg"
                     />
                     <p className="font-display text-3xl font-black text-slate-800">{winner.name}</p>
                   </motion.div>

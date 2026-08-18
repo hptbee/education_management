@@ -5,12 +5,13 @@ import { ArrowRight, Bell } from 'lucide-react'
 import { ClassroomCard } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import { buildClassroomActivity } from '@/src/utils/activityHistory'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 
 const DISPLAY_COUNT = 5
 
 export function RecentActivity() {
   const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const entries = data ? buildClassroomActivity(data).slice(0, DISPLAY_COUNT) : []
 
   return (
@@ -33,18 +34,26 @@ export function RecentActivity() {
               entry.studentId && data
                 ? data.students.find((s) => s.id === entry.studentId)
                 : undefined
-            const avatar = student ? getStudentAvatar(student) : '/placeholder.svg'
             const label = entry.subtitle
               ? `${entry.title}: ${entry.subtitle}`
               : entry.title
 
             return (
               <li key={entry.id} className="flex items-center gap-3 rounded-2xl bg-slate-50/80 px-2.5 py-2">
-                <img
-                  src={avatar}
-                  alt=""
-                  className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
-                />
+                {student ? (
+                  <StudentAvatar
+                    student={student}
+                    classroomId={classroomId}
+                    alt=""
+                    className="size-9 shrink-0 rounded-full ring-2 ring-white"
+                  />
+                ) : (
+                  <img
+                    src="/placeholder.svg"
+                    alt=""
+                    className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
+                  />
+                )}
                 <p className="min-w-0 flex-1 text-xs font-semibold leading-snug text-slate-600">{label}</p>
                 {entry.points !== undefined && entry.points !== 0 ? (
                   <span

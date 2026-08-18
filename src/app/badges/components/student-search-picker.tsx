@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import type { Student } from '@/src/types/models'
-import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
+import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import { IconTouchButton } from '@/src/components/classroom'
 
 interface StudentSearchPickerProps {
@@ -13,6 +15,8 @@ interface StudentSearchPickerProps {
 }
 
 export function StudentSearchPicker({ students, selectedStudentId, onSelect }: StudentSearchPickerProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const [searchQuery, setSearchQuery] = useState('')
 
   const sortedStudents = useMemo(
@@ -70,10 +74,11 @@ export function StudentSearchPicker({ students, selectedStudentId, onSelect }: S
                       : 'bg-white hover:bg-brand-soft'
                   }`}
                 >
-                  <img
-                    src={getStudentAvatar(student)}
+                  <StudentAvatar
+                    student={student}
+                    classroomId={classroomId}
                     alt={student.name}
-                    className="size-9 shrink-0 rounded-full object-cover ring-2 ring-white"
+                    className="size-9 shrink-0 rounded-full ring-2 ring-white"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-extrabold text-slate-800">{student.name}</p>

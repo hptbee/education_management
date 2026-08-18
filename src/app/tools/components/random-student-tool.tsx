@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dices, RotateCcw, Shuffle } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { pickWithoutRepeat } from '@/src/utils/randomSelection'
 import { canAnimate } from '@/src/utils/motion'
 import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
@@ -15,6 +15,7 @@ const SPIN_INTERVAL_MS = 90
 
 export function RandomStudentTool() {
   const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const animationsEnabled = data?.appSettings.animationsEnabled ?? true
   const students = data?.students ?? []
 
@@ -129,10 +130,11 @@ export function RandomStudentTool() {
           >
             <div className="relative flex size-28 items-center justify-center">
               {display ? (
-                <img
-                  src={getStudentAvatar(display)}
+                <StudentAvatar
+                  student={display}
+                  classroomId={classroomId}
                   alt={display.name}
-                  className={`size-28 rounded-full object-cover shadow-xl ring-4 transition ${
+                  className={`size-28 rounded-full shadow-xl ring-4 transition ${
                     spinning ? 'scale-105 ring-white' : picked ? 'ring-brand-purple/40' : 'ring-white'
                   }`}
                 />
@@ -156,14 +158,18 @@ export function RandomStudentTool() {
               <div className="flex items-center">
                 <div className="flex -space-x-2">
                   {previewStudents.map((student, index) => (
-                    <img
+                    <div
                       key={student.id}
-                      src={getStudentAvatar(student)}
-                      alt={student.name}
                       title={student.name}
-                      className="size-8 rounded-full border-2 border-white object-cover shadow-sm"
                       style={{ zIndex: PREVIEW_LIMIT - index }}
-                    />
+                    >
+                      <StudentAvatar
+                        student={student}
+                        classroomId={classroomId}
+                        alt={student.name}
+                        className="size-8 rounded-full border-2 border-white shadow-sm"
+                      />
+                    </div>
                   ))}
                 </div>
                 {extraRemaining > 0 ? (

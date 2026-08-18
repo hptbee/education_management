@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react'
 import { Users, Search, Star, ArrowRight, X, Sprout } from 'lucide-react'
 import Link from 'next/link'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar, sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
 import type { Student, Team } from '@/src/types/models'
 import { ClassroomCard, EmptyState, IconTouchButton } from '@/src/components/classroom'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
@@ -13,10 +14,12 @@ function StudentCard({
   student,
   team,
   teamIndex,
+  classroomId,
 }: {
   student: Student
   team?: Team
   teamIndex: number
+  classroomId?: string
 }) {
   const color = team ? getTeamPastelStyle(teamIndex) : null
 
@@ -25,10 +28,11 @@ function StudentCard({
       href="/students"
       className="motion-safe-hover flex flex-col items-center rounded-2xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
     >
-      <img
-        src={getStudentAvatar(student)}
+      <StudentAvatar
+        student={student}
+        classroomId={classroomId}
         alt={student.name}
-        className={`size-14 rounded-full object-cover ring-2 ring-offset-2 ${
+        className={`size-14 rounded-full ring-2 ring-offset-2 ${
           student.gender === 'female' ? 'ring-pink-200' : 'ring-sky-200'
         }`}
       />
@@ -52,6 +56,7 @@ function StudentCard({
 
 export function StudentList() {
   const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const [searchQuery, setSearchQuery] = useState('')
   const students = data?.students || []
   const teams = data?.teams || []
@@ -131,6 +136,7 @@ export function StudentList() {
                 student={student}
                 team={teamIdx >= 0 ? teams[teamIdx] : undefined}
                 teamIndex={Math.max(0, teamIdx)}
+                classroomId={classroomId}
               />
             )
           })}

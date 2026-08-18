@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Upload, Trash2 } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
-import { getStudentAvatar } from '@/src/utils/student'
-import { readStudentAvatarImage } from '@/src/utils/images'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { processImageFile } from '@/src/utils/images'
+import { classroomAssetService } from '@/src/database/assets/classroom-asset.service'
+import { studentAvatarAssetKey } from '@/src/database/assets/classroom-asset-paths'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useClassroomDialog, ClassroomButton, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
@@ -33,11 +35,14 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
   const { data } = useAppData()
   const { showAlert } = useClassroomDialog()
   const [formData, setFormData] = useState<Student>(defaultStudent())
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const classroomRoles = data?.classroomRoles ?? []
+  const classroomId = data?.metadata.id
 
   useEffect(() => {
     if (isOpen) {
+      setPreviewUrl(null)
       if (initialData) {
         setFormData({
           ...initialData,
@@ -60,6 +65,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
 
     onSave({
       ...formData,
+      avatar: undefined,
       updatedAt: new Date().toISOString()
     })
     onClose()
@@ -67,11 +73,20 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !classroomId) return
 
     try {
-      const base64String = await readStudentAvatarImage(file)
-      setFormData((prev) => ({ ...prev, avatar: base64String }))
+      const bytes = await processImageFile(file, 'studentAvatar')
+      const key = studentAvatarAssetKey(formData.id)
+      await classroomAssetService.saveAsset(classroomId, key, bytes)
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }))
+      setPreviewUrl(url)
+      setFormData((prev) => ({
+        ...prev,
+        avatarAssetKey: key,
+        avatar: undefined,
+      }))
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Không thể tải ảnh.'
       await showAlert(message, { variant: 'error' })
@@ -82,7 +97,11 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
   }
 
   const handleRemoveAvatar = () => {
-    setFormData(prev => ({ ...prev, avatar: undefined }))
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
+    setFormData(prev => ({ ...prev, avatarAssetKey: undefined, avatar: undefined }))
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -97,6 +116,10 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
       return { ...prev, classroomRoleIds: next }
     })
   }
+
+  const previewStudent = previewUrl
+    ? { ...formData, avatar: previewUrl }
+    : formData
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
@@ -123,11 +146,20 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
             {/* Avatar Section */}
             <section className="flex flex-col items-center justify-center">
               <div className="relative group">
-                <img
-                  src={getStudentAvatar(formData)}
-                  alt="Avatar preview"
-                  className="size-24 rounded-full object-cover ring-4 ring-slate-100"
-                />
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Avatar preview"
+                    className="size-24 rounded-full object-cover ring-4 ring-slate-100"
+                  />
+                ) : (
+                  <StudentAvatar
+                    student={formData}
+                    classroomId={classroomId}
+                    className="size-24 rounded-full ring-4 ring-slate-100"
+                    alt="Avatar preview"
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -135,7 +167,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
                 >
                   <Upload className="size-6 text-white" />
                 </button>
-                {formData.avatar && (
+                {(formData.avatarAssetKey || previewUrl) && (
                   <button
                     type="button"
                     onClick={handleRemoveAvatar}
@@ -149,7 +181,7 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
               <input
                 type="file"
                 ref={fileInputRef}
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp,image/gif"
                 onChange={handleFileChange}
                 className="hidden"
               />

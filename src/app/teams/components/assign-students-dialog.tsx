@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, Search, Check } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface AssignStudentsDialogProps {
@@ -15,6 +16,8 @@ interface AssignStudentsDialogProps {
 }
 
 export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStudents }: AssignStudentsDialogProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -99,10 +102,11 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
                       isSelected ? 'border-brand-purple bg-brand-purple/5' : 'border-transparent bg-slate-50 hover:bg-slate-100'
                     }`}
                   >
-                    <img
-                      src={getStudentAvatar(s)}
+                    <StudentAvatar
+                      student={s}
+                      classroomId={classroomId}
                       alt={s.name}
-                      className="size-9 rounded-full object-cover ring-2 ring-white"
+                      className="size-9 rounded-full ring-2 ring-white"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{s.name}</p>

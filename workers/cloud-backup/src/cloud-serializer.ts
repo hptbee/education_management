@@ -207,3 +207,75 @@ export const STRUCTURED_DOMAIN_FILES = [
   DOMAIN_PATHS.catalog,
   DOMAIN_PATHS.activityIndex,
 ] as const;
+
+export interface WorkerRegistryEntry {
+  key: string;
+  name: string;
+  schoolYear: string;
+  createdAt: string;
+  updatedAt: string;
+  archived: boolean;
+  deletedAt?: string;
+}
+
+export interface WorkerClassroomsRegistryFile {
+  version: number;
+  updatedAt: string;
+  classrooms: WorkerRegistryEntry[];
+}
+
+function isRegistryEntryDeleted(entry: WorkerRegistryEntry): boolean {
+  if (!entry.deletedAt) return false;
+  return entry.deletedAt >= entry.updatedAt;
+}
+
+function mergeRegistryEntryPair(a: WorkerRegistryEntry, b: WorkerRegistryEntry): WorkerRegistryEntry {
+  const aTime = new Date(a.updatedAt).getTime();
+  const bTime = new Date(b.updatedAt).getTime();
+  const winner = aTime >= bTime ? a : b;
+  const loser = aTime >= bTime ? b : a;
+  const createdAt =
+    new Date(a.createdAt).getTime() <= new Date(b.createdAt).getTime() ? a.createdAt : b.createdAt;
+  return {
+    key: winner.key,
+    name: winner.name,
+    schoolYear: winner.schoolYear,
+    createdAt,
+    updatedAt: winner.updatedAt,
+    archived: winner.archived,
+    deletedAt: winner.deletedAt ?? loser.deletedAt,
+  };
+}
+
+export function mergeClassroomRegistries(
+  local: WorkerClassroomsRegistryFile | null | undefined,
+  remote: WorkerClassroomsRegistryFile | null | undefined,
+): WorkerClassroomsRegistryFile {
+  const map = new Map<string, WorkerRegistryEntry>();
+
+  for (const entry of remote?.classrooms ?? []) {
+    map.set(entry.key, { ...entry });
+  }
+  for (const entry of local?.classrooms ?? []) {
+    const existing = map.get(entry.key);
+    map.set(entry.key, existing ? mergeRegistryEntryPair(entry, existing) : { ...entry });
+  }
+
+  const localHadVisible = (local?.classrooms ?? []).some((e) => !isRegistryEntryDeleted(e));
+  const remoteHadVisible = (remote?.classrooms ?? []).some((e) => !isRegistryEntryDeleted(e));
+
+  const classrooms = [...map.values()]
+    .filter((entry) => !isRegistryEntryDeleted(entry))
+    .map(({ deletedAt: _deletedAt, ...rest }) => rest);
+
+  if (classrooms.length === 0 && (localHadVisible || remoteHadVisible)) {
+    throw new Error("Registry merge would drop all classrooms");
+  }
+
+  const updatedAt = new Date().toISOString();
+  return {
+    version: 1,
+    updatedAt,
+    classrooms: classrooms.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+  };
+}

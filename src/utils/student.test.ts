@@ -33,8 +33,14 @@ const roster: Student[] = [
 ];
 
 describe("getStudentAvatar", () => {
-  it("returns custom avatar when set", () => {
+  it("returns legacy inline avatar when still present", () => {
     expect(getStudentAvatar({ id: "s1", avatar: "data:image/png;base64,x", gender: "male" })).toContain("data:image");
+  });
+
+  it("uses gender fallback when only asset key is set", () => {
+    expect(
+      getStudentAvatar({ id: "s1", avatarAssetKey: "assets/students/s1/avatar.webp", gender: "male" }),
+    ).toMatch(/avatar-boy/);
   });
 
   it("returns boy avatar for male", () => {

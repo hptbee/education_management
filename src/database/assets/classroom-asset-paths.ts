@@ -1,6 +1,10 @@
 import { assertSafeClassroomId } from "../safeIdentifiers";
 
-const GIFT_IMAGE_PREFIX = "images/gifts/";
+/** New unified asset prefix under each classroom directory. */
+export const ASSET_PREFIX = "assets/";
+
+/** Legacy gift image prefix (migrated to assets/rewards/{id}/image.webp). */
+const LEGACY_GIFT_IMAGE_PREFIX = "images/gifts/";
 
 function assertSafeRelativeAssetPath(relativePath: string): void {
   if (!relativePath || relativePath.includes("..") || relativePath.includes("\\")) {
@@ -11,13 +15,54 @@ function assertSafeRelativeAssetPath(relativePath: string): void {
   }
 }
 
-export function giftImageRelativePath(giftId: string, extension: string): string {
-  const safeExt = extension.replace(/^\./, "").toLowerCase() || "jpg";
-  return `${GIFT_IMAGE_PREFIX}${giftId}.${safeExt}`;
+export function teacherAvatarAssetKey(): string {
+  return `${ASSET_PREFIX}teacher/avatar.webp`;
 }
 
-export function isGiftImagePath(path: string): boolean {
-  return path.startsWith(GIFT_IMAGE_PREFIX) && !path.includes("..");
+export function bannerAssetKey(): string {
+  return `${ASSET_PREFIX}banner.webp`;
+}
+
+export function classAvatarAssetKey(): string {
+  return `${ASSET_PREFIX}classroom/avatar.webp`;
+}
+
+export function studentAvatarAssetKey(studentId: string): string {
+  return `${ASSET_PREFIX}students/${studentId}/avatar.webp`;
+}
+
+export function giftImageAssetKey(giftId: string): string {
+  return `${ASSET_PREFIX}rewards/${giftId}/image.webp`;
+}
+
+/** @deprecated Legacy path — use giftImageAssetKey */
+export function giftImageRelativePath(giftId: string, extension: string): string {
+  const safeExt = extension.replace(/^\./, "").toLowerCase() || "jpg";
+  return `${LEGACY_GIFT_IMAGE_PREFIX}${giftId}.${safeExt}`;
+}
+
+export function isLegacyGiftImagePath(path: string): boolean {
+  return path.startsWith(LEGACY_GIFT_IMAGE_PREFIX) && !path.includes("..");
+}
+
+/** @deprecated Use isLegacyGiftImagePath */
+export const isGiftImagePath = isLegacyGiftImagePath;
+
+export function isClassroomAssetPath(path: string): boolean {
+  if (!path || path.includes("..")) return false;
+  return path.startsWith(ASSET_PREFIX) || isLegacyGiftImagePath(path);
+}
+
+/** Paths allowed for cloud sync upload under a classroom prefix. */
+export function isAllowedCloudAssetPath(path: string): boolean {
+  if (!isClassroomAssetPath(path)) return false;
+  if (path === teacherAvatarAssetKey()) return true;
+  if (path === bannerAssetKey()) return true;
+  if (path === classAvatarAssetKey()) return true;
+  if (/^assets\/students\/[^/]+\/avatar\.webp$/.test(path)) return true;
+  if (/^assets\/rewards\/[^/]+\/image\.webp$/.test(path)) return true;
+  if (isLegacyGiftImagePath(path)) return true;
+  return false;
 }
 
 export function extensionFromMime(mime: string): string {
@@ -40,6 +85,20 @@ export function extensionFromFileName(fileName: string): string {
   return match ? match[1].toLowerCase() : "jpg";
 }
 
+export function mimeFromAssetPath(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    default:
+      return "image/jpeg";
+  }
+}
+
 export function classroomAssetRootRelative(classroomId: string): string {
   assertSafeClassroomId(classroomId, "classroomId");
   return `classrooms/${classroomId}`;
@@ -54,4 +113,9 @@ export function resolveClassroomAssetAbsolute(
   assertSafeClassroomId(classroomId, "classroomId");
   assertSafeRelativeAssetPath(relativePath);
   return joinPath(dataDir, "classrooms", classroomId, relativePath);
+}
+
+export function parentDirForAsset(relativePath: string): string {
+  const idx = relativePath.lastIndexOf("/");
+  return idx >= 0 ? relativePath.slice(0, idx) : "";
 }

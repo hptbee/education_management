@@ -2,7 +2,8 @@
 
 import { Star, Eye, Edit2, Trash2 } from 'lucide-react'
 import type { Badge, ClassroomRole, Student, Team } from '@/src/types/models'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { getStudentBadges } from '@/src/utils/badges'
 import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
@@ -28,6 +29,8 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ student, teams, classroomRoles, badges, onView, onEdit, onDelete }: StudentCardProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const gender = GENDER_META[student.gender ?? 'unknown'] ?? GENDER_META.unknown
 
   const team = teams.find(t => t.id === student.teamId)
@@ -63,11 +66,11 @@ export function StudentCard({ student, teams, classroomRoles, badges, onView, on
         className="flex w-full flex-col items-center rounded-2xl text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         <div className="relative">
-          <img
-            src={getStudentAvatar(student)}
+          <StudentAvatar
+            student={student}
+            classroomId={classroomId}
             alt=""
-            className={`size-[4.5rem] rounded-full border-2 border-white object-cover ring-4 shadow-sm ${gender.ring}`}
-            onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg' }}
+            className={`size-[4.5rem] rounded-full border-2 border-white ring-4 shadow-sm ${gender.ring}`}
           />
           {student.gender && student.gender !== 'unknown' && (
             <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full border-2 border-white bg-white text-sm shadow-sm">

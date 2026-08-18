@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ArrowRight, Star, Trophy } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { rankStudents } from '@/src/utils/ranking'
 import { ClassroomCard, EmptyState } from '@/src/components/classroom'
 
@@ -11,6 +11,7 @@ const TOP_COUNT = 4
 
 export function PointsChallengeStrip() {
   const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const students = data?.students ?? []
 
   const topStudents = rankStudents(students)
@@ -56,10 +57,11 @@ export function PointsChallengeStrip() {
                   : 'border-slate-100 bg-slate-50/80'
               }`}
             >
-              <img
-                src={getStudentAvatar(student)}
+              <StudentAvatar
+                student={student}
+                classroomId={classroomId}
                 alt={student.name}
-                className="size-16 rounded-full object-cover ring-4 ring-white"
+                className="size-16 rounded-full ring-4 ring-white"
               />
               <p className="mt-3 w-full truncate text-base font-extrabold text-slate-700">{student.name}</p>
               <p className="mt-1 flex items-center gap-1 text-lg font-black text-amber-600">

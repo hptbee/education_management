@@ -4,7 +4,9 @@ import { useRef, useState } from 'react'
 import { ImagePlus, Trash2 } from 'lucide-react'
 import { TeacherAvatar } from '@/src/components/TeacherAvatar'
 import { useAppData } from '@/src/store/AppDataContext'
-import { TEACHER_AVATAR, readTeacherAvatarImage, teacherAvatarSizeHint } from '@/src/utils/images'
+import { classroomAssetService } from '@/src/database/assets/classroom-asset.service'
+import { teacherAvatarAssetKey } from '@/src/database/assets/classroom-asset-paths'
+import { ASSET_IMAGE_RULES, processImageFile, teacherAvatarSizeHint } from '@/src/utils/images'
 import { cn } from '@/lib/utils'
 
 export function TeacherProfileAvatar({
@@ -16,14 +18,15 @@ export function TeacherProfileAvatar({
   onError: (message: string | null) => void
   layout?: 'stacked' | 'inline'
 }) {
-  const { data, updateTeacherProfile } = useAppData()
+  const { data, updateTeacherProfile, markDirtyAsset, persistNow } = useAppData()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
 
   if (!data) return null
 
   const teacher = data.classroomSettings.teacher
-  const hasCustomAvatar = Boolean(teacher.avatar?.trim())
+  const classroomId = data.metadata.id
+  const hasCustomAvatar = Boolean(teacher.avatarAssetKey)
   const inline = layout === 'inline'
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,8 +37,12 @@ export function TeacherProfileAvatar({
     setBusy(true)
     onError(null)
     try {
-      const image = await readTeacherAvatarImage(file)
-      updateTeacherProfile({ avatar: image })
+      const bytes = await processImageFile(file, 'teacherAvatar')
+      const key = teacherAvatarAssetKey()
+      await classroomAssetService.saveAsset(classroomId, key, bytes)
+      updateTeacherProfile({ avatarAssetKey: key, avatar: undefined })
+      markDirtyAsset(key)
+      await persistNow()
       onSaved()
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Không tải được ảnh.')
@@ -44,10 +51,23 @@ export function TeacherProfileAvatar({
     }
   }
 
-  const handleRemove = () => {
-    updateTeacherProfile({ avatar: undefined })
+  const handleRemove = async () => {
+    setBusy(true)
     onError(null)
-    onSaved()
+    try {
+      const key = teacher.avatarAssetKey
+      updateTeacherProfile({ avatarAssetKey: undefined, avatar: undefined })
+      await persistNow()
+      if (key) {
+        await classroomAssetService.deleteAsset(classroomId, key)
+        markDirtyAsset(key)
+      }
+      onSaved()
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Không xóa được ảnh.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -66,7 +86,8 @@ export function TeacherProfileAvatar({
           className="group relative"
         >
           <TeacherAvatar
-            src={teacher.avatar}
+            assetKey={teacher.avatarAssetKey}
+            classroomId={classroomId}
             name={teacher.name}
             className={cn(
               'rounded-[35%] shadow-sm ring-4 ring-white',
@@ -80,7 +101,7 @@ export function TeacherProfileAvatar({
         {hasCustomAvatar ? (
           <button
             type="button"
-            onClick={handleRemove}
+            onClick={() => void handleRemove()}
             disabled={busy}
             className="absolute -bottom-1 -right-1 rounded-full bg-rose-100 p-1.5 text-rose-600 shadow-sm transition hover:bg-rose-200"
             title="Xóa ảnh đại diện"
@@ -93,7 +114,7 @@ export function TeacherProfileAvatar({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         className="hidden"
         onChange={handleFileChange}
       />
@@ -104,7 +125,7 @@ export function TeacherProfileAvatar({
         </p>
         <p className="mt-1 text-xs font-semibold text-slate-500">Bấm ảnh để đổi · lưu tự động</p>
         <p className="mt-1.5 text-[11px] font-semibold text-slate-400">
-          {teacherAvatarSizeHint()} · tối đa {TEACHER_AVATAR.maxFileBytes / (1024 * 1024)} MB
+          {teacherAvatarSizeHint()} · tối đa {ASSET_IMAGE_RULES.teacherAvatar.maxInputBytes / (1024 * 1024)} MB
         </p>
       </div>
     </div>

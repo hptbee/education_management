@@ -5,7 +5,10 @@ import { ImagePlus, RotateCcw } from 'lucide-react'
 import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
 import { HeroBanner } from '@/components/dashboard/hero-banner'
 import { useAppData } from '@/src/store/AppDataContext'
-import { HOME_BANNER, homeBannerSizeHint, readHomeBannerImage } from '@/src/utils/images'
+import { useAssetUrl } from '@/src/hooks/useAssetUrl'
+import { classroomAssetService } from '@/src/database/assets/classroom-asset.service'
+import { bannerAssetKey } from '@/src/database/assets/classroom-asset-paths'
+import { ASSET_IMAGE_RULES, homeBannerSizeHint, processImageFile } from '@/src/utils/images'
 
 export function HomeBannerSection({
   onSaved,
@@ -16,13 +19,15 @@ export function HomeBannerSection({
   onError: (message: string | null) => void
   embedded?: boolean
 }) {
-  const { data, updateClassroomSettings } = useAppData()
+  const { data, updateClassroomSettings, markDirtyAsset, persistNow } = useAppData()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
 
   if (!data) return null
 
-  const customImage = data.classroomSettings.homeBannerImage?.trim() || ''
+  const classroomId = data.metadata.id
+  const bannerKey = data.classroomSettings.bannerAssetKey
+  const customImage = useAssetUrl(classroomId, bannerKey)
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -32,11 +37,16 @@ export function HomeBannerSection({
     setBusy(true)
     onError(null)
     try {
-      const image = await readHomeBannerImage(file)
+      const bytes = await processImageFile(file, 'banner')
+      const key = bannerAssetKey()
+      await classroomAssetService.saveAsset(classroomId, key, bytes)
       updateClassroomSettings({
         ...data.classroomSettings,
-        homeBannerImage: image,
+        bannerAssetKey: key,
+        homeBannerImage: undefined,
       })
+      markDirtyAsset(key)
+      await persistNow()
       onSaved()
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Không tải được ảnh.')
@@ -45,13 +55,27 @@ export function HomeBannerSection({
     }
   }
 
-  const handleReset = () => {
-    updateClassroomSettings({
-      ...data.classroomSettings,
-      homeBannerImage: undefined,
-    })
+  const handleReset = async () => {
+    setBusy(true)
     onError(null)
-    onSaved()
+    try {
+      const key = data.classroomSettings.bannerAssetKey
+      updateClassroomSettings({
+        ...data.classroomSettings,
+        bannerAssetKey: undefined,
+        homeBannerImage: undefined,
+      })
+      await persistNow()
+      if (key) {
+        await classroomAssetService.deleteAsset(classroomId, key)
+        markDirtyAsset(key)
+      }
+      onSaved()
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Không xóa được banner.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const content = (
@@ -89,15 +113,15 @@ export function HomeBannerSection({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[11px] font-semibold text-slate-400">
-          {homeBannerSizeHint()} · tối đa {HOME_BANNER.maxFileBytes / (1024 * 1024)} MB · lưu tự động
+          {homeBannerSizeHint()} · tối đa {ASSET_IMAGE_RULES.banner.maxInputBytes / (1024 * 1024)} MB · lưu tự động
         </p>
         <div className="flex flex-wrap gap-2">
           <ClassroomButton size="sm" onClick={() => fileInputRef.current?.click()} disabled={busy}>
             <ImagePlus className="size-4" />
-            {busy ? 'Đang tải...' : customImage ? 'Đổi ảnh' : 'Tải ảnh'}
+            {busy ? 'Đang tải...' : bannerKey ? 'Đổi ảnh' : 'Tải ảnh'}
           </ClassroomButton>
-          {customImage ? (
-            <ClassroomButton size="sm" variant="outline" onClick={handleReset} disabled={busy}>
+          {bannerKey ? (
+            <ClassroomButton size="sm" variant="outline" onClick={() => void handleReset()} disabled={busy}>
               <RotateCcw className="size-4" /> Mặc định
             </ClassroomButton>
           ) : null}
@@ -107,7 +131,7 @@ export function HomeBannerSection({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         className="hidden"
         onChange={handleFileChange}
       />

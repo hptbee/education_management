@@ -5,7 +5,7 @@ import { X, Star, Trophy, Target, Medal, Edit2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { getStudentBadges } from '@/src/utils/badges'
 import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
@@ -27,6 +27,7 @@ interface StudentDetailsModalProps {
 
 export function StudentDetailsModal({ isOpen, onClose, student, onEdit, onDelete }: StudentDetailsModalProps) {
   const { data, toggleStudentBadge } = useAppData()
+  const classroomId = data?.metadata.id
   const dialogRef = useModalFocusTrap(isOpen, onClose)
 
   const liveStudent = useMemo(() => {
@@ -103,10 +104,11 @@ export function StudentDetailsModal({ isOpen, onClose, student, onEdit, onDelete
             
             {/* Header Profile */}
             <div className="flex flex-col items-center gap-5 rounded-2xl border border-slate-100 bg-slate-50 p-5 sm:flex-row sm:items-start">
-              <img
-                src={getStudentAvatar(liveStudent)}
+              <StudentAvatar
+                student={liveStudent}
+                classroomId={classroomId}
                 alt={liveStudent.name}
-                className={`size-24 rounded-full object-cover ring-4 ${
+                className={`size-24 rounded-full ring-4 ${
                   liveStudent.gender === 'female' ? 'ring-pink-100' : 'ring-sky-100'
                 }`}
               />

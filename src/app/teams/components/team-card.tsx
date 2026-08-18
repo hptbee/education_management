@@ -1,6 +1,9 @@
+'use client'
+
 import { Users, Edit2, Trash2, UserMinus } from 'lucide-react'
 import type { Team, Student } from '@/src/types/models'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { getTeamMotivationMessage } from '@/src/utils/teams'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 import { getTeamLeadershipRole, TeamLeadershipAvatarOverlay } from './team-leadership-badge'
@@ -38,6 +41,8 @@ export function TeamCard({
   onClearAllMembers,
   onViewDetails,
 }: TeamCardProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const color = getTeamPastelStyle(colorIndex)
   const previewAvatars = members.slice(0, 5)
   const extra = members.length - previewAvatars.length
@@ -128,10 +133,11 @@ export function TeamCard({
                 const leadershipRole = getTeamLeadershipRole(team, s.id)
                 return (
                   <div key={s.id} className="relative" style={{ zIndex: 10 - i }}>
-                    <img
-                      src={getStudentAvatar(s)}
+                    <StudentAvatar
+                      student={s}
+                      classroomId={classroomId}
                       alt={s.name}
-                      className={`size-8 rounded-full border-2 border-white object-cover shadow-sm ring-1 ${
+                      className={`size-8 rounded-full border-2 border-white shadow-sm ring-1 ${
                         leadershipRole === 'leader'
                           ? 'ring-amber-300'
                           : leadershipRole === 'vice'

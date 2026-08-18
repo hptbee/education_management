@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { X, Plus, Star, ArrowLeftRight, UserMinus, History, Crown, Shield } from 'lucide-react'
 import type { Student, Team, TeamScoreHistory } from '@/src/types/models'
-import { getStudentAvatar } from '@/src/utils/student'
+import { StudentAvatar } from '@/src/components/StudentAvatar'
+import { useAppData } from '@/src/store/AppDataContext'
 import { IconTouchButton, useClassroomDialog, useModalFocusTrap } from '@/src/components/classroom'
 import { AssignStudentsDialog } from './assign-students-dialog'
 import { MoveStudentDialog } from './move-student-dialog'
@@ -39,6 +40,8 @@ export function TeamDetails({
   team, isOpen, onClose, members, allStudents, allTeams, pointHistory,
   onAssign, onMove, onRemove, onClearAllMembers, onEditTeam, onOpenPoints, onUpdateLeadership,
 }: TeamDetailsProps) {
+  const { data } = useAppData()
+  const classroomId = data?.metadata.id
   const { showConfirm } = useClassroomDialog()
   const [activeTab, setActiveTab] = useState<'members' | 'history'>('members')
   const [isAssignOpen, setIsAssignOpen] = useState(false)
@@ -228,10 +231,11 @@ export function TeamDetails({
                     }`}
                   >
                     <div className="relative shrink-0">
-                      <img
-                        src={getStudentAvatar(student)}
+                      <StudentAvatar
+                        student={student}
+                        classroomId={classroomId}
                         alt={student.name}
-                        className={`size-10 rounded-full object-cover ring-2 ${
+                        className={`size-10 rounded-full ring-2 ${
                           leadershipRole === 'leader'
                             ? 'ring-amber-200'
                             : leadershipRole === 'vice'
