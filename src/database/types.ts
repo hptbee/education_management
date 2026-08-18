@@ -21,6 +21,8 @@ export interface DatabaseMetadata {
   version: number;
   createdAt: string;
   updatedAt: string;
+  /** When true, hidden from active lists and sidebar switcher until restored. */
+  archived?: boolean;
 }
 
 export interface ClassroomDatabase {
@@ -51,4 +53,5 @@ export interface DatabaseSummary {
   studentCount: number;
   createdAt: string;
   updatedAt: string;
+  archived: boolean;
 }

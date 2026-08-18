@@ -10,6 +10,7 @@ import {
   Sparkles,
   Trophy,
   History,
+  School,
   Settings,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -104,6 +105,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname() ?? ''
   const settingsActive = isNavActive(pathname, '/settings')
+  const classroomsActive = isNavActive(pathname, '/classrooms')
 
   return (
     <aside
@@ -137,6 +139,13 @@ export function Sidebar({
 
       <div className="shrink-0 border-t border-sky-100/80 px-3 py-3">
         <SidebarPersistenceStatus />
+        <SidebarNavLink
+          href="/classrooms"
+          label="Quản lý lớp"
+          icon={School}
+          active={classroomsActive}
+          onNavigate={onNavigate}
+        />
         <SidebarNavLink
           href="/settings"
           label="Cài đặt"

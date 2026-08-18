@@ -21,7 +21,6 @@ export function SettingsPage() {
     updateAppSettings,
     updateTeacherProfile,
     renameDatabase,
-    duplicateDatabase,
     deleteDatabase,
     closeDatabase,
     switchDatabase,
@@ -56,12 +55,6 @@ export function SettingsPage() {
     schoolYear: data!.classroomSettings.schoolYear,
   })
   const [renaming, setRenaming] = useState(false)
-  const [dupDraft, setDupDraft] = useState({
-    className: '',
-    schoolYear: data!.classroomSettings.schoolYear,
-    mode: 'settings-only' as 'settings-only' | 'full-copy',
-  })
-  const [duplicating, setDuplicating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -113,20 +106,6 @@ export function SettingsPage() {
       setError(e instanceof Error ? e.message : 'Không thể đổi tên database.')
     } finally {
       setRenaming(false)
-    }
-  }
-
-  const handleDuplicate = async () => {
-    setError(null)
-    setDuplicating(true)
-    try {
-      await duplicateDatabase(dupDraft.className.trim(), dupDraft.schoolYear.trim(), dupDraft.mode)
-      setDupDraft({ className: '', schoolYear: data!.classroomSettings.schoolYear, mode: 'settings-only' })
-      showSaved()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Không thể nhân bản database.')
-    } finally {
-      setDuplicating(false)
     }
   }
 
@@ -235,17 +214,13 @@ export function SettingsPage() {
         <DataSection
           data={data!}
           renameDraft={renameDraft}
-          dupDraft={dupDraft}
           renaming={renaming}
-          duplicating={duplicating}
           onRenameDraftChange={setRenameDraft}
-          onDupDraftChange={setDupDraft}
           onRename={() => void handleRename()}
-          onDuplicate={() => void handleDuplicate()}
           onExport={() => void handleExport()}
           onOpenDataFolder={() => void handleOpenDataFolder()}
           onSwitchDatabase={(id) => void switchDatabase(id)}
-          onCloseDatabase={closeDatabase}
+          onCloseDatabase={() => router.push('/classrooms')}
           onCloudBackupEnabledChange={(enabled) => updateAppSettings({ cloudBackupEnabled: enabled })}
         />
       )}

@@ -22,7 +22,7 @@ import {
   sanitizeAllTeamLeadership,
   sanitizeTeamLeadership,
 } from "../utils/classroomRoles";
-import type { ClassroomDatabase } from "../database/types";
+import type { ClassroomDatabase, DatabaseSummary } from "../database/types";
 import { databaseService } from "../database/database.service";
 import { buildRecognizeStudentsUpdate, ensureBadgeForTitle, type RecognizeStudentsInput } from "../utils/recognition";
 import { capHistory } from "../utils/historyLimits";
@@ -58,11 +58,24 @@ interface AppDataContextValue {
   retryInit: () => Promise<void>;
   switchDatabase: (id: string) => Promise<void>;
   closeDatabase: () => Promise<void>;
-  createDatabase: (settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  listClassrooms: () => Promise<DatabaseSummary[]>;
+  createDatabase: (
+    settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">,
+    options?: { activate?: boolean },
+  ) => Promise<ClassroomDatabase>;
   importDatabase: (file: File) => Promise<void>;
   importDatabaseFromJson: (payload: unknown) => Promise<ClassroomDatabase>;
   renameDatabase: (newClassName: string, newSchoolYear: string) => Promise<void>;
-  duplicateDatabase: (newClassName: string, newSchoolYear: string, mode: "settings-only" | "full-copy") => Promise<void>;
+  duplicateDatabase: (
+    sourceId: string,
+    newClassName: string,
+    newSchoolYear: string,
+    mode: "settings-only" | "full-copy",
+    options?: { activate?: boolean },
+  ) => Promise<ClassroomDatabase>;
+  updateClassroomInfo: (id: string, info: { className: string; schoolYear: string }) => Promise<void>;
+  archiveClassroom: (id: string) => Promise<void>;
+  restoreClassroom: (id: string) => Promise<void>;
   deleteDatabase: (id: string) => Promise<void>;
   updateClassroomSettings: (settings: ClassroomSettings) => void;
   updateAppSettings: (updates: Partial<AppSettings>) => void;
@@ -163,10 +176,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     try {
       await databaseService.initializeAndMigrate();
       const databases = await databaseService.listDatabases();
-      if (databases.length > 0) {
+      const activeDatabases = databases.filter((item) => !item.archived);
+      if (activeDatabases.length > 0) {
         const preferredId = await databaseService.getPreferredClassroomId();
-        const preferred = preferredId ? databases.find((item) => item.id === preferredId) : undefined;
-        const targetId = preferred?.id ?? databases[0].id;
+        const preferred = preferredId
+          ? activeDatabases.find((item) => item.id === preferredId)
+          : undefined;
+        const targetId = preferred?.id ?? activeDatabases[0].id;
         const db = await databaseService.openDatabase(targetId);
         applyLoadedDatabase(db);
         if (db) {
@@ -372,11 +388,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       clearSaveError,
       retrySave,
       retryInit: loadInitialDatabase,
+      listClassrooms: () => databaseService.listDatabases(),
       switchDatabase: async (id: string) => {
         setIsLoading(true);
         try {
           const persisted = await persistNow();
           if (!persisted) return;
+          await cloudBackupScheduler.flushPending();
           const db = await databaseService.openDatabase(id);
           if (!db) {
             setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
@@ -406,11 +424,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         applyLoadedDatabase(null);
       },
-      createDatabase: async (settings) => {
+      createDatabase: async (settings, options) => {
         setIsLoading(true);
         try {
-          const db = await databaseService.createDatabase(settings);
-          applyLoadedDatabase(db);
+          const db = await databaseService.createDatabase(settings, options);
+          if (options?.activate !== false) {
+            applyLoadedDatabase(db);
+          }
+          return db;
         } finally {
           setIsLoading(false);
         }
@@ -452,24 +473,60 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
         }
       },
-      duplicateDatabase: async (newClassName, newSchoolYear, mode) => {
-        if (!data) return;
+      duplicateDatabase: async (sourceId, newClassName, newSchoolYear, mode, options) => {
         setIsLoading(true);
         try {
+          if (dataRef.current) {
+            const persisted = await persistNow();
+            if (!persisted) {
+              throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
+            }
+          }
+          const db = await databaseService.duplicateDatabase(
+            sourceId,
+            newClassName,
+            newSchoolYear,
+            mode,
+            options,
+          );
+          if (options?.activate !== false) {
+            applyLoadedDatabase(db);
+          }
+          return db;
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      updateClassroomInfo: async (id, info) => {
+        const updated = await databaseService.updateClassroomInfo(id, info);
+        if (dataRef.current?.metadata.id === id) {
+          applyLoadedDatabase(updated);
+        }
+      },
+      archiveClassroom: async (id) => {
+        if (dataRef.current?.metadata.id === id) {
           const persisted = await persistNow();
           if (!persisted) {
             throw new Error("Không thể lưu dữ liệu. Vui lòng thử lại.");
           }
-          const db = await databaseService.duplicateDatabase(
-            data.metadata.id,
-            newClassName,
-            newSchoolYear,
-            mode,
-          );
-          applyLoadedDatabase(db);
-        } finally {
-          setIsLoading(false);
         }
+        await databaseService.setClassroomArchived(id, true);
+        if (dataRef.current?.metadata.id === id) {
+          const list = await databaseService.listDatabases();
+          const next = list.find((entry) => !entry.archived);
+          if (next) {
+            const db = await databaseService.openDatabase(next.id);
+            applyLoadedDatabase(db);
+            if (db) {
+              await cloudBackupScheduler.checkStartupBackup(db);
+            }
+          } else {
+            applyLoadedDatabase(null);
+          }
+        }
+      },
+      restoreClassroom: async (id) => {
+        await databaseService.setClassroomArchived(id, false);
       },
       deleteDatabase: async (id) => {
         setIsLoading(true);

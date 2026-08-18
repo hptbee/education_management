@@ -29,6 +29,7 @@ export interface ClassroomIndexEntry {
   studentCount: number;
   createdAt: string;
   updatedAt: string;
+  archived?: boolean;
 }
 
 export interface IndexFile {
@@ -51,6 +52,7 @@ function entryFromDatabase(db: ClassroomDatabase, fileName: string): ClassroomIn
     studentCount: db.students.length,
     createdAt: db.metadata.createdAt,
     updatedAt: db.metadata.updatedAt,
+    archived: db.metadata.archived ?? false,
   };
 }
 
@@ -208,6 +210,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
         studentCount: entry.studentCount,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
+        archived: entry.archived ?? false,
       }))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { Copy, Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
+import { Download, FolderOpen, PencilLine, Plus } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Field, Input } from '@/src/components/ui'
 import { ClassroomButton, ClassroomCard } from '@/src/components/classroom'
@@ -14,13 +14,9 @@ import { CloudRestoreCard } from './cloud-restore-card'
 interface DataSectionProps {
   data: ClassroomDatabase
   renameDraft: { className: string; schoolYear: string }
-  dupDraft: { className: string; schoolYear: string; mode: 'settings-only' | 'full-copy' }
   renaming: boolean
-  duplicating: boolean
   onRenameDraftChange: (draft: { className: string; schoolYear: string }) => void
-  onDupDraftChange: (draft: { className: string; schoolYear: string; mode: 'settings-only' | 'full-copy' }) => void
   onRename: () => void
-  onDuplicate: () => void
   onExport: () => void
   onOpenDataFolder: () => void
   onSwitchDatabase: (id: string) => void
@@ -31,13 +27,9 @@ interface DataSectionProps {
 export function DataSection({
   data,
   renameDraft,
-  dupDraft,
   renaming,
-  duplicating,
   onRenameDraftChange,
-  onDupDraftChange,
   onRename,
-  onDuplicate,
   onExport,
   onOpenDataFolder,
   onSwitchDatabase,
@@ -67,7 +59,7 @@ export function DataSection({
     void loadDatabases()
   }, [data.metadata.id, loadDatabases])
 
-  const otherClasses = databases.filter((db) => db.id !== data.metadata.id)
+  const otherClasses = databases.filter((db) => db.id !== data.metadata.id && !db.archived)
   const hasCloudBackupPermission = permissions?.cloudBackup === true
   const showCloudFeatures = cloudConfigured && hasCloudBackupPermission
   const showCloudUpgradeNote = Boolean(entitlement) && !hasCloudBackupPermission
@@ -102,86 +94,39 @@ export function DataSection({
         )}
         <ClassroomButton variant="outline" className="mt-4 w-full" onClick={onCloseDatabase}>
           <Plus className="size-4" />
-          Tạo / nhập lớp khác
+          Quản lý / tạo lớp khác
         </ClassroomButton>
       </ClassroomCard>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ClassroomCard>
-          <h2 className="font-display text-lg font-extrabold text-slate-800">Đổi tên / Năm học</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            Tạo mã lớp mới — khác với đổi tên hiển thị ở tab Hồ sơ
-          </p>
-          <div className="mt-4 grid gap-3">
-            <Field label="Tên lớp mới">
-              <Input
-                value={renameDraft.className}
-                onChange={(e) => onRenameDraftChange({ ...renameDraft, className: e.target.value })}
-              />
-            </Field>
-            <Field label="Năm học mới">
-              <Input
-                value={renameDraft.schoolYear}
-                onChange={(e) => onRenameDraftChange({ ...renameDraft, schoolYear: e.target.value })}
-                placeholder="VD: 2025-2026"
-              />
-            </Field>
-            <ClassroomButton
-              className="w-full"
-              onClick={onRename}
-              disabled={renaming || !renameDraft.className.trim() || !renameDraft.schoolYear.trim()}
-            >
-              <PencilLine className="size-4" />
-              {renaming ? 'Đang xử lý...' : 'Đổi tên database'}
-            </ClassroomButton>
-          </div>
-        </ClassroomCard>
-
-        <ClassroomCard>
-          <h2 className="font-display text-lg font-extrabold text-slate-800">Nhân bản database</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Tạo lớp mới từ lớp hiện tại</p>
-          <div className="mt-4 grid gap-3">
-            <Field label="Tên lớp mới">
-              <Input
-                value={dupDraft.className}
-                onChange={(e) => onDupDraftChange({ ...dupDraft, className: e.target.value })}
-                placeholder="VD: Lớp 3A"
-              />
-            </Field>
-            <Field label="Năm học">
-              <Input
-                value={dupDraft.schoolYear}
-                onChange={(e) => onDupDraftChange({ ...dupDraft, schoolYear: e.target.value })}
-                placeholder="VD: 2025-2026"
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-2">
-              {(['settings-only', 'full-copy'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => onDupDraftChange({ ...dupDraft, mode })}
-                  className={`min-h-11 rounded-2xl border-2 p-3 text-left text-sm font-bold transition ${
-                    dupDraft.mode === mode
-                      ? 'border-emerald-500 bg-emerald-50 text-slate-800'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'
-                  }`}
-                >
-                  {mode === 'settings-only' ? 'Chỉ cài đặt' : 'Bản sao đầy đủ'}
-                </button>
-              ))}
-            </div>
-            <ClassroomButton
-              className="w-full bg-emerald-500 hover:bg-emerald-600"
-              onClick={onDuplicate}
-              disabled={duplicating || !dupDraft.className.trim()}
-            >
-              <Copy className="size-4" />
-              {duplicating ? 'Đang nhân bản...' : 'Nhân bản'}
-            </ClassroomButton>
-          </div>
-        </ClassroomCard>
-      </div>
+      <ClassroomCard>
+        <h2 className="font-display text-lg font-extrabold text-slate-800">Đổi tên / Năm học</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-500">
+          Tạo mã lớp mới — khác với đổi tên hiển thị ở tab Hồ sơ
+        </p>
+        <div className="mt-4 grid gap-3">
+          <Field label="Tên lớp mới">
+            <Input
+              value={renameDraft.className}
+              onChange={(e) => onRenameDraftChange({ ...renameDraft, className: e.target.value })}
+            />
+          </Field>
+          <Field label="Năm học mới">
+            <Input
+              value={renameDraft.schoolYear}
+              onChange={(e) => onRenameDraftChange({ ...renameDraft, schoolYear: e.target.value })}
+              placeholder="VD: 2025-2026"
+            />
+          </Field>
+          <ClassroomButton
+            className="w-full"
+            onClick={onRename}
+            disabled={renaming || !renameDraft.className.trim() || !renameDraft.schoolYear.trim()}
+          >
+            <PencilLine className="size-4" />
+            {renaming ? 'Đang xử lý...' : 'Đổi tên database'}
+          </ClassroomButton>
+        </div>
+      </ClassroomCard>
 
       <ClassroomCard>
         <div className="flex flex-wrap items-center justify-between gap-4">

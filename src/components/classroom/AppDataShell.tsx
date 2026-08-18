@@ -7,6 +7,12 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { ClassroomButton } from './ClassroomButton'
 import { ClassroomSkeleton } from './ClassroomSkeleton'
 
+const NO_CLASS_ROUTES = ['/settings', '/classrooms'] as const
+
+function isNoClassRoute(pathname: string) {
+  return NO_CLASS_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
+}
+
 function InitErrorBanner({ onRetry }: { onRetry: () => void }) {
   const { initError } = useAppData()
   if (!initError) return null
@@ -27,14 +33,14 @@ function InitErrorBanner({ onRetry }: { onRetry: () => void }) {
 
 export function AppDataShell({ children }: { children: ReactNode }) {
   const { data, isLoading, initError, retryInit } = useAppData()
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const router = useRouter()
-  const onSettings = pathname === '/settings'
+  const allowWithoutClass = isNoClassRoute(pathname)
 
   useEffect(() => {
-    if (isLoading || initError || data || onSettings) return
-    router.replace('/settings')
-  }, [data, initError, isLoading, onSettings, router])
+    if (isLoading || initError || data || allowWithoutClass) return
+    router.replace('/classrooms')
+  }, [data, initError, isLoading, allowWithoutClass, router])
 
   if (isLoading) {
     return (
@@ -44,7 +50,7 @@ export function AppDataShell({ children }: { children: ReactNode }) {
     )
   }
 
-  if (initError && onSettings) {
+  if (initError && allowWithoutClass) {
     return (
       <>
         <InitErrorBanner onRetry={retryInit} />
@@ -64,8 +70,8 @@ export function AppDataShell({ children }: { children: ReactNode }) {
           <p className="mt-2 text-sm font-semibold text-slate-600">{initError}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <ClassroomButton onClick={() => void retryInit()}>Thử lại</ClassroomButton>
-            <ClassroomButton variant="outline" onClick={() => router.push('/settings')}>
-              Mở cài đặt
+            <ClassroomButton variant="outline" onClick={() => router.push('/classrooms')}>
+              Quản lý lớp
             </ClassroomButton>
           </div>
         </div>
@@ -73,7 +79,7 @@ export function AppDataShell({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!data && !onSettings) {
+  if (!data && !allowWithoutClass) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <ClassroomSkeleton rows={2} />

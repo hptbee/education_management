@@ -1,8 +1,10 @@
 "use client";
 
 import { Suspense } from "react";
+import { Settings as SettingsIcon } from "lucide-react";
 import { SettingsPage } from "./components/settings-page";
-import { ClassroomSelectorScreen } from "./components/classroom-selector-screen";
+import { AccountSection } from "./components/account-section";
+import { PageHeader } from "@/src/components/classroom";
 import { useAppData } from "@/src/store/AppDataContext";
 
 function SettingsPageFallback() {
@@ -27,7 +29,14 @@ export default function Settings() {
   if (!data) {
     return (
       <div className="flex-1 overflow-y-auto scrollbar-thin">
-        <ClassroomSelectorScreen />
+        <div className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 pb-10">
+          <PageHeader
+            icon={SettingsIcon}
+            title="Cài đặt"
+            subtitle="Tài khoản và bản quyền — mở lớp học tại Quản lý lớp"
+          />
+          <AccountSection />
+        </div>
       </div>
     );
   }

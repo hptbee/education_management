@@ -9,7 +9,7 @@ import { classroomAssetService } from "./assets/classroom-asset.service";
 import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
 import { assertImportFileSize } from "./importLimits";
-import { getLastClassroomId, setLastClassroomId } from "../utils/lastClassroom";
+import { getLastClassroomId, setLastClassroomId, clearLastClassroomId } from "../utils/lastClassroom";
 
 function assertEntityArray(
   record: Record<string, unknown>,
@@ -111,6 +111,8 @@ async function resolveStorage(): Promise<ClassroomDatabaseStorage> {
 async function persistActiveClassroomId(id: string | null): Promise<void> {
   if (id) {
     setLastClassroomId(id);
+  } else {
+    clearLastClassroomId();
   }
   const storage = await resolveStorage();
   if (storage.setActiveClassroomId) {
@@ -199,6 +201,7 @@ export class DatabaseService {
 
   async createDatabase(
     settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">,
+    options?: { activate?: boolean },
   ): Promise<ClassroomDatabase> {
     const storage = await this.getStorage();
     const db = normalizeClassroomDatabase(createEmptyDatabase(settings));
@@ -209,7 +212,9 @@ export class DatabaseService {
       );
     }
     await storage.save(db);
-    await persistActiveClassroomId(db.metadata.id);
+    if (options?.activate !== false) {
+      await persistActiveClassroomId(db.metadata.id);
+    }
     return db;
   }
 
@@ -270,6 +275,64 @@ export class DatabaseService {
       if (fromIndex) return fromIndex;
     }
     return getLastClassroomId();
+  }
+
+  async updateClassroomInfo(
+    id: string,
+    info: { className: string; schoolYear: string },
+  ): Promise<ClassroomDatabase> {
+    const storage = await this.getStorage();
+    const current = await storage.load(id);
+    if (!current) throw new Error("Không tìm thấy lớp học.");
+
+    const className = info.className.trim();
+    const schoolYear = info.schoolYear.trim();
+    if (!className || !schoolYear) {
+      throw new Error("Tên lớp và năm học không được để trống.");
+    }
+
+    const now = new Date().toISOString();
+    const updated = normalizeClassroomDatabase({
+      ...current,
+      metadata: {
+        ...current.metadata,
+        updatedAt: now,
+      },
+      classroomSettings: {
+        ...current.classroomSettings,
+        className,
+        schoolYear,
+        updatedAt: now,
+      },
+    });
+    await storage.save(updated);
+    return updated;
+  }
+
+  async setClassroomArchived(id: string, archived: boolean): Promise<ClassroomDatabase> {
+    const storage = await this.getStorage();
+    const current = await storage.load(id);
+    if (!current) throw new Error("Không tìm thấy lớp học.");
+
+    const now = new Date().toISOString();
+    const updated = normalizeClassroomDatabase({
+      ...current,
+      metadata: {
+        ...current.metadata,
+        archived,
+        updatedAt: now,
+      },
+    });
+    await storage.save(updated);
+
+    const activeId = await this.getPreferredClassroomId();
+    if (archived && activeId === id) {
+      const list = await storage.list();
+      const nextActive = list.find((entry) => entry.id !== id && !entry.archived)?.id ?? null;
+      await persistActiveClassroomId(nextActive);
+    }
+
+    return updated;
   }
 
   async renameClassroomDatabase(
@@ -353,10 +416,12 @@ export class DatabaseService {
     newClassName: string,
     newSchoolYear: string,
     mode: "settings-only" | "full-copy",
+    options?: { activate?: boolean },
   ): Promise<ClassroomDatabase> {
     const storage = await this.getStorage();
-    const sourceDb = await this.openDatabase(sourceId);
-    if (!sourceDb) throw new Error("Source database not found");
+    const rawSource = await storage.load(sourceId);
+    if (!rawSource) throw new Error("Source database not found");
+    const sourceDb = normalizeClassroomDatabase(rawSource);
 
     const newId = generateDatabaseId(newClassName, newSchoolYear);
     const existingDb = await storage.load(newId);
@@ -382,13 +447,14 @@ export class DatabaseService {
       newDb.recognitionTitles = sourceDb.recognitionTitles ?? newDb.recognitionTitles;
       newDb.appSettings = sourceDb.appSettings;
     } else {
-      newDb = {
+      newDb = normalizeClassroomDatabase({
         ...sourceDb,
         metadata: {
           id: newId,
           version: sourceDb.metadata.version,
           createdAt: now,
           updatedAt: now,
+          archived: false,
         },
         classroomSettings: {
           ...sourceDb.classroomSettings,
@@ -396,7 +462,7 @@ export class DatabaseService {
           schoolYear: newSchoolYear,
           updatedAt: now,
         },
-      };
+      });
     }
 
     await classroomAssetService.copyClassroomGiftImages(sourceId, newId, newDb.rewards ?? []);
@@ -411,22 +477,30 @@ export class DatabaseService {
       throw error;
     }
 
-    await persistActiveClassroomId(newDb.metadata.id);
+    if (options?.activate !== false) {
+      await persistActiveClassroomId(newDb.metadata.id);
+    }
     return newDb;
   }
 
   async deleteDatabase(id: string): Promise<void> {
     const storage = await this.getStorage();
+    const db = await storage.load(id);
+    if (!db) return;
+    if (!db.metadata.archived) {
+      throw new Error("Chỉ có thể xóa lớp đã lưu trữ. Hãy lưu trữ lớp trước.");
+    }
+
+    const activeId = await this.getPreferredClassroomId();
+    if (activeId === id) {
+      throw new Error("Không thể xóa lớp đang sử dụng. Hãy chuyển sang lớp khác trước.");
+    }
+
     await storage.delete(id);
     try {
       await classroomAssetService.deleteClassroomAssets(id);
     } catch (error) {
       console.warn("[deleteDatabase] failed to remove classroom assets", error);
-    }
-    const activeId = await this.getPreferredClassroomId();
-    if (activeId === id) {
-      const remaining = await storage.list();
-      await persistActiveClassroomId(remaining[0]?.id ?? null);
     }
   }
 

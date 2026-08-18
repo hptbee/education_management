@@ -33,10 +33,15 @@ function makeService() {
 describe("DatabaseService", () => {
   beforeEach(() => {
     vi.stubGlobal("window", {});
+    const store: Record<string, string> = {};
     vi.stubGlobal("localStorage", {
-      getItem: vi.fn().mockReturnValue(null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
+      getItem: vi.fn((key: string) => store[key] ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store[key] = value;
+      }),
+      removeItem: vi.fn((key: string) => {
+        delete store[key];
+      }),
     });
   });
 
@@ -140,9 +145,95 @@ describe("DatabaseService", () => {
   it("deletes database", async () => {
     const { service } = makeService();
     const db = await service.createDatabase(makeSettings());
+    await service.setClassroomArchived(db.metadata.id, true);
+    await service.closeDatabase();
     await service.deleteDatabase(db.metadata.id);
     const opened = await service.openDatabase(db.metadata.id);
     expect(opened).toBeNull();
+  });
+
+  it("blocks delete while active and not archived", async () => {
+    const { service } = makeService();
+    const db = await service.createDatabase(makeSettings());
+    await expect(service.deleteDatabase(db.metadata.id)).rejects.toThrow(/lưu trữ/);
+  });
+
+  it("blocks delete while not archived", async () => {
+    const { service } = makeService();
+    const db = await service.createDatabase(makeSettings());
+    await service.closeDatabase();
+    await expect(service.deleteDatabase(db.metadata.id)).rejects.toThrow(/lưu trữ/);
+  });
+
+  it("updateClassroomInfo preserves metadata id", async () => {
+    const { service } = makeService();
+    const db = await service.createDatabase(makeSettings());
+    const updated = await service.updateClassroomInfo(db.metadata.id, {
+      className: "3A",
+      schoolYear: "2027-2028",
+    });
+    expect(updated.metadata.id).toBe(db.metadata.id);
+    expect(updated.classroomSettings.className).toBe("3A");
+  });
+
+  it("archives and restores classroom", async () => {
+    const { service } = makeService();
+    const db = await service.createDatabase(makeSettings());
+    const archived = await service.setClassroomArchived(db.metadata.id, true);
+    expect(archived.metadata.archived).toBe(true);
+    const list = await service.listDatabases();
+    expect(list.find((item) => item.id === db.metadata.id)?.archived).toBe(true);
+
+    const restored = await service.setClassroomArchived(db.metadata.id, false);
+    expect(restored.metadata.archived).toBe(false);
+  });
+
+  it("duplicate from non-active source without activating", async () => {
+    const { service } = makeService();
+    const first = await service.createDatabase(makeSettings("2/7", "2026-2027"));
+    const second = await service.createDatabase(makeSettings("2/8", "2026-2027"), { activate: false });
+    expect(await service.getPreferredClassroomId()).toBe(first.metadata.id);
+
+    const copy = await service.duplicateDatabase(
+      second.metadata.id,
+      "2/9",
+      "2026-2027",
+      "settings-only",
+      { activate: false },
+    );
+    expect(copy.metadata.id).not.toBe(second.metadata.id);
+    expect(await service.getPreferredClassroomId()).toBe(first.metadata.id);
+  });
+
+  it("createDatabase without activate keeps current active id", async () => {
+    const { service } = makeService();
+    const first = await service.createDatabase(makeSettings("2/7", "2026-2027"));
+    await service.createDatabase(makeSettings("2/8", "2025-2026"), { activate: false });
+    expect(await service.getPreferredClassroomId()).toBe(first.metadata.id);
+  });
+
+  it("switch isolation keeps separate student lists", async () => {
+    const { service } = makeService();
+    const classA = await service.createDatabase(makeSettings("2/7", "2026-2027"));
+    const classB = await service.createDatabase(makeSettings("2/8", "2026-2027"), { activate: false });
+
+    classA.students.push({
+      id: "s-a",
+      name: "An",
+      classroomRoleIds: [],
+      badgeIds: [],
+      points: 1,
+      totalRewards: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    await service.saveDatabase(classA);
+
+    const openedB = await service.openDatabase(classB.metadata.id);
+    expect(openedB?.students.length).toBe(0);
+
+    const reopenedA = await service.openDatabase(classA.metadata.id);
+    expect(reopenedA?.students.length).toBe(1);
   });
 
   it("closes database clears active id", async () => {

@@ -117,6 +117,10 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
     normalizeBadgesOnDatabase(
       normalizeGiftsOnDatabase({
         ...db,
+        metadata: {
+          ...db.metadata,
+          archived: db.metadata.archived ?? false,
+        },
         classroomSettings,
         classroomRoles,
         students,
