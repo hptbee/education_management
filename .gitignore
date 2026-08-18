@@ -30,11 +30,13 @@ pnpm-debug.log*
 coverage/
 
 # IDE / editor
-.cursor/
 .vscode/
 .idea/
 *.swp
 *.swo
+.cursor/**/__pycache__/
+.cursor/**/*.pyc
+.cursor/**/*.bak*
 
 # OS
 .DS_Store

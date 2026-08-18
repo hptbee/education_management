@@ -23,6 +23,8 @@ export interface DatabaseMetadata {
   updatedAt: string;
   /** When true, hidden from active lists and sidebar switcher until restored. */
   archived?: boolean;
+  /** Local placeholder from cloud registry — full data not downloaded yet. */
+  cloudStub?: boolean;
 }
 
 export interface ClassroomDatabase {
@@ -54,4 +56,6 @@ export interface DatabaseSummary {
   createdAt: string;
   updatedAt: string;
   archived: boolean;
+  /** False when only registry metadata exists locally (cloud stub). */
+  hydrated?: boolean;
 }

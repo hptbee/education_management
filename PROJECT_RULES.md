@@ -133,6 +133,9 @@ Before coding, inspect:
 
 - PROJECT_SCOPE.md
 - PROJECT_RULES.md
+- docs/DATA_ARCHITECTURE.md (when touching persistence or cloud backup)
+- docs/ACCOUNTS.md (when touching auth or entitlements)
+- docs/build-and-release.md (when touching Tauri packaging or CI)
 - existing routes
 - existing navigation
 - existing AppLayout

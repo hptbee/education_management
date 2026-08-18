@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "QuanLyLopHoc",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "identifier": "com.hptbee.quanlylophoc",
   "build": {
     "frontendDist": "../out",
@@ -25,7 +25,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi", "dmg"],
+    "targets": [
+      "nsis",
+      "msi",
+      "dmg"
+    ],
     "copyright": "Copyright © 2026 HPTBee",
     "category": "Education",
     "shortDescription": "Quản lý lớp học và gamification cho giáo viên",

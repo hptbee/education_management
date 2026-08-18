@@ -1,0 +1,43 @@
+---
+description: Application shell, routing, and Next.js 16 conventions for this classroom app
+alwaysApply: true
+---
+
+# Architecture
+
+## Application shell (do not break)
+
+Live shell:
+
+- Layout: `src/app/layout.tsx` — `SoundInit` + `DesktopLoggingInit` + `AuthProvider` → `AppDataProvider` → `AccessGate` → `AppShell`
+- Sidebar: `components/sidebar.tsx` (hidden on auth lock screens and presentation mode)
+- Feature pages only fill `{children}` inside the main area
+
+## Routing
+
+- **Single shell:** Next.js App Router — `src/app/**/page.tsx`
+- Layout: `src/app/layout.tsx`; Sidebar: `components/sidebar.tsx`
+- Tauri desktop loads static export from `out/` (same Next build; `NEXT_PUBLIC_*` from build-time env). Production targets: **Windows x86_64** and **macOS** (aarch64 + x86_64). No Linux desktop releases.
+
+## Before changing shell or navigation
+
+Read:
+
+- `docs/PROJECT_SCOPE.md`
+- `docs/ACCOUNTS.md` (auth, entitlements, cloud backup)
+- `docs/DATA_ARCHITECTURE.md` (local vs R2)
+- `docs/build-and-release.md` (Tauri Windows/macOS packaging)
+- `PROJECT_RULES.md`
+- `AGENTS.md`
+
+## Next.js 16
+
+- Turbopack is default for `next dev`
+- Read `node_modules/next/dist/docs/` when APIs are ambiguous — this is not standard Next.js 14/15
+- Do not flag `proxy.ts` as a misnamed middleware file on Next.js 16 projects
+
+## Never
+
+- Replace `src/app/layout.tsx` with a standalone feature page
+- Remove or hide Sidebar navigation items
+- Create a second application layout or entry point

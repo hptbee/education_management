@@ -3,6 +3,7 @@ import { createEmptyDatabase } from "../database.factory";
 import { toLocalDateKey } from "./local-date";
 import {
   buildActivityLogsFromDatabase,
+  mergeClassroomRegistries,
   mergeCloudFilesToClassroom,
   pathsForDomains,
   serializeCloudFilesForUpload,
@@ -133,5 +134,83 @@ describe("cloud-serializer", () => {
     expect(paths).toContain("settings.json");
     expect(paths).toContain("manifest.json");
     expect(paths).not.toContain("teams.json");
+  });
+});
+
+describe("mergeClassroomRegistries", () => {
+  const entryA = {
+    key: "a",
+    name: "Lớp A",
+    schoolYear: "2026-2027",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+    archived: false,
+  };
+  const entryB = {
+    key: "b",
+    name: "Lớp B",
+    schoolYear: "2026-2027",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-03T00:00:00.000Z",
+    archived: false,
+  };
+
+  it("unions keys from local and remote", () => {
+    const merged = mergeClassroomRegistries(
+      { version: 1, updatedAt: "2026-01-01", classrooms: [entryA] },
+      { version: 1, updatedAt: "2026-01-01", classrooms: [entryB] },
+    );
+    expect(merged.classrooms.map((c) => c.key).sort()).toEqual(["a", "b"]);
+  });
+
+  it("uses higher updatedAt for same key", () => {
+    const local = {
+      version: 1,
+      updatedAt: "2026-01-01",
+      classrooms: [{ ...entryA, name: "Local A", updatedAt: "2026-01-05T00:00:00.000Z" }],
+    };
+    const remote = {
+      version: 1,
+      updatedAt: "2026-01-01",
+      classrooms: [{ ...entryA, name: "Remote A", updatedAt: "2026-01-04T00:00:00.000Z" }],
+    };
+    const merged = mergeClassroomRegistries(local, remote);
+    expect(merged.classrooms[0].name).toBe("Local A");
+  });
+
+  it("drops permanently deleted entries", () => {
+    const merged = mergeClassroomRegistries(
+      {
+        version: 1,
+        updatedAt: "2026-01-01",
+        classrooms: [
+          {
+            ...entryA,
+            deletedAt: "2026-01-10T00:00:00.000Z",
+            updatedAt: "2026-01-02T00:00:00.000Z",
+          },
+        ],
+      },
+      { version: 1, updatedAt: "2026-01-01", classrooms: [entryB] },
+    );
+    expect(merged.classrooms.map((c) => c.key)).toEqual(["b"]);
+  });
+
+  it("allows empty visible list when all entries are permanently deleted", () => {
+    const merged = mergeClassroomRegistries(
+      {
+        version: 1,
+        updatedAt: "2026-01-01",
+        classrooms: [
+          {
+            ...entryA,
+            deletedAt: "2026-01-10T00:00:00.000Z",
+            updatedAt: "2026-01-02T00:00:00.000Z",
+          },
+        ],
+      },
+      { version: 1, updatedAt: "2026-01-01", classrooms: [] },
+    );
+    expect(merged.classrooms).toEqual([]);
   });
 });

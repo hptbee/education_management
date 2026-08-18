@@ -28,4 +28,15 @@ export interface ClassroomDatabaseStorage {
   isMigrationComplete?(): Promise<boolean>;
   markMigrationComplete?(): Promise<void>;
   getDataDirectory?(): Promise<string>;
+  mergeRegistryStubs?(
+    entries: Array<{
+      key: string;
+      name: string;
+      schoolYear: string;
+      createdAt: string;
+      updatedAt: string;
+      archived?: boolean;
+    }>,
+  ): Promise<void>;
+  isClassroomHydrated?(id: string): Promise<boolean>;
 }

@@ -25,6 +25,12 @@
 > **v0.1.8+:** Separate **Web** and **Desktop** Google OAuth clients; Tauri PKCE loopback;
 > Worker secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID_DESKTOP`, `GOOGLE_CLIENT_SECRET`.
 > Admin license changes (including **lifetime**) via Worker admin API or D1 + `license_version` bump.
+>
+> **Desktop distribution:** production builds target **Windows (x86_64)** and **macOS** (Apple Silicon + Intel). See [build-and-release.md](./build-and-release.md).
+>
+> **Cloud R2 (v0.1.12+):** structured incremental backup (`PUT /sync`), not a single `database.json` as the live upload path. See [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md).
+>
+> **Classroom images (v0.1.13+):** teacher/student/banner/gift photos stored as local WebP files under `assets/**`; JSON stores keys only; cloud sync uploads dirty asset files. See [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md#classroom-image-assets).
 
 ---
 
@@ -189,15 +195,14 @@ Prioritize:
 Use:
 
 - React
-- Next.js
+- Next.js 16 (App Router, static export for Tauri)
 - TypeScript
-- React Router (legacy routes in `src/App.tsx`)
 - Tailwind CSS
-- shadcn/ui
+- shadcn/ui-inspired local components
 - Lucide React
 - Framer Motion
 - canvas-confetti
-- Tauri 2 (desktop builds)
+- Tauri 2 (desktop builds: Windows and macOS)
 
 Use:
 
@@ -1760,11 +1765,11 @@ Because the application is local-first, data protection is important.
 
 When signed in with a valid entitlement, **premium** or **lifetime** plan (`permissions.cloudBackup`), and per-class opt-in (`appSettings.cloudBackupEnabled`):
 
-- After each local save, the app may upload classroom JSON to R2 via the Cloudflare Worker.
-- Storage key: `users/{userId}/classrooms/{classroomId}/database.json`.
-- Teacher can list and restore cloud backups from **Cài đặt → Dữ liệu** (manual restore; not automatic on login).
+- After each local save, the app may upload classroom data to R2 via the Cloudflare Worker (`PUT /sync` structured domain files; `PUT /backup` kept for compatibility).
+- R2 layout: `users/{userId}/classrooms.json` plus `classrooms/{classroomKey}/*.json` (see [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md)). Legacy `database.json` is kept after migration, not deleted.
+- Teacher can list and restore cloud backups from **Cài đặt** classroom selector (and **Dữ liệu** when that tab is enabled). Restore returns monolith JSON for `importDatabaseFromJson`. Not automatic on login.
 - Cloud backup does not replace local JSON; local save always happens first.
-- **Not multi-device sync:** each PC has its own local files; cloud is last-upload-wins per classroom id. See [ACCOUNTS.md](./ACCOUNTS.md) § Multi-device usage.
+- **Not multi-device sync:** each PC has its own local files; cloud is last-upload-wins per classroom id (per uploaded file). See [ACCOUNTS.md](./ACCOUNTS.md) § Multi-device usage.
 
 ## Export Backup
 

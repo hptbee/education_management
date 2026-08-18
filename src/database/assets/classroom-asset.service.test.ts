@@ -16,9 +16,11 @@ function makeSettings(className = "1A", schoolYear = "2025-2026") {
   };
 }
 
-const readAsset = vi.fn();
-const saveAsset = vi.fn();
-const writeBinaryFile = vi.fn();
+const { readAsset, saveAsset, writeBinaryFile } = vi.hoisted(() => ({
+  readAsset: vi.fn(),
+  saveAsset: vi.fn(),
+  writeBinaryFile: vi.fn(),
+}));
 
 vi.mock("../tauri-fs.service", () => ({
   isTauri: () => false,

@@ -1,0 +1,29 @@
+---
+description: Git commit conventions and safety rules
+alwaysApply: true
+---
+
+# Git
+
+## Commit messages
+
+Conventional format:
+
+```
+feat: add team ranking widget
+fix: preserve classroom on page navigation
+chore: update dependencies
+```
+
+Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
+
+## Safety
+
+- Do not commit unless the user explicitly asks
+- Do not push unless the user explicitly asks
+- Do not use `--no-verify` or skip hooks unless the user asks
+- Never commit secrets (`.env`, API keys, tokens)
+
+## Pull requests
+
+When creating PRs: summarize full branch diff, include test plan checklist.

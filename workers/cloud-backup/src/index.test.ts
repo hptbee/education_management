@@ -592,6 +592,101 @@ describe("classroom list and restore", () => {
     expect(putKeys).toContain(`users/${user.id}/classrooms/2-7_2026-2027/students.json`);
   });
 
+  it("PUT /sync merges registry and refuses empty overwrite", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    let storedRegistry = JSON.stringify({
+      version: 1,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      classrooms: [
+        {
+          key: "remote-only",
+          name: "Remote",
+          schoolYear: "2026-2027",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+          archived: false,
+        },
+      ],
+    });
+
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "registry-merge-sub" }, "teacher");
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    env.BACKUP_BUCKET = {
+      put: async (key: string, body: string) => {
+        if (key.endsWith("/classrooms.json")) {
+          storedRegistry = body as string;
+        }
+      },
+      get: async (key: string) => {
+        if (key === `users/${user.id}/classrooms.json`) {
+          return { text: async () => storedRegistry };
+        }
+        return null;
+      },
+      list: async () => ({ objects: [] }),
+    } as unknown as R2Bucket;
+
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const emptyOverwrite = await worker.fetch(
+      new Request("https://example.com/sync", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${entitlement}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          classroomKey: "local-only",
+          files: [],
+          registry: JSON.stringify({ version: 1, updatedAt: "2026-01-03", classrooms: [] }),
+        }),
+      }),
+      env,
+    );
+    expect(emptyOverwrite.status).toBe(400);
+
+    const mergeResponse = await worker.fetch(
+      new Request("https://example.com/sync", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${entitlement}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          classroomKey: "local-only",
+          files: [],
+          registry: JSON.stringify({
+            version: 1,
+            updatedAt: "2026-01-04T00:00:00.000Z",
+            classrooms: [
+              {
+                key: "local-only",
+                name: "Local",
+                schoolYear: "2025-2026",
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-04T00:00:00.000Z",
+                archived: false,
+              },
+            ],
+          }),
+        }),
+      }),
+      env,
+    );
+    expect(mergeResponse.status).toBe(200);
+    const parsed = JSON.parse(storedRegistry) as { classrooms: Array<{ key: string }> };
+    expect(parsed.classrooms.map((c) => c.key).sort()).toEqual(["local-only", "remote-only"]);
+  });
+
   it("lists classrooms from registry when present", async () => {
     const { privateKeyPem, publicKeyPem } = await generateTestKeys();
     const mockDb = new MockD1();

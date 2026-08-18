@@ -8,6 +8,8 @@ import { sanitizeBackupIdentifier } from "../safeIdentifiers";
 import { logAppEvent } from "@/src/logging/app-log";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { uploadCloudSyncBatch } from "./cloud-sync.service";
+import { isRegistryPullCompleted } from "./cloud-registry.service";
+import { fetchClassroomsRegistry } from "@/src/auth/api";
 
 export interface BackupUploadRequest {
   classroomId: string;
@@ -133,6 +135,8 @@ export class CloudBackupScheduler {
     schoolYear: string;
     createdAt: string;
     updatedAt: string;
+    archived?: boolean;
+    deletedAt?: string;
   }> = [];
   private uploading = false;
   private failureCount = 0;
@@ -171,6 +175,8 @@ export class CloudBackupScheduler {
       schoolYear: string;
       createdAt: string;
       updatedAt: string;
+      archived?: boolean;
+      deletedAt?: string;
     }>,
   ): void {
     this.registrySummaries = summaries;
@@ -283,11 +289,30 @@ export class CloudBackupScheduler {
     try {
       const dirty = cloudDirtyTracker.get(uploadedId);
       const syncState = await backupMetadataService.getCloudSyncState(uploadedId);
+
+      let remoteRegistry: import("./cloud-types").CloudClassroomsRegistryFile | null = null;
+      let allowRegistryUpload = isRegistryPullCompleted();
+      if (!allowRegistryUpload) {
+        allowRegistryUpload = false;
+      } else {
+        const token = await resolveEntitlementToken();
+        if (token) {
+          try {
+            const fetched = await fetchClassroomsRegistry(token, this.fetchImpl);
+            remoteRegistry = fetched.registry;
+          } catch {
+            allowRegistryUpload = false;
+          }
+        }
+      }
+
       const result = await uploadCloudSyncBatch(db, dirty, {
         allLocalClassrooms: this.allLocalClassrooms,
         registrySummaries: this.registrySummaries,
         fetchImpl: this.fetchImpl,
         forceFull: !syncState.migratedToStructured,
+        remoteRegistry,
+        allowRegistryUpload,
       });
 
       const hasNewerPending =

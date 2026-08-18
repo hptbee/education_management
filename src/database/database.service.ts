@@ -369,7 +369,45 @@ export class DatabaseService {
   async setClassroomArchived(id: string, archived: boolean): Promise<ClassroomDatabase> {
     const storage = await this.getStorage();
     const current = await storage.load(id);
-    if (!current) throw new Error("Không tìm thấy lớp học.");
+    if (!current) {
+      const summaries = await storage.list();
+      const summary = summaries.find((item) => item.id === id);
+      if (!summary) throw new Error("Không tìm thấy lớp học.");
+
+      const now = new Date().toISOString();
+      if (storage.mergeRegistryStubs) {
+        await storage.mergeRegistryStubs([
+          {
+            key: id,
+            name: summary.className,
+            schoolYear: summary.schoolYear,
+            createdAt: summary.createdAt,
+            updatedAt: now,
+            archived,
+          },
+        ]);
+      }
+
+      const stub = createEmptyDatabase({
+        className: summary.className,
+        schoolYear: summary.schoolYear,
+        teacher: {
+          id: "cloud-stub",
+          name: summary.teacherName,
+          createdAt: summary.createdAt,
+          updatedAt: now,
+        },
+      });
+      stub.metadata = {
+        ...stub.metadata,
+        id,
+        createdAt: summary.createdAt,
+        updatedAt: now,
+        archived,
+        cloudStub: true,
+      };
+      return normalizeClassroomDatabase(stub);
+    }
 
     const now = new Date().toISOString();
     const updated = normalizeClassroomDatabase({

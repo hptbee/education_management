@@ -1,0 +1,28 @@
+---
+description: Testing guidance when introducing or running tests in this repo
+alwaysApply: false
+---
+
+# Testing
+
+## Current state
+
+Vitest is configured (`npm test` / `vitest run`). Prefer RTK for command output.
+
+## When adding tests (only if user requests)
+
+- Colocate with feature: `*.test.ts` / `*.test.tsx` next to source
+- Prioritize: points/thưởng logic, classroom switch persistence, import/export
+- Do not introduce a second test stack silently
+
+## Validation
+
+Before finishing UI or data changes:
+
+- `rtk vitest run` — targeted tests first
+- `rtk next build` — only when the change can break the production build
+- Manual check: sidebar, nav highlight, active classroom survives page change
+
+## TDD
+
+Do not require TDD or 80% coverage unless the user explicitly asks.

@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "codebase-memory-mcp": {
+      "command": "C:/Users/NCPC/AppData/Roaming/npm/node_modules/codebase-memory-mcp/bin/codebase-memory-mcp.exe",
+      "args": []
+    },
+    "serena": {
+      "command": "C:/Users/NCPC/.local/bin/serena.exe",
+      "args": [
+        "start-mcp-server",
+        "--context=ide",
+        "--project",
+        "D:/Project/education_management"
+      ]
+    },
+    "cloudflare": {
+      "url": "https://mcp.cloudflare.com/mcp"
+    },
+    "cloudflare-docs": {
+      "url": "https://docs.mcp.cloudflare.com/mcp"
+    },
+    "cloudflare-bindings": {
+      "url": "https://bindings.mcp.cloudflare.com/mcp"
+    },
+    "cloudflare-builds": {
+      "url": "https://builds.mcp.cloudflare.com/mcp"
+    },
+    "cloudflare-observability": {
+      "url": "https://observability.mcp.cloudflare.com/mcp"
+    }
+  }
+}

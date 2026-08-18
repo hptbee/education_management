@@ -1,4 +1,5 @@
 import type { ClassroomDatabase, DatabaseSummary } from "../types";
+import { createEmptyDatabase } from "../database.factory";
 import type { ClassroomDatabaseStorage } from "./storage.interface";
 import { enqueueWrite } from "./write-queue";
 
@@ -90,10 +91,82 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
       createdAt: dbItem.metadata.createdAt,
       updatedAt: dbItem.metadata.updatedAt,
       archived: dbItem.metadata.archived ?? false,
+      hydrated: !dbItem.metadata.cloudStub,
     }));
 
     summaries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
     return summaries;
+  }
+
+  async mergeRegistryStubs(
+    entries: Array<{
+      key: string;
+      name: string;
+      schoolYear: string;
+      createdAt: string;
+      updatedAt: string;
+      archived?: boolean;
+    }>,
+  ): Promise<void> {
+    const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
+      const db = await this.getDB();
+      const databases = await runTransaction<ClassroomDatabase[]>(db, "readonly", (store) => store.getAll());
+
+      for (const registryEntry of entries) {
+        const existing = databases.find((item) => item.metadata.id === registryEntry.key);
+        if (existing && !existing.metadata.cloudStub) {
+          const remoteTime = new Date(registryEntry.updatedAt).getTime();
+          const localTime = new Date(existing.metadata.updatedAt).getTime();
+          if (remoteTime > localTime) {
+            const updated: ClassroomDatabase = {
+              ...existing,
+              metadata: {
+                ...existing.metadata,
+                updatedAt: registryEntry.updatedAt,
+                archived: registryEntry.archived ?? existing.metadata.archived,
+              },
+              classroomSettings: {
+                ...existing.classroomSettings,
+                className: registryEntry.name,
+                schoolYear: registryEntry.schoolYear,
+                updatedAt: registryEntry.updatedAt,
+              },
+            };
+            await runTransaction(db, "readwrite", (store) => store.put(updated));
+          }
+          continue;
+        }
+
+        const stub = createEmptyDatabase({
+          className: registryEntry.name,
+          schoolYear: registryEntry.schoolYear,
+          teacher: {
+            id: "cloud-stub",
+            name: "—",
+            createdAt: registryEntry.createdAt,
+            updatedAt: registryEntry.updatedAt,
+          },
+        });
+        stub.metadata = {
+          ...stub.metadata,
+          id: registryEntry.key,
+          createdAt: registryEntry.createdAt,
+          updatedAt: registryEntry.updatedAt,
+          archived: registryEntry.archived ?? false,
+          cloudStub: true,
+        };
+        await runTransaction(db, "readwrite", (store) => store.put(stub));
+      }
+    });
+    this.writeQueue = nextQueue;
+    return result;
+  }
+
+  async isClassroomHydrated(id: string): Promise<boolean> {
+    const db = await this.getDB();
+    const item = await runTransaction<ClassroomDatabase | undefined>(db, "readonly", (store) => store.get(id));
+    if (!item) return false;
+    return !item.metadata.cloudStub;
   }
 }

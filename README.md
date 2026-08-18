@@ -11,7 +11,7 @@ The app is designed for a single classroom and focuses on student profiles, clas
 - **Tauri 2** - Desktop App & Local Filesystem API
 - **Rust** - Tauri Backend
 - **TypeScript** - Language
-- **React Router** - Client-side Routing
+- **Next.js App Router** - Routing (`src/app/**/page.tsx`)
 - **Tailwind CSS 4** - Styling
 - **shadcn/ui-inspired** - Local UI components
 - **Lucide React** - Icons
@@ -24,10 +24,10 @@ The app is designed for a single classroom and focuses on student profiles, clas
 - **Classroom data stays local**: `ClassroomDatabase` JSON on disk (Tauri) or IndexedDB (web dev) is the source of truth for students, points, teams, etc.
 - **Google sign-in required**: Teachers authenticate via Google; the app receives a signed **entitlement** from the Cloudflare Worker.
 - **7-day trial**: New Google accounts get a one-time 7-day trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **no license rows** also receive that one-time trial. Expired trials are not reminted. Upgrade to Basic or Premium 1 năm for continued access; **lifetime** is admin-assigned (not shown in the public plan comparison).
-- **Optional cloud backup**: Per-class opt-in upload to R2 (**premium** or **lifetime** only) — not a replacement for local storage.
+- **Optional cloud backup**: Per-class opt-in **incremental** upload to R2 (`PUT /sync`; **premium** or **lifetime** only) — not a replacement for local storage. See [docs/DATA_ARCHITECTURE.md](./docs/DATA_ARCHITECTURE.md).
 - **JSON File Persistence**: Classroom data is stored in local JSON files via Tauri filesystem APIs.
 
-See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) for OAuth, Worker, D1, and entitlement setup.
+See [docs/ACCOUNTS.md](./docs/ACCOUNTS.md) for OAuth, Worker, D1, and entitlement setup. See [docs/DATA_ARCHITECTURE.md](./docs/DATA_ARCHITECTURE.md) for local vs R2 layout. See [docs/build-and-release.md](./docs/build-and-release.md) for Windows/macOS packaging.
 
 ## Getting Started
 
@@ -145,9 +145,9 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - **Tuyên dương** (`/recognition`) — ceremony, badge roster, title catalog (1:1 badge per title), Wall of Fame; `/badges` redirects here
 - Activity history (`/history`) — points, rewards, recognition, lucky wheel, badges
 - Classroom tools (`/tools`; `/games` redirects here)
-- Local image uploads (stored as base64 strings in the JSON database)
+- Local image uploads (teacher/student photos, home banner, gift images) — processed to WebP and stored in the local asset store; JSON keeps stable keys only (`assets/**`). See [docs/DATA_ARCHITECTURE.md](./docs/DATA_ARCHITECTURE.md).
 - Export / Import JSON database backups
-- **Cloud backup** (opt-in per class; requires **premium** or **lifetime** plan) — automatic upload to R2 after local save when signed in
+- **Cloud backup** (opt-in per class; requires **premium** or **lifetime** plan) — incremental structured upload to R2 after local save (`PUT /sync`) when signed in. Restore still imports a monolith JSON snapshot.
 - **Cloud restore** — list and import classrooms from the teacher's cloud account (**Cài đặt** classroom selector, or **Dữ liệu** when that tab is enabled). Premium/lifetime only. Cloud list HTTP errors surface as errors instead of an empty list.
 - Duplicate databases for new school years
 
@@ -178,4 +178,8 @@ Student-facing tools (Lucky Wheel, Timer, Lucky Star): larger type, more celebra
 
 See [docs/PROJECT_SCOPE.md](./docs/PROJECT_SCOPE.md) for the full product requirements and implementation scope.
 
-**Accounts & cloud backup** (v0.1.7+; dual Web/Desktop OAuth in v0.1.8+): see [docs/ACCOUNTS.md](./docs/ACCOUNTS.md). Classroom JSON remains local-first; Worker handles auth, licensing, and optional backup only.
+**Accounts & cloud backup** (v0.1.7+; dual Web/Desktop OAuth in v0.1.8+): see [docs/ACCOUNTS.md](./docs/ACCOUNTS.md). Classroom JSON remains local-first; Worker handles auth, licensing, and optional backup only. R2 layout and `PUT /sync`: [docs/DATA_ARCHITECTURE.md](./docs/DATA_ARCHITECTURE.md).
+
+**Desktop releases** (Windows + macOS): [docs/build-and-release.md](./docs/build-and-release.md).
+
+**Sound effects:** [docs/audio-assets.md](./docs/audio-assets.md).

@@ -7,9 +7,9 @@ Login is **required** to use the app. Classroom data stays **local-first** (`Cla
 | Classroom JSON (students, points, teams, …) | Local Tauri FS or IndexedDB |
 | Teacher account + license | Cloudflare D1 (via Worker) |
 | Signed access token (entitlement) | OS keychain (Tauri) or `sessionStorage` (web dev) |
-| Cloud backup JSON | Cloudflare R2 (`users/{userId}/classrooms/...`) |
+| Cloud backup JSON | Cloudflare R2 structured files under `users/{userId}/` — see [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md) |
 
-See also: [`workers/cloud-backup/README.md`](../workers/cloud-backup/README.md)
+See also: [`workers/cloud-backup/README.md`](../workers/cloud-backup/README.md), [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md), [build-and-release.md](./build-and-release.md).
 
 ---
 
@@ -177,17 +177,28 @@ Cloud backup requires `permissions.cloudBackup` on the entitlement — **premium
 
 ### Opt-in
 
-**Cài đặt → Dữ liệu** → enable **Tự động sao lưu lớp này lên đám mây** per classroom (tab hidden unless `SETTINGS_TABS.showDataTab`).
+**Cài đặt → Dữ liệu** → **Tự động sao lưu** is enabled automatically when entitlement includes `cloudBackup` (Premium / Lifetime). Trial and Basic cannot sync.
 
-First login does **not** auto-upload all local classes. **Tài khoản** tab may prompt to enable backup for the current class.
+On login with `cloudBackup`, the app **pulls `classrooms.json` first** (before any upload), merges stubs into the local index, and lazy-downloads full data when you open a class. Manual **Khôi phục từ đám mây** re-downloads/overwrites a single class.
 
 ### R2 layout
 
+Structured incremental backup (current client uses `PUT /sync`):
+
 ```
-users/{userId}/classrooms/{classroomId}/database.json
+users/{userId}/classrooms.json
+users/{userId}/classrooms/{classroomKey}/
+  manifest.json, classroom.json, students.json, teams.json, roles.json,
+  recognitions.json, rewards.json, settings.json, catalog.json,
+  activity/index.json, activity/YYYY-MM-DD.json
+  database.json   # legacy monolith — kept after migration, not deleted
 ```
 
-Legacy `backups/{deviceId}/...` objects are **not** migrated automatically.
+`classroomKey` is `metadata.id` (e.g. `2-7_2026-2027`). Field mapping: [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md).
+
+`GET /restore/{classroomKey}` returns a **monolith** `ClassroomDatabase` JSON (assembled from structured files when `manifest.json` exists; otherwise the legacy `database.json`). Restore UI is unchanged.
+
+Legacy `backups/{deviceId}/...` objects are **not** migrated automatically. `PUT /backup` remains for compatibility; normal operation uploads via `PUT /sync`.
 
 ### Restore
 
@@ -199,16 +210,20 @@ Non-2xx list responses throw a parsed Worker error (empty list only when HTTP 20
 
 Import does **not** overwrite a classroom that already exists locally with the same `metadata.id` — delete or export the local class first, or restore onto a machine that does not already have that id.
 
+After JSON import, the client downloads image binaries via **`GET /restore/{classroomKey}/assets`** and writes them under the local asset store. Missing remote assets keep keys in JSON and show bundled fallbacks in the UI.
+
+Structured JSON in R2 does **not** embed `data:image/...` strings — only asset keys in domain files; binaries live under `assets/**`.
+
 ### Multi-device usage (not sync)
 
 Cloud backup is **upload + manual restore**, not bidirectional sync between PCs.
 
 | Question | Answer |
 |---|---|
-| Same Google account on PC1 and PC2? | Yes — one R2 namespace: `users/{userId}/classrooms/{classroomId}/...` |
+| Same Google account on PC1 and PC2? | Yes — one R2 namespace: `users/{userId}/classrooms/{classroomKey}/...` |
 | Does login on PC2 pull cloud data? | **No.** Each PC keeps its own local JSON files. |
-| When does cloud update? | After a **local save** on that PC, when cloud backup is **enabled for that class** (~30s debounce). |
-| What if PC2 saves with an old local copy? | **Last upload wins** — `PUT /backup` replaces the whole cloud file; no merge. |
+| When does cloud update? | After a **local save** on that PC, when cloud backup is **enabled for that class** (~30s debounce). First structured sync uploads all domain files; later uploads send dirty/changed files via `PUT /sync`. |
+| What if PC2 saves with an old local copy? | Per-class domain files: last upload wins per path. **Registry** merges by classroom `key` (higher `updatedAt`); empty local registry cannot overwrite a non-empty remote registry. |
 | How to get PC1’s data on PC2? | **Cài đặt** classroom selector → **Khôi phục từ đám mây** (before editing), or Dữ liệu tab when `showDataTab` is enabled. |
 | Back on PC1 the next day? | PC1 still shows **PC1 local** until you restore from cloud or edit locally; saving may upload PC1 local and overwrite cloud again. |
 
@@ -253,9 +268,11 @@ Base URL: `https://classroom-cloud-backup.phuontun-01.workers.dev`
 
 | Method | Path | Notes |
 |---|---|---|
-| `PUT` | `/backup` | Classroom JSON wrapper; ownership from JWT `userId` |
-| `GET` | `/classrooms` | List user's backups; non-2xx is an error, not an empty list |
-| `GET` | `/restore/:classroomId` | Download backup JSON |
+| `PUT` | `/backup` | Legacy monolith classroom JSON wrapper; ownership from JWT `userId` |
+| `PUT` | `/sync` | Batch structured files (`{ classroomKey, files[], registry? }`); 25 MB batch, 64 files, 5 MB/file |
+| `GET` | `/classrooms` | Prefer `classrooms.json`; fallback to deduped R2 list |
+| `GET` | `/classrooms/registry` | Raw account registry JSON |
+| `GET` | `/restore/:classroomKey` | Assembled monolith JSON for import |
 
 ### Admin (requires `role=admin` in entitlement + active D1 user)
 
@@ -378,6 +395,7 @@ Never store entitlements in classroom JSON, IndexedDB, `localStorage`, or settin
 | Symptom | Likely cause |
 |---|---|
 | `POST /auth/google` **404** | Old Worker not deployed — run `npx wrangler deploy` from `workers/cloud-backup` |
+| `PUT /sync` **404** | Worker predates structured backup — redeploy current Worker |
 | `POST /auth/google` **401** | Invalid Google token; web `GOOGLE_CLIENT_ID` mismatch; or desktop `GOOGLE_CLIENT_ID_DESKTOP` / `GOOGLE_CLIENT_SECRET` mismatch |
 | Plan changed in D1 but app still shows old plan | Cached JWT — refresh session, re-login, or wait for online auto-refresh after `license_version` bump |
 | Login OK but app stays locked | Missing/wrong `NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY` |

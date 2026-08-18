@@ -50,9 +50,11 @@ Requires Bearer entitlement with `permissions.cloudBackup`.
 | Method | Path | Description |
 |---|---|---|
 | `PUT` | `/backup` | Legacy monolith classroom JSON upload |
-| `PUT` | `/sync` | Batch upload structured domain files (+ optional `classrooms.json` registry) |
+| `PUT` | `/sync` | Batch upload structured domain files, allowlisted `assets/**` binaries (`encoding: "base64"`), + optional `classrooms.json` registry |
 | `GET` | `/classrooms` | List classrooms (prefers `classrooms.json` registry) |
+| `GET` | `/classrooms/registry` | Raw merged registry file |
 | `GET` | `/restore/:classroomKey` | Download assembled monolith JSON for import |
+| `GET` | `/restore/:classroomKey/assets` | Download allowlisted classroom image binaries (base64) |
 
 ### Admin
 
@@ -77,6 +79,7 @@ workers/cloud-backup/
 │   ├── index.ts           # Router
 │   ├── auth-handlers.ts
 │   ├── backup-handlers.ts
+│   ├── cloud-serializer.ts # restore assembler (structured → monolith)
 │   ├── admin-handlers.ts
 │   ├── entitlement.ts
 │   ├── google.ts
@@ -178,6 +181,8 @@ users/<user-id>/classrooms/<classroom-key>/
   manifest.json, classroom.json, students.json, teams.json, roles.json,
   recognitions.json, rewards.json, settings.json, catalog.json,
   activity/index.json, activity/YYYY-MM-DD.json
+  assets/teacher/avatar.webp, assets/banner.webp,
+  assets/students/<id>/avatar.webp, assets/rewards/<id>/image.webp
   database.json   # legacy monolith — kept after migration
 ```
 
@@ -214,7 +219,7 @@ Legacy `backups/<device-id>/...` is **no longer written**. Pre-account backups a
 - Backup routes require a valid **signed entitlement** JWT.
 - Legacy shared `BACKUP_API_TOKEN` / `CLOUD_BACKUP_TOKEN` are **removed**.
 - PUT backup body limit: **25 MB** (`readBodyWithLimit`); `payload` must be a JSON object.
-- PUT sync body limit: **25 MB** total batch; max **64** files, **5 MB** per file.
+- PUT sync body limit: **25 MB** total batch; max **64** files, **5 MB** per file (JSON text or base64 asset payload).
 - Auth and admin JSON body limit: **64 KB** (`readJsonWithLimit` on `POST /auth/google` and admin JSON handlers).
 - Upload ownership comes from JWT `userId` only — client cannot spoof another user's prefix.
 - Client uploads only when teacher opts in per class (`cloudBackupEnabled`).
@@ -229,7 +234,7 @@ From **repository root** (Vitest includes this package):
 npm test
 ```
 
-Worker-only files: `src/index.test.ts` (auth, entitlement, backup ownership, admin 403, oversized `/auth/google` body), `src/db.test.ts` (trial once / heal zero-license users), `src/http.test.ts` (25 MB backup / 64 KB JSON limits).
+Worker-only files: `src/index.test.ts` (auth, entitlement, backup ownership, **PUT /sync**, registry list, structured restore, admin 403, oversized `/auth/google` body), `src/db.test.ts` (trial once / heal zero-license users), `src/http.test.ts` (25 MB backup / 64 KB JSON limits), `src/paths.test.ts`.
 
 ---
 

@@ -1,0 +1,43 @@
+---
+description: One primary tool per question — CBM, Serena, or native Grep/Read
+alwaysApply: true
+---
+
+# Tool routing
+
+Pick **one** primary tool. Inspect the result. Escalate only if that result is insufficient. Do not chain CBM → Serena → Grep → Read by default.
+
+Call `GetMcpTools` for the chosen MCP server, then `CallMcpTool`. Do not invent tool names.
+
+## Primary
+
+| Question | Tool |
+|---|---|
+| Unknown location, architecture, call/impact graph, cross-package flow | **codebase-memory-mcp** |
+| Known TypeScript symbol: definition, references, rename, symbol-body edit | **Serena** |
+| Literal string, config, log, TODO, error text | **Grep / Read** |
+| Known file | **Read / Edit** |
+| Test, build, lint, git, package manager | **RTK / Shell** |
+
+## codebase-memory-mcp
+
+This workspace runs the **ALL** profile (empty MCP args). Discovery tools: `search_graph`, `trace_path`, `get_architecture`, `detect_changes`, `query_graph`.
+
+Use after CBM names an area: **stop**, then Read those files. Do not re-ask the same question with Serena.
+
+Do **not** use CBM for: exact string search (`search_code` is indexed-grep, not a substitute for Grep), known-file edits, or live rename.
+
+## Serena (`ide` context)
+
+Live LSP on this project. Tools: `find_symbol`, `find_referencing_symbols`, `find_declaration`, `get_symbols_overview`, `rename_symbol`, `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`, `safe_delete_symbol`.
+
+Always pass `relative_path` (package, directory, or file). Unscoped `find_symbol` walks the full symbol tree — avoid it unless no path is known.
+
+File/shell tools are **disabled** in `ide` (`read_file`, `list_dir`, `find_file`, `execute_shell_command`). Use Cursor Read/Grep/Shell instead. Prefer Cursor Grep over Serena `search_for_pattern` for literals.
+
+Do **not** use Serena for: architecture overview, blast radius, or “where is this feature?” when the symbol is unknown.
+
+## Escalate only when
+
+- Primary returned nothing useful or coverage is incomplete.
+- You now have a **different** question (e.g. CBM found a file → Read it; CBM found a symbol name → Serena references).

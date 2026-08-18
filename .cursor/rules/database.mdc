@@ -1,0 +1,19 @@
+---
+description: Storage adapters and factory — SSOT rules live in backend.mdc
+globs: "src/database/**,src/store/**,src/types/**"
+alwaysApply: false
+---
+
+# Database files
+
+SSOT and immutability: `.cursor/rules/backend.mdc`. This file is only adapter/factory paths.
+
+```typescript
+const { activeDatabase } = useAppData();
+import { DatabaseService } from '@/database/database.service';
+```
+
+- Types: `ClassroomDatabase` in `src/database/types.ts` (or `src/types/models.ts`)
+- IndexedDB: `src/database/storage/indexed-db.storage.ts`
+- Tauri: `src/database/storage/tauri-fs.storage.ts` (`classrooms/*.json` + `index.json`)
+- Factory: `src/database/database.factory.ts`

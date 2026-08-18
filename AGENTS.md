@@ -6,9 +6,10 @@ Always read before implementing:
 
 1. PROJECT_SCOPE.md
 2. PROJECT_RULES.md
-3. [docs/DATA_ARCHITECTURE.md](docs/DATA_ARCHITECTURE.md) — local vs cloud R2 layout and sync
+3. [docs/DATA_ARCHITECTURE.md](docs/DATA_ARCHITECTURE.md) — local vs cloud R2 layout and incremental `PUT /sync`
 4. [docs/ACCOUNTS.md](docs/ACCOUNTS.md) — when touching auth, entitlements, or cloud backup
-5. Relevant existing feature files
+5. [docs/build-and-release.md](docs/build-and-release.md) — when changing Tauri packaging, version, or CI
+6. Relevant existing feature files
 
 ## Critical Rule
 
@@ -64,7 +65,7 @@ Route: `src/app/settings/page.tsx`. When `data` is null, render `ClassroomSelect
 
 Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.tsx`.
 
-**Auth shell:** `AuthProvider` → `AppDataProvider` → `AccessGate` → `AppShell` in `src/app/layout.tsx`. Lock screens hide Sidebar (same pattern as presentation mode). Never delete local classrooms on lock/logout.
+**Auth shell:** `AuthProvider` → `AppDataProvider` → `AccessGate` → `AppShell` in `src/app/layout.tsx`. Layout also mounts `SoundInit` (preload + first-gesture unlock) and `DesktopLoggingInit`. Lock screens hide Sidebar (same pattern as presentation mode). Never delete local classrooms on lock/logout.
 
 **Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity (tab hidden by default — same pattern as **Nguy hiểm**).
 
@@ -82,6 +83,8 @@ Presentation mode follows the current `mode`: students show podium + list; teams
 - IndexedDB → JSON migration is complete only after `indexeddb-migration.complete` is written. Missing marker resumes remaining IDs without overwriting existing JSON.
 - Async gift save/delete: `commitData(next)` then `await persistNow()` — never write a stale snapshot back into `dataRef` after `await`.
 - Entitlement: OS keychain. Legacy `entitlement.sec` is migrated once; fail closed if the keyring write fails (do not return plaintext).
+- Optional cloud backup: after local save, `CloudBackupScheduler` (30s debounce) uploads via **`PUT /sync`** (structured domain files + dirty `assets/**` binaries). First structured sync / manual retry uploads all files; `GET /restore` still returns monolith JSON; `GET /restore/:id/assets` restores image binaries. Classroom switch awaits `flushPending()` before `openDatabase`. See [docs/DATA_ARCHITECTURE.md](docs/DATA_ARCHITECTURE.md).
+- **Classroom images:** `ClassroomAssetService` stores WebP binaries locally; JSON holds asset keys only (`avatarAssetKey`, `bannerAssetKey`, `Gift.imagePath`, etc.). Migrate inline data URLs on `openDatabase`. Display via `useAssetUrl`; mark `dirtyAssets` on save/delete for cloud sync.
 
 ## Dialogs
 
@@ -89,7 +92,7 @@ CRUD/scoring overlays use `useModalFocusTrap` plus `role="dialog"`, `aria-modal`
 
 Full-screen overlays that must cover the shell (e.g. recognition `CelebrationOverlay`) portal to `document.body` with high z-index — `main` uses `overflow-hidden` and traps focus incorrectly if the overlay stays inside it.
 
-Auth JSON (`POST /auth/google`) and admin JSON bodies are bounded to ~64 KB (`readJsonWithLimit`). Backup PUT stays on the 25 MB reader. `listCloudClassrooms` throws on non-2xx.
+Auth JSON (`POST /auth/google`) and admin JSON bodies are bounded to ~64 KB (`readJsonWithLimit`). `PUT /backup` and `PUT /sync` use the 25 MB reader (`readJsonWithLimit` is **not** used for sync). `PUT /sync` also caps 64 files and 5 MB per file. `listCloudClassrooms` throws on non-2xx.
 
 ## Recognition (`/recognition`)
 

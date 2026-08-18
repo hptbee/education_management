@@ -30,6 +30,8 @@ export interface ClassroomIndexEntry {
   createdAt: string;
   updatedAt: string;
   archived?: boolean;
+  /** False when only cloud registry metadata exists (no local JSON yet). */
+  hydrated?: boolean;
 }
 
 export interface IndexFile {
@@ -53,6 +55,29 @@ function entryFromDatabase(db: ClassroomDatabase, fileName: string): ClassroomIn
     createdAt: db.metadata.createdAt,
     updatedAt: db.metadata.updatedAt,
     archived: db.metadata.archived ?? false,
+    hydrated: !db.metadata.cloudStub,
+  };
+}
+
+function stubFromRegistryEntry(entry: {
+  key: string;
+  name: string;
+  schoolYear: string;
+  createdAt: string;
+  updatedAt: string;
+  archived?: boolean;
+}): ClassroomIndexEntry {
+  return {
+    id: entry.key,
+    fileName: makeClassroomFileName(entry.key),
+    className: entry.name,
+    schoolYear: entry.schoolYear,
+    teacherName: "—",
+    studentCount: 0,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    archived: entry.archived ?? false,
+    hydrated: false,
   };
 }
 
@@ -142,7 +167,14 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
     let changed = false;
 
     for (const entry of rebuilt.classrooms) {
-      if (knownIds.has(entry.id)) continue;
+      if (knownIds.has(entry.id)) {
+        const idx = index.classrooms.findIndex((c) => c.id === entry.id);
+        if (idx >= 0 && index.classrooms[idx].hydrated === false) {
+          index.classrooms[idx] = entry;
+          changed = true;
+        }
+        continue;
+      }
       index.classrooms.push(entry);
       knownIds.add(entry.id);
       changed = true;
@@ -211,6 +243,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
         archived: entry.archived ?? false,
+        hydrated: entry.hydrated !== false,
       }))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
@@ -270,7 +303,10 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
       const entry = index.classrooms.find((c) => c.id === id);
 
       if (entry) {
-        await this.fs.removeFile(this.classroomFilePath(entry.fileName));
+        const filePath = this.classroomFilePath(entry.fileName);
+        if (await this.fs.fileExists(filePath)) {
+          await this.fs.removeFile(filePath);
+        }
         index.classrooms = index.classrooms.filter((c) => c.id !== id);
         if (index.activeClassroomId === id) {
           index.activeClassroomId = index.classrooms[0]?.id ?? null;
@@ -325,6 +361,78 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
   async markMigrationComplete(): Promise<void> {
     await this.initialize();
     await this.fs.writeTextFile(this.migrationMarkerPath, new Date().toISOString());
+  }
+
+  /** Returns the data directory path for the "open folder" feature */
+  async mergeRegistryStubs(
+    entries: Array<{
+      key: string;
+      name: string;
+      schoolYear: string;
+      createdAt: string;
+      updatedAt: string;
+      archived?: boolean;
+    }>,
+  ): Promise<void> {
+    await this.initialize();
+
+    const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
+      const index = await this.readIndexWithRecovery();
+      let changed = false;
+
+      for (const registryEntry of entries) {
+        const existingIdx = index.classrooms.findIndex((c) => c.id === registryEntry.key);
+        if (existingIdx >= 0) {
+          const existing = index.classrooms[existingIdx];
+          if (existing.hydrated !== false) {
+            const remoteTime = new Date(registryEntry.updatedAt).getTime();
+            const localTime = new Date(existing.updatedAt).getTime();
+            if (remoteTime > localTime) {
+              index.classrooms[existingIdx] = {
+                ...existing,
+                className: registryEntry.name,
+                schoolYear: registryEntry.schoolYear,
+                updatedAt: registryEntry.updatedAt,
+                archived: registryEntry.archived ?? false,
+              };
+              changed = true;
+            }
+            continue;
+          }
+
+          const remoteTime = new Date(registryEntry.updatedAt).getTime();
+          const localTime = new Date(existing.updatedAt).getTime();
+          const winnerUpdatedAt = remoteTime >= localTime ? registryEntry.updatedAt : existing.updatedAt;
+          index.classrooms[existingIdx] = stubFromRegistryEntry({
+            key: registryEntry.key,
+            name: remoteTime >= localTime ? registryEntry.name : existing.className,
+            schoolYear: remoteTime >= localTime ? registryEntry.schoolYear : existing.schoolYear,
+            createdAt: existing.createdAt ?? registryEntry.createdAt,
+            updatedAt: winnerUpdatedAt,
+            archived: registryEntry.archived ?? existing.archived,
+          });
+          changed = true;
+          continue;
+        }
+
+        index.classrooms.push(stubFromRegistryEntry(registryEntry));
+        changed = true;
+      }
+
+      if (changed) {
+        await this.writeIndex(index);
+      }
+    });
+    this.writeQueue = nextQueue;
+    return result;
+  }
+
+  async isClassroomHydrated(id: string): Promise<boolean> {
+    await this.initialize();
+    const index = await this.readIndexWithRecovery();
+    const entry = index.classrooms.find((c) => c.id === id);
+    if (!entry) return false;
+    return entry.hydrated !== false;
   }
 
   /** Returns the data directory path for the "open folder" feature */

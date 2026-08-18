@@ -1,0 +1,26 @@
+---
+name: investigate
+description: Retrieves minimal context with one primary tool before changing code. Use when starting a feature, tracing behavior, locating unknown code, or investigating a bug.
+---
+
+# Investigate
+
+Do not modify code. Follow `.cursor/rules/00-tool-routing.mdc` — one primary tool, then stop.
+
+Known anchors if already in context: `src/app/layout.tsx`, `components/sidebar.tsx`, `src/database/`, `src/store/AppDataContext.tsx`.
+
+Prefer reuse: `src/components/classroom/*`, `DatabaseService`, existing `src/app/` page patterns. Do not add npm packages if an equivalent already exists.
+
+When the task touches shell, routing, or classroom data, read [AGENTS.md](../../../AGENTS.md), [PROJECT_RULES.md](../../../PROJECT_RULES.md), [docs/PROJECT_SCOPE.md](../../../docs/PROJECT_SCOPE.md).
+
+## Bugs
+
+State expected vs actual. Trace UI → state → `DatabaseService` → storage. Separate:
+
+- Confirmed findings (evidence only)
+- Likely causes
+- Hypotheses (unverified)
+
+## Output
+
+Relevant files, execution flow if needed, existing patterns with path evidence, what is still unknown. For bugs: root cause with evidence, similar areas, recommended fix options (not implemented).

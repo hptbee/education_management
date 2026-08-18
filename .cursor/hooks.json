@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "C:/Users/NCPC/scoop/shims/rtk.exe hook cursor",
+        "matcher": "Shell"
+      }
+    ]
+  }
+}

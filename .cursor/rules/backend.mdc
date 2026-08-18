@@ -1,0 +1,52 @@
+---
+description: Local-first persistence rules — ClassroomDatabase as SSOT; Worker for auth/backup only
+alwaysApply: true
+---
+
+# Backend / Persistence
+
+This app is **local-first**. Classroom data has no server-side source of truth.
+
+## Exception: accounts & cloud backup
+
+`workers/cloud-backup` (Cloudflare Worker + D1 + R2) handles **teacher Google sign-in**, **signed entitlements**, **licensing**, and **optional cloud backup** only. See `docs/ACCOUNTS.md`. R2 is a **projection** (structured files + `PUT /sync`); not the runtime database. See `docs/DATA_ARCHITECTURE.md`.
+
+**OAuth (v0.1.8+):** Web `NEXT_PUBLIC_GOOGLE_CLIENT_ID` + Worker `GOOGLE_CLIENT_ID`; Desktop `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` + Worker `GOOGLE_CLIENT_ID_DESKTOP` / `GOOGLE_CLIENT_SECRET`. Never put the client secret in the app. `NEXT_PUBLIC_*` is embedded at Next build — rebuild Tauri after env changes.
+
+Do **not** move classroom CRUD, points, teams, or other feature logic to the Worker.
+
+## Do not add (unless explicitly requested)
+
+- Additional REST or GraphQL APIs beyond the existing Worker
+- Password-based auth or custom user accounts (use Google + D1)
+- Cloud database or real-time sync for classroom JSON (R2 backup is upload + manual restore only)
+- Redis, queues, email services
+
+## Single source of truth
+
+- `ClassroomDatabase` via `DatabaseService` (`src/database/database.service.ts`)
+- React access: `useAppData()` / `AppDataProvider` (`src/store/AppDataContext.tsx`)
+- Auth session: `useAuth()` / `AuthProvider` (`src/store/AuthContext.tsx`) — entitlement only, not classroom data
+
+## Storage
+
+- Web: IndexedDB (classroom JSON + `ClassroomAssets` binaries); `sessionStorage` for entitlement (dev)
+- Desktop (Tauri): JSON files via Tauri FS (`classrooms/*.json` + `index.json`); image binaries under `classrooms/{id}/assets/**`; OS keychain for entitlement
+- Classroom photos (teacher/student/banner/gift): **local asset store** via `ClassroomAssetService` — JSON stores keys only (`avatarAssetKey`, `bannerAssetKey`, `Gift.imagePath`, etc.); WebP pipeline in `src/utils/images.ts`; migrate inline data URLs on `openDatabase`
+- A valid `index.json` is still reconciled against `classrooms/*.json` (orphan files are added; `activeClassroomId` is kept)
+- IndexedDB → JSON migration writes `indexeddb-migration.complete` only after every IDB classroom is verified; resume remaining IDs without overwriting JSON
+- Async classroom writes that must flush immediately (`saveGift` / `deleteGift`): `commitData` then `persistNow` — do not persist a captured snapshot that can overwrite later edits
+- Optional cloud backup: `CloudBackupScheduler` after local save (`PUT /sync` JSON domains + dirty `assets/**`); classroom switch awaits `flushPending()` before `openDatabase`
+- Entitlement: migrate legacy `entitlement.sec` into the keyring once. If keyring set fails, do not return the file contents — require re-login
+
+## State rules
+
+- Do not duplicate global state for teacher, classroom, school year, or students
+- Switching pages must NOT reset the active classroom
+- Update classroom data **immutably** — copy, do not mutate documents in place
+- Never delete local classrooms on auth lock, logout, disable, or license expiry
+
+## YAGNI
+
+- Do not add API response envelopes, AppError HTTP layers, or enterprise patterns
+- Keep solutions simple and pragmatic per `docs/PROJECT_SCOPE.md`

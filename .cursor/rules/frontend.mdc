@@ -1,0 +1,52 @@
+---
+description: React 19, Tailwind 4, shadcn, and classroom UI patterns
+globs: "**/*.{tsx,jsx,css}"
+alwaysApply: false
+---
+
+# Frontend
+
+## Stack
+
+- React 19 + Next.js App Router
+- Tailwind 4 + shadcn (`@base-ui/react`)
+- Icons: **Lucide** (keep — do not swap icon libraries)
+- Motion: Framer Motion (already in repo)
+
+## Design tokens (do not invent new palettes)
+
+Per `docs/PROJECT_SCOPE.md` §12:
+
+- Brand sky: `#4ba3e8` (`--color-brand`)
+- Accent pink: `#efa3bc` (`--color-accent-pink`)
+- Page background: `#f7fafd`
+- Cute, playful, gamified classroom — not corporate admin or Awwwards luxury
+
+## Reuse before creating
+
+- `src/components/classroom/*` — shared primitives
+- `components/ui/*` — shadcn components
+- Existing page patterns under `src/app/`
+
+## State
+
+- Local `useState` → lift to common ancestor → `AppDataContext` for classroom data
+- Derive values during render; avoid `useEffect` to sync derived state
+
+## Layout
+
+- New pages render inside existing `src/app/layout.tsx` shell
+- Do not create a second Sidebar or AppLayout
+
+## Security
+
+- No `dangerouslySetInnerHTML` with student names or user-provided text
+- Respect `prefers-reduced-motion` for animations
+
+## Touch targets
+
+- Classroom actions (+1, spin, pick student): large enough for fast in-class use (44px minimum where practical)
+
+## Dialogs
+
+CRUD/scoring overlays: `useModalFocusTrap` + `role="dialog"` + `aria-modal` + labelled heading (`gift-redeem-dialog.tsx`). Stacked modals: `modalTrapStack` (top trap only). Full-screen overlays that must cover the shell: `createPortal(..., document.body)` (e.g. recognition celebration). Leave Lucky Wheel without a keyboard trap unless requested.

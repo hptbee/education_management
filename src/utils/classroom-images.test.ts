@@ -15,7 +15,9 @@ function makeSettings(className = "1A", schoolYear = "2025-2026") {
   };
 }
 
-const saveAsset = vi.fn().mockResolvedValue("assets/teacher/avatar.webp");
+const { saveAsset } = vi.hoisted(() => ({
+  saveAsset: vi.fn().mockResolvedValue("assets/teacher/avatar.webp"),
+}));
 
 vi.mock("../database/assets/classroom-asset.service", () => ({
   classroomAssetService: {

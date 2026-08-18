@@ -236,6 +236,11 @@ function ClassroomManagementCard({
                 Đã lưu trữ
               </span>
             ) : null}
+            {classroom.hydrated === false ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-800">
+                Chưa tải về
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-sm font-semibold text-slate-500">Năm học {classroom.schoolYear}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-slate-500">

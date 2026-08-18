@@ -4,6 +4,8 @@ Bundled classroom UI sound effects. All files are downloaded from [Mixkit](https
 
 Playback is wired via `src/utils/sounds.ts` and respects `appSettings.soundEnabled` (default `true`).
 
+`SoundInit` in `src/app/layout.tsx` calls `initSoundSystem()` on mount: preloads WAVs as **blob URLs** (explicit `audio/wav` MIME — needed for Tauri/WebView2 `asset:` URLs) and unlocks HTML audio on the first pointer/keyboard gesture so delayed SFX (wheel, recognition overlay) can play.
+
 ## License summary
 
 | Item | Detail |
