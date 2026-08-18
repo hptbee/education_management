@@ -159,6 +159,18 @@ fn get_cloud_backup_token() -> Option<String> {
 const ENTITLEMENT_SERVICE: &str = "education-management";
 const ENTITLEMENT_USER: &str = "teacher-entitlement";
 
+fn entitlement_file_path(app: &AppHandle) -> Result<PathBuf, String> {
+  Ok(get_data_dir(app)?.join("entitlement.sec"))
+}
+
+fn remove_entitlement_file(app: &AppHandle) {
+  if let Ok(path) = entitlement_file_path(app) {
+    if path.exists() {
+      let _ = std::fs::remove_file(&path);
+    }
+  }
+}
+
 #[tauri::command]
 fn save_entitlement(app: AppHandle, payload: String) -> Result<(), String> {
   let entry = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER)
@@ -167,12 +179,15 @@ fn save_entitlement(app: AppHandle, payload: String) -> Result<(), String> {
     .set_password(&payload)
     .map_err(|e| format!("Failed to save entitlement to secure storage: {}", e))?;
 
-  // Keep an app-data backup so reopen still works if the OS keychain read fails later.
-  let data_dir = get_data_dir(&app)?;
-  let path = data_dir.join("entitlement.sec");
-  std::fs::write(&path, &payload)
-    .map_err(|e| format!("Failed to write entitlement backup: {}", e))?;
+  let stored = entry
+    .get_password()
+    .map_err(|e| format!("Failed to verify entitlement in secure storage: {}", e))?;
+  if stored != payload {
+    return Err("Failed to verify entitlement in secure storage".to_string());
+  }
 
+  // Keyring is the source of truth. Delete leftover plaintext from older builds.
+  remove_entitlement_file(&app);
   Ok(())
 }
 
@@ -183,13 +198,13 @@ fn load_entitlement(app: AppHandle) -> Result<Option<String>, String> {
   if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
     if let Ok(value) = entry.get_password() {
       if !value.trim().is_empty() {
+        remove_entitlement_file(&app);
         return Ok(Some(value));
       }
     }
   }
 
-  let data_dir = get_data_dir(&app)?;
-  let path = data_dir.join("entitlement.sec");
+  let path = entitlement_file_path(&app)?;
   if !path.exists() {
     return Ok(None);
   }
@@ -215,11 +230,7 @@ fn clear_entitlement(app: AppHandle) -> Result<(), String> {
   if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
     let _ = entry.delete_credential();
   }
-  let data_dir = get_data_dir(&app)?;
-  let path = data_dir.join("entitlement.sec");
-  if path.exists() {
-    let _ = std::fs::remove_file(&path);
-  }
+  remove_entitlement_file(&app);
   Ok(())
 }
 

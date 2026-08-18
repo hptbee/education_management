@@ -39,8 +39,6 @@ npx wrangler secret put GOOGLE_CLIENT_ID_DESKTOP  # Desktop app client (PKCE cod
 npx wrangler secret put GOOGLE_CLIENT_SECRET      # Desktop client secret — Worker only; never in the app
 npx wrangler secret put ENTITLEMENT_PRIVATE_KEY   # PKCS#8 PEM (pair of public key above)
 npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB  # optional: Google `sub` for first admin
-# Optional — comma-separated browser origins; default is permissive CORS when unset
-# npx wrangler secret put CORS_ALLOWED_ORIGINS
 npx wrangler deploy
 ```
 
@@ -344,7 +342,7 @@ There is **no admin UI** in the app — API + Wrangler D1 only.
 
 | Platform | Storage | Notes |
 |---|---|---|
-| Tauri | OS keychain (`keyring`) | Legacy `entitlement.sec` is migrated into the keyring once, then deleted. If the keyring write fails, the file contents are **not** returned — the teacher must sign in again. |
+| Tauri | OS keychain (`keyring`) | Keyring is the only store after login. Legacy `entitlement.sec` is migrated once then deleted. Save verifies a keyring read-back and never writes plaintext. If keyring write/verify fails, require sign-in again. |
 | Web dev | `sessionStorage` | Weaker; dev-only |
 
 ### Session persistence (close & reopen)
@@ -389,6 +387,7 @@ Never store entitlements in classroom JSON, IndexedDB, `localStorage`, or settin
 | `POST /auth/google` **400** Invalid request body | JSON larger than 64 KB, or malformed JSON |
 | Cloud classroom list looks empty after an error | Older clients treated non-2xx as `[]`; current app throws and **Dữ liệu** shows `cloudError` |
 | Login required after a keyring error | `entitlement.sec` is not used as a plaintext fallback after a failed keyring migrate |
+| Browser/Tauri blocked by CORS | Worker `CORS_ALLOWED_ORIGINS` missing that origin, or unset (fail closed). Redeploy `wrangler.toml` `[vars]`. A Cloudflare **secret** with the same name overrides the var — delete the secret if leftover. |
 
 Run Worker tests from repo root:
 

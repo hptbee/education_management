@@ -4,30 +4,30 @@ import type { Env } from "./types";
 const CORS_METHODS = "GET, PUT, POST, PATCH, OPTIONS";
 const CORS_HEADERS_LIST = "Content-Type, Authorization";
 
-export const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": CORS_METHODS,
-  "Access-Control-Allow-Headers": CORS_HEADERS_LIST,
-};
-
-function buildCorsHeaders(origin: string): Record<string, string> {
+function corsBaseHeaders(): Record<string, string> {
   return {
-    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": CORS_METHODS,
     "Access-Control-Allow-Headers": CORS_HEADERS_LIST,
     Vary: "Origin",
   };
 }
 
+function buildCorsHeaders(origin: string): Record<string, string> {
+  return {
+    ...corsBaseHeaders(),
+    "Access-Control-Allow-Origin": origin,
+  };
+}
+
 export function resolveCorsHeaders(request: Request, env: Env): Record<string, string> {
   const allowlist = env.CORS_ALLOWED_ORIGINS?.trim();
   if (!allowlist) {
-    return CORS_HEADERS;
+    return corsBaseHeaders();
   }
 
   const origin = request.headers.get("Origin");
   if (!origin) {
-    return CORS_HEADERS;
+    return corsBaseHeaders();
   }
 
   const allowedOrigins = allowlist
@@ -39,10 +39,7 @@ export function resolveCorsHeaders(request: Request, env: Env): Record<string, s
     return buildCorsHeaders(origin);
   }
 
-  return {
-    "Access-Control-Allow-Methods": CORS_METHODS,
-    "Access-Control-Allow-Headers": CORS_HEADERS_LIST,
-  };
+  return corsBaseHeaders();
 }
 
 export function applyCorsHeaders(response: Response, cors: Record<string, string>): Response {

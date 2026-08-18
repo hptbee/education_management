@@ -17,6 +17,8 @@ migrations_dir = "migrations"
 DEFAULT_TRIAL_DAYS = "7"
 # Optional — worker derives verify key from ENTITLEMENT_PRIVATE_KEY if omitted
 ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASva/xyyJL7QpLnWAh3hH6hKb+1DY3GyT9N2ch63ou8c=\n-----END PUBLIC KEY-----"
+# Browser / Tauri origins allowed to call this Worker. Unset = no Access-Control-Allow-Origin.
+CORS_ALLOWED_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,http://tauri.localhost,https://tauri.localhost"
 # Google OAuth — Web application client (browser / `npm run dev`)
 # GOOGLE_CLIENT_ID = ""
 # Desktop app client (Tauri exe PKCE) — optional if different from web
@@ -24,7 +26,6 @@ ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASva/xyyJL7
 # Optional desktop client secret — set via wrangler secret put (required for most Desktop app clients)
 # GOOGLE_CLIENT_SECRET = ""
 # INITIAL_ADMIN_GOOGLE_SUB = ""
-# CORS_ALLOWED_ORIGINS = "https://app.example.com,http://localhost:3000"  # optional; unset = *
 
 # Secrets (wrangler secret put):
 # ENTITLEMENT_PRIVATE_KEY — Ed25519 PKCS#8 PEM
@@ -32,4 +33,3 @@ ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASva/xyyJL7
 # GOOGLE_CLIENT_ID_DESKTOP — Desktop app client (same as NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP)
 # GOOGLE_CLIENT_SECRET — Desktop client secret (never in the React app)
 # INITIAL_ADMIN_GOOGLE_SUB — optional bootstrap admin Google sub
-# CORS_ALLOWED_ORIGINS — optional comma-separated browser origins

@@ -122,7 +122,6 @@ npx wrangler secret put GOOGLE_CLIENT_ID_DESKTOP      # Desktop app client (PKCE
 npx wrangler secret put GOOGLE_CLIENT_SECRET          # Desktop client secret (Worker only)
 npx wrangler secret put ENTITLEMENT_PRIVATE_KEY
 npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB      # optional
-# npx wrangler secret put CORS_ALLOWED_ORIGINS          # optional comma-separated origins
 ```
 
 ### Vars (`wrangler.toml` `[vars]`)
@@ -131,7 +130,7 @@ npx wrangler secret put INITIAL_ADMIN_GOOGLE_SUB      # optional
 |---|---|---|
 | `DEFAULT_TRIAL_DAYS` | `7` | Auto-trial length for new teachers and existing users with zero license rows |
 | `ENTITLEMENT_PUBLIC_KEY` | (see `wrangler.toml`) | Optional public key var; signing uses `ENTITLEMENT_PRIVATE_KEY` secret |
-| `CORS_ALLOWED_ORIGINS` | unset → `*` | Optional secret or var: comma-separated allowed `Origin` values |
+| `CORS_ALLOWED_ORIGINS` | see `wrangler.toml` | Required for browser/Tauri calls. Unset = no `Access-Control-Allow-Origin` (fail closed). Comma-separated origins. |
 
 Generate Ed25519 keys:
 

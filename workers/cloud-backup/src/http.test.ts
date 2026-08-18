@@ -72,12 +72,21 @@ describe("readJsonWithLimit", () => {
 describe("resolveCorsHeaders", () => {
   const baseEnv = {} as Env;
 
-  it("defaults to wildcard when allowlist is unset", () => {
+  it("omits Allow-Origin when allowlist is unset", () => {
     const request = new Request("https://example.com/me", {
       headers: { Origin: "https://app.example.com" },
     });
 
-    expect(resolveCorsHeaders(request, baseEnv)["Access-Control-Allow-Origin"]).toBe("*");
+    const headers = resolveCorsHeaders(request, baseEnv);
+    expect(headers["Access-Control-Allow-Origin"]).toBeUndefined();
+    expect(headers.Vary).toBe("Origin");
+  });
+
+  it("omits Allow-Origin when request has no Origin", () => {
+    const request = new Request("https://example.com/me");
+    const env = { CORS_ALLOWED_ORIGINS: "https://app.example.com" } as Env;
+
+    expect(resolveCorsHeaders(request, env)["Access-Control-Allow-Origin"]).toBeUndefined();
   });
 
   it("echoes matching Origin when allowlist is set", () => {
@@ -89,5 +98,14 @@ describe("resolveCorsHeaders", () => {
     const headers = resolveCorsHeaders(request, env);
     expect(headers["Access-Control-Allow-Origin"]).toBe("https://app.example.com");
     expect(headers.Vary).toBe("Origin");
+  });
+
+  it("omits Allow-Origin for a disallowed Origin", () => {
+    const request = new Request("https://example.com/me", {
+      headers: { Origin: "https://evil.example" },
+    });
+    const env = { CORS_ALLOWED_ORIGINS: "https://app.example.com" } as Env;
+
+    expect(resolveCorsHeaders(request, env)["Access-Control-Allow-Origin"]).toBeUndefined();
   });
 });
