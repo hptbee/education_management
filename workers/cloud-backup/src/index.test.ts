@@ -592,6 +592,56 @@ describe("classroom list and restore", () => {
     expect(putKeys).toContain(`users/${user.id}/classrooms/2-7_2026-2027/students.json`);
   });
 
+  it("PUT /sync accepts classroom asset paths such as assets/banner.webp", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const putKeys: string[] = [];
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    env.BACKUP_BUCKET = {
+      put: async (key: string) => {
+        putKeys.push(key);
+      },
+      get: async () => null,
+      list: async () => ({ objects: [] }),
+    } as unknown as R2Bucket;
+
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "asset-sync-sub" }, "teacher");
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const response = await worker.fetch(
+      new Request("https://example.com/sync", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${entitlement}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          classroomKey: "2-7_2026-2027",
+          files: [
+            {
+              path: "assets/banner.webp",
+              content: "dGVzdA==",
+              encoding: "base64",
+              contentType: "image/webp",
+            },
+          ],
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(putKeys).toContain(`users/${user.id}/classrooms/2-7_2026-2027/assets/banner.webp`);
+  });
+
   it("PUT /sync merges registry and refuses empty overwrite", async () => {
     const { privateKeyPem, publicKeyPem } = await generateTestKeys();
     const mockDb = new MockD1();

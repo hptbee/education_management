@@ -8,7 +8,7 @@ import { sanitizeBackupIdentifier } from "../safeIdentifiers";
 import { logAppEvent } from "@/src/logging/app-log";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { uploadCloudSyncBatch } from "./cloud-sync.service";
-import { isRegistryPullCompleted } from "./cloud-registry.service";
+import { isRegistryPullCompleted, refreshCloudRegistrySummaries } from "./cloud-registry.service";
 import { fetchClassroomsRegistry } from "@/src/auth/api";
 
 export interface BackupUploadRequest {
@@ -287,6 +287,11 @@ export class CloudBackupScheduler {
     let needsFollowUpFlush = false;
 
     try {
+      try {
+        await refreshCloudRegistrySummaries();
+      } catch (refreshError) {
+        logAppEvent("warn", "cloud-backup", "refreshCloudRegistrySummaries failed", refreshError);
+      }
       const dirty = cloudDirtyTracker.get(uploadedId);
       const syncState = await backupMetadataService.getCloudSyncState(uploadedId);
 

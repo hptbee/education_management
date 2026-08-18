@@ -17,27 +17,18 @@ import {
   sanitizeBackupIdentifier,
 } from "./paths";
 import type { BackupUploadBody, Env, SyncUploadBody } from "./types";
+import { isAllowedCloudAssetPath, normalizeSyncRelativePath } from "./asset-paths";
 
 const ACTIVITY_DAY_PATTERN = /^activity\/\d{4}-\d{2}-\d{2}\.json$/;
 const ALLOWED_SYNC_PATHS = new Set<string>([
   ...STRUCTURED_DOMAIN_FILES,
 ]);
 
-function isAllowedCloudAssetPath(path: string): boolean {
-  if (!path || path.includes("..")) return false;
-  if (path === "assets/teacher/avatar.webp") return true;
-  if (path === "assets/banner.webp") return true;
-  if (path === "assets/classroom/avatar.webp") return true;
-  if (/^assets\/students\/[^/]+\/avatar\.webp$/.test(path)) return true;
-  if (/^assets\/rewards\/[^/]+\/image\.webp$/.test(path)) return true;
-  if (path.startsWith("images/gifts/") && !path.includes("..")) return true;
-  return false;
-}
-
 function isAllowedSyncPath(path: string): boolean {
-  if (ALLOWED_SYNC_PATHS.has(path)) return true;
-  if (ACTIVITY_DAY_PATTERN.test(path)) return true;
-  return isAllowedCloudAssetPath(path);
+  const normalized = normalizeSyncRelativePath(path);
+  if (ALLOWED_SYNC_PATHS.has(normalized)) return true;
+  if (ACTIVITY_DAY_PATTERN.test(normalized)) return true;
+  return isAllowedCloudAssetPath(normalized);
 }
 
 export function assertUploadBody(data: unknown): BackupUploadBody {
@@ -127,7 +118,11 @@ export function assertSyncBody(data: unknown): SyncUploadBody {
     if (typeof file.path !== "string" || typeof file.content !== "string") {
       throw new Error("Invalid file path or content");
     }
-    if (!isAllowedSyncPath(file.path)) {
+    const path = normalizeSyncRelativePath(file.path);
+    if (!path) {
+      throw new Error("Invalid file path or content");
+    }
+    if (!isAllowedSyncPath(path)) {
       throw new Error(`Disallowed sync path: ${file.path}`);
     }
     const encoding = file.encoding === "base64" ? "base64" : undefined;
@@ -136,7 +131,7 @@ export function assertSyncBody(data: unknown): SyncUploadBody {
       throw new Error(`File too large: ${file.path}`);
     }
     files.push({
-      path: file.path,
+      path,
       content: file.content,
       contentType: typeof file.contentType === "string" ? file.contentType : undefined,
       encoding,
@@ -459,7 +454,8 @@ export async function handleRestoreAssets(
   for (const assetPrefix of [`${classroomPrefix}assets/`, `${classroomPrefix}images/gifts/`]) {
     const listed = await env.BACKUP_BUCKET.list({ prefix: assetPrefix });
     for (const object of listed.objects) {
-      if (!isAllowedCloudAssetPath(object.key.slice(classroomPrefix.length))) continue;
+      const relativePath = object.key.slice(classroomPrefix.length);
+      if (!isAllowedCloudAssetPath(relativePath)) continue;
       const file = await env.BACKUP_BUCKET.get(object.key);
       if (!file) continue;
       const bytes = new Uint8Array(await file.arrayBuffer());

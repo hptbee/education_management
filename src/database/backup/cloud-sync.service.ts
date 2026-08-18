@@ -11,7 +11,7 @@ import {
   splitClassroomToCloudFiles,
   domainsFromDirty,
 } from "./cloud-serializer";
-import { serializeDirtyAssetsForUpload } from "./cloud-asset-sync";
+import { collectAssetKeysForCloudSync, serializeDirtyAssetsForUpload } from "./cloud-asset-sync";
 import type { CloudDirtyState, CloudSyncDomain, CloudClassroomsRegistryFile } from "./cloud-types";
 import { CLOUD_SYNC_STATE_VERSION } from "./cloud-types";
 import {
@@ -102,12 +102,11 @@ export async function uploadCloudSyncBatch(
   }
 
   const uploads = serializeCloudFilesForUpload(split.files, paths);
-  let assetUploads = await serializeDirtyAssetsForUpload(classroomKey, dirty.dirtyAssets);
-  if (forceFull) {
-    const { classroomAssetService } = await import("../assets/classroom-asset.service");
-    const allKeys = classroomAssetService.collectReferencedAssetKeys(db);
-    assetUploads = await serializeDirtyAssetsForUpload(classroomKey, allKeys);
-  }
+  const assetKeys = await collectAssetKeysForCloudSync(classroomKey, db, dirty, {
+    forceFull,
+    syncState,
+  });
+  const assetUploads = await serializeDirtyAssetsForUpload(classroomKey, assetKeys);
 
   const combinedUploads = [...uploads, ...assetUploads];
   const toUpload: typeof combinedUploads = [];
@@ -122,13 +121,18 @@ export async function uploadCloudSyncBatch(
     toUpload.push(file);
   }
 
-  if (toUpload.length === 0 && !dirty.registry && !forceFull) {
+  const hasRegistrySummaries =
+    Boolean(options?.allLocalClassrooms?.length) || Boolean(options?.registrySummaries?.length);
+  const shouldUploadRegistry =
+    options?.allowRegistryUpload !== false &&
+    (dirty.registry || forceFull || (toUpload.length > 0 && hasRegistrySummaries));
+
+  if (toUpload.length === 0 && !shouldUploadRegistry) {
     return { uploadedPaths: [], skippedPaths };
   }
 
   let registry: string | undefined;
-  const mayUploadRegistry = dirty.registry || forceFull;
-  if (mayUploadRegistry && options?.allowRegistryUpload !== false) {
+  if (shouldUploadRegistry) {
     let localRegistry: CloudClassroomsRegistryFile | null = null;
     if (options?.allLocalClassrooms?.length) {
       const entries = options.allLocalClassrooms.map(buildRegistryEntry);

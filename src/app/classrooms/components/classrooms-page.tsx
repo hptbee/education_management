@@ -6,9 +6,9 @@ import {
   Calendar,
   Copy,
   MoreVertical,
-  PencilLine,
   Plus,
   School,
+  Settings,
   Trash2,
   Users,
 } from 'lucide-react'
@@ -30,7 +30,7 @@ import { formatRelativeUpdatedAt } from '@/src/utils/relativeTime'
 import { CloudRestoreCard } from '@/src/app/settings/components/cloud-restore-card'
 import { cn } from '@/lib/utils'
 
-type ModalKind = 'create' | 'edit' | 'duplicate' | 'archive' | 'delete' | 'switch-prompt' | null
+type ModalKind = 'create' | 'duplicate' | 'archive' | 'delete' | 'switch-prompt' | null
 
 function defaultSchoolYear() {
   const year = new Date().getFullYear()
@@ -80,7 +80,7 @@ function ModalShell({
 function ClassroomCardMenu({
   classroom,
   isActive,
-  onEdit,
+  onManage,
   onDuplicate,
   onArchive,
   onDelete,
@@ -88,7 +88,7 @@ function ClassroomCardMenu({
 }: {
   classroom: DatabaseSummary
   isActive: boolean
-  onEdit: () => void
+  onManage: () => void
   onDuplicate: () => void
   onArchive: () => void
   onDelete: () => void
@@ -147,11 +147,11 @@ function ClassroomCardMenu({
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-slate-700 hover:bg-surface-soft"
                   onClick={() => {
                     setOpen(false)
-                    onEdit()
+                    onManage()
                   }}
                 >
-                  <PencilLine className="size-4 text-brand" />
-                  Chỉnh sửa
+                  <Settings className="size-4 text-brand" />
+                  Cài đặt lớp
                 </button>
                 <button
                   type="button"
@@ -204,7 +204,7 @@ function ClassroomManagementCard({
   isActive,
   busy,
   onSwitch,
-  onEdit,
+  onManage,
   onDuplicate,
   onArchive,
   onDelete,
@@ -214,7 +214,7 @@ function ClassroomManagementCard({
   isActive: boolean
   busy: boolean
   onSwitch: () => void
-  onEdit: () => void
+  onManage: () => void
   onDuplicate: () => void
   onArchive: () => void
   onDelete: () => void
@@ -254,7 +254,7 @@ function ClassroomManagementCard({
         <ClassroomCardMenu
           classroom={classroom}
           isActive={isActive}
-          onEdit={onEdit}
+          onManage={onManage}
           onDuplicate={onDuplicate}
           onArchive={onArchive}
           onDelete={onDelete}
@@ -302,7 +302,6 @@ export function ClassroomsPage() {
     switchDatabase,
     createDatabase,
     duplicateDatabase,
-    updateClassroomInfo,
     archiveClassroom,
     restoreClassroom,
     deleteDatabase,
@@ -317,7 +316,6 @@ export function ClassroomsPage() {
   const [createdClassroom, setCreatedClassroom] = useState<DatabaseSummary | null>(null)
 
   const [createDraft, setCreateDraft] = useState({ className: '', schoolYear: defaultSchoolYear() })
-  const [editDraft, setEditDraft] = useState({ className: '', schoolYear: '' })
   const [dupDraft, setDupDraft] = useState({
     className: '',
     schoolYear: defaultSchoolYear(),
@@ -389,24 +387,6 @@ export function ClassroomsPage() {
       }
     } catch (err) {
       void showAlert(err instanceof Error ? err.message : 'Không thể tạo lớp học.', { variant: 'error' })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleEdit = async () => {
-    if (!target) return
-    const className = editDraft.className.trim()
-    const schoolYear = editDraft.schoolYear.trim()
-    if (!className || !schoolYear) return
-
-    setBusy(true)
-    try {
-      await updateClassroomInfo(target.id, { className, schoolYear })
-      bumpList()
-      closeModal()
-    } catch (err) {
-      void showAlert(err instanceof Error ? err.message : 'Không thể cập nhật lớp học.', { variant: 'error' })
     } finally {
       setBusy(false)
     }
@@ -555,11 +535,9 @@ export function ClassroomsPage() {
                     isActive={activeId === classroom.id}
                     busy={busy}
                     onSwitch={() => void handleSwitch(classroom.id)}
-                    onEdit={() => {
-                      setTarget(classroom)
-                      setEditDraft({ className: classroom.className, schoolYear: classroom.schoolYear })
-                      setModal('edit')
-                    }}
+                    onManage={() =>
+                      router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
+                    }
                     onDuplicate={() => {
                       setTarget(classroom)
                       setDupDraft({
@@ -596,7 +574,9 @@ export function ClassroomsPage() {
                     isActive={activeId === classroom.id}
                     busy={busy}
                     onSwitch={() => void handleSwitch(classroom.id)}
-                    onEdit={() => {}}
+                    onManage={() =>
+                      router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
+                    }
                     onDuplicate={() => {}}
                     onArchive={() => {}}
                     onDelete={() => {
@@ -652,37 +632,6 @@ export function ClassroomsPage() {
               onClick={() => void handleCreate()}
             >
               {busy ? 'Đang tạo...' : 'Tạo lớp'}
-            </ClassroomButton>
-          </div>
-        </div>
-      </ModalShell>
-
-      <ModalShell open={modal === 'edit'} title="Chỉnh sửa lớp" onClose={closeModal}>
-        <div className="grid gap-4">
-          <Field label="Tên lớp">
-            <Input
-              value={editDraft.className}
-              onChange={(e) => setEditDraft({ ...editDraft, className: e.target.value })}
-            />
-          </Field>
-          <Field label="Năm học">
-            <Input
-              value={editDraft.schoolYear}
-              onChange={(e) => setEditDraft({ ...editDraft, schoolYear: e.target.value })}
-            />
-          </Field>
-          <p className="text-xs font-semibold text-slate-500">
-            Chỉ đổi tên hiển thị — mã dữ liệu lớp không thay đổi.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <ClassroomButton variant="outline" onClick={closeModal}>
-              Hủy
-            </ClassroomButton>
-            <ClassroomButton
-              disabled={busy || !editDraft.className.trim() || !editDraft.schoolYear.trim()}
-              onClick={() => void handleEdit()}
-            >
-              {busy ? 'Đang lưu...' : 'Lưu'}
             </ClassroomButton>
           </div>
         </div>
