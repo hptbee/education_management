@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEmptyDatabase } from "../database.factory";
 import { emptyCloudDirtyState } from "./cloud-types";
-import { collectAssetKeysForCloudSync } from "./cloud-asset-sync";
+import { collectAssetKeysForCloudSync, applyAssetKeysFromRestoredPaths } from "./cloud-asset-sync";
 
 vi.mock("../assets/classroom-asset.service", () => ({
   classroomAssetService: {
@@ -45,5 +45,23 @@ describe("collectAssetKeysForCloudSync", () => {
 
     expect(keys).toContain("assets/banner.webp");
     expect(keys).toContain("assets/students/s1/avatar.webp");
+  });
+});
+
+describe("applyAssetKeysFromRestoredPaths", () => {
+  it("fills missing banner and teacher keys from restored asset paths", () => {
+    const db = createEmptyDatabase({
+      className: "2/7",
+      schoolYear: "2026-2027",
+      teacher: { id: "t1", name: "Teacher", createdAt: "2026-01-01", updatedAt: "2026-01-01" },
+    });
+
+    const next = applyAssetKeysFromRestoredPaths(db, [
+      { path: "assets/banner.webp" },
+      { path: "assets/teacher/avatar.webp" },
+    ]);
+
+    expect(next.classroomSettings.bannerAssetKey).toBe("assets/banner.webp");
+    expect(next.classroomSettings.teacher.avatarAssetKey).toBe("assets/teacher/avatar.webp");
   });
 });

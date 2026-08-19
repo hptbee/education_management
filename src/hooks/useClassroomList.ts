@@ -5,7 +5,7 @@ import type { DatabaseSummary } from "@/src/database/types";
 import { useAppData } from "@/src/store/AppDataContext";
 
 export function useClassroomList(refreshKey?: string | number) {
-  const { listClassrooms } = useAppData();
+  const { listClassrooms, classroomListEpoch } = useAppData();
   const [classrooms, setClassrooms] = useState<DatabaseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export function useClassroomList(refreshKey?: string | number) {
 
   useEffect(() => {
     void refresh();
-  }, [refresh, refreshKey]);
+  }, [refresh, refreshKey, classroomListEpoch]);
 
   return { classrooms, loading, error, refresh };
 }

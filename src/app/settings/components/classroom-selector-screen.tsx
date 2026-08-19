@@ -59,7 +59,7 @@ export function ClassroomSelectorScreen() {
   const cloudRestoreCard = (
     <CloudRestoreCard
       reloadKey={databases.map((db) => db.id).join(',')}
-      importFromCloudPayload={(payload) => restoreFromCloudPayload(payload)}
+      importFromCloudPayload={(payload, cloudAssets) => restoreFromCloudPayload(payload, cloudAssets)}
       onRestored={() => void loadDatabases()}
     />
   )

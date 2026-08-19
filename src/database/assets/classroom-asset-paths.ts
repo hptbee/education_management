@@ -117,6 +117,15 @@ export function resolveClassroomAssetAbsolute(
   return joinPath(dataDir, "classrooms", classroomId, ...segments);
 }
 
+/** Path relative to the Tauri data dir — avoids Windows `\\?\` vs `C:\` scope mismatches. */
+export function classroomAssetPathFromDataRoot(classroomId: string, relativePath: string): string {
+  assertSafeClassroomId(classroomId, "classroomId");
+  const normalized = relativePath.replace(/\\/g, "/");
+  assertSafeRelativeAssetPath(normalized);
+  const segments = normalized.split("/").filter(Boolean);
+  return ["classrooms", classroomId, ...segments].join("/");
+}
+
 export function parentDirForAsset(relativePath: string): string {
   const idx = relativePath.lastIndexOf("/");
   return idx >= 0 ? relativePath.slice(0, idx) : "";

@@ -6,7 +6,7 @@ Login is **required** to use the app. Classroom data stays **local-first** (`Cla
 |---|---|
 | Classroom JSON (students, points, teams, …) | Local Tauri FS or IndexedDB |
 | Teacher account + license | Cloudflare D1 (via Worker) |
-| Signed access token (entitlement) | OS keychain (Tauri) or `sessionStorage` (web dev) |
+| Signed access token (entitlement) | OS keychain (Tauri) or `localStorage` (web dev) |
 | Cloud backup JSON | Cloudflare R2 structured files under `users/{userId}/` — see [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md) |
 
 See also: [`workers/cloud-backup/README.md`](../workers/cloud-backup/README.md), [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md), [build-and-release.md](./build-and-release.md).
@@ -221,16 +221,16 @@ Cloud backup is **upload + manual restore**, not bidirectional sync between PCs.
 | Question | Answer |
 |---|---|
 | Same Google account on PC1 and PC2? | Yes — one R2 namespace: `users/{userId}/classrooms/{classroomKey}/...` |
-| Does login on PC2 pull cloud data? | **No.** Each PC keeps its own local JSON files. |
-| When does cloud update? | After a **local save** on that PC, when cloud backup is **enabled for that class** (~30s debounce). First structured sync uploads all domain files; later uploads send dirty/changed files via `PUT /sync`. |
+| Does login on PC2 pull cloud data? | **Registry only.** After sign-in with `permissions.cloudBackup`, the app fetches `users/{userId}/classrooms.json`, merges stubs into the local index, and shows every account classroom in **Quản lý lớp** / the sidebar switcher. Full classroom JSON is **not** downloaded for every class. |
+| When does cloud update? | After a **local save** on that PC, when cloud backup is **enabled for that class** (~30s debounce). **Create/clone** triggers an immediate first structured upload when backup is enabled. Later uploads send dirty/changed files via `PUT /sync`. |
 | What if PC2 saves with an old local copy? | Per-class domain files: last upload wins per path. **Registry** merges by classroom `key` (higher `updatedAt`); empty local registry cannot overwrite a non-empty remote registry. |
-| How to get PC1’s data on PC2? | **Cài đặt** classroom selector → **Khôi phục từ đám mây** (before editing), or Dữ liệu tab when `showDataTab` is enabled. |
+| How to get PC1’s data on PC2? | Sign in → stubs appear in **Quản lý lớp** → switch to a class (**Chưa tải về**) to hydrate from cloud. **Khôi phục từ đám mây** remains for manual overwrite of an already-hydrated class. |
 | Back on PC1 the next day? | PC1 still shows **PC1 local** until you restore from cloud or edit locally; saving may upload PC1 local and overwrite cloud again. |
 
 **Recommended workflow when switching machines:**
 
-1. On the machine you finished on — wait for cloud upload (after last save; ~30s).
-2. On the other machine — restore from cloud **before** scoring or editing that class (if the class id is not already present locally).
+1. On the machine you finished on — wait for cloud upload (after last save; ~30s, or immediately after creating/cloning a class).
+2. On the other machine — sign in, confirm all classes appear in **Quản lý lớp**, then switch into each class you need (lazy hydrate) before editing.
 3. Avoid editing the same class on two PCs without restore — otherwise whichever PC uploads last replaces the cloud copy.
 
 `checkStartupBackup` only compares **local** `metadata.updatedAt` to this device’s backup metadata — it does **not** compare to the cloud timestamp.
@@ -242,12 +242,12 @@ First Google sign-in on a **new PC** (or empty app data folder):
 | Layer | What you get |
 |---|---|
 | **Account & license** | Same D1 user and plan as other devices (trial / basic / premium / lifetime). `AccessGate` unlocks if the license is valid. |
-| **Local classrooms** | **Empty** until you create a class, import JSON, or manually restore from cloud. The app shows **Cài đặt** classroom selector (“Tạo lớp học mới”). |
-| **Classes from another PC** | **Not downloaded** on login. They exist in the cloud only if the other PC uploaded them (premium/lifetime + cloud backup enabled for that class + upload completed). |
-| **Getting another PC’s class** | **Cài đặt** classroom selector → **Khôi phục từ đám mây** (or Dữ liệu tab when enabled). Restore fails if that `metadata.id` already exists locally. |
+| **Local classrooms** | **Empty** until registry merge, create, import JSON, or hydrate-on-switch. |
+| **Classes from another PC** | With `permissions.cloudBackup`, login pulls the account registry and adds **stub** rows (`Chưa tải về`) for each remote class. Data exists in cloud only if the other PC completed a structured upload for that class. |
+| **Opening a remote class** | Switch to the stub in **Quản lý lớp** or the sidebar — the app downloads structured JSON + assets, saves locally, then opens the class. If cloud data is missing, the stub stays and **Không tải được** is shown with **Thử tải lại**. |
 | **Creating a new class on PC2 by mistake** | A **new** `classroomId` — separate from PC1’s class in cloud. Does not update PC1’s data. |
 
-**Typical experience:** logged in, correct plan in **Tài khoản**, but **no classes** until create / import / restore.
+**Typical experience:** logged in, correct plan in **Tài khoản**, remote classes listed as stubs in **Quản lý lớp**. Startup opens a class already stored on this device. If none is hydrated yet, login discovery opens one registry class so the shell is not empty.
 
 ---
 
@@ -360,14 +360,14 @@ There is **no admin UI** in the app — API + Wrangler D1 only.
 | Platform | Storage | Notes |
 |---|---|---|
 | Tauri | OS keychain (`keyring`) | Keyring is the only store after login. Legacy `entitlement.sec` is migrated once then deleted. Save verifies a keyring read-back and never writes plaintext. If keyring write/verify fails, require sign-in again. |
-| Web dev | `sessionStorage` | Weaker; dev-only |
+| Web dev | `localStorage` | Survives close/reopen of the browser; cleared on **Đăng xuất**. Weaker than OS keychain (dev-only). |
 
 ### Session persistence (close & reopen)
 
 | Runtime | After close & reopen | Must sign in again when |
 |---|---|---|
 | **Tauri `.exe`** | **Usually stays signed in.** `AuthProvider.bootstrap()` loads keychain on startup; refreshes online when possible. | **Đăng xuất**; license expired / account disabled; offline grace ended (~30 days without online refresh); invalid entitlement or wrong `NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY` in build; keyring save failed at login. |
-| **Web dev** (`npm run dev`) | **Same browser tab refresh:** stays signed in. **Close tab/browser:** `sessionStorage` cleared → sign in again. | Closing the browser window or tab; opening a new session without stored entitlement. |
+| **Web dev** (`npm run dev`) | **Stays signed in** after close/reopen (same browser profile). `localStorage` holds the entitlement; leftover `sessionStorage` is migrated once. | **Đăng xuất**; license expired / account disabled; offline grace ended; invalid entitlement; a different browser profile. |
 
 JWT `exp` ≈ **7 days**, but offline use is allowed while `offlineValidUntil` (~30 days from issue) still verifies locally (see **Offline grace** above).
 
@@ -379,14 +379,14 @@ Web (`npm run dev`) and Tauri `.exe` do **not** share a login session:
 |---|---|---|
 | Login | Google Identity Services button in browser | “Đăng nhập bằng Google” → PKCE loopback in system browser |
 | OAuth client env | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` |
-| Session storage | `sessionStorage` | OS keychain |
+| Session storage | `localStorage` | OS keychain |
 | Logs in the other app automatically? | **No** | **No** |
 
 Signing in on web does **not** sign you into the `.exe`, and vice versa. Same Google account still shares **license** (D1) and **cloud backup namespace** (R2), not local classroom JSON or entitlement files on disk.
 
 Session refresh (`bootstrap` / `refreshSession`) keeps the previous session if `saveAuthSession` fails; it logs and does not throw from `online` / `visibilitychange` handlers.
 
-Never store entitlements in classroom JSON, IndexedDB, `localStorage`, or settings files.
+Never store entitlements in classroom JSON, IndexedDB, or settings files. Web entitlement lives only under the `education-management:auth-session` `localStorage` key.
 
 ---
 

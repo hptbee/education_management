@@ -10,7 +10,7 @@ import {
   LoginCancelledError,
   requestLoginCancel,
 } from "@/src/auth/login-cancel";
-import { clearAuthSession, loadAuthSession, saveAuthSession } from "@/src/auth/secure-storage";
+import { clearAuthSession, loadAuthSession, rememberAuthSession, saveAuthSession } from "@/src/auth/secure-storage";
 import type {
   AccessState,
   AuthLicense,
@@ -56,6 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [offlineValidUntil, setOfflineValidUntil] = useState<number | null>(null);
   const [permissions, setPermissions] = useState<EntitlementPermissions | null>(null);
 
+  const cacheAndSetSession = useCallback((next: StoredAuthSession | null) => {
+    if (next) rememberAuthSession(next);
+    setSession(next);
+  }, []);
+
   const recomputeAccess = useCallback(
     async (nextSession: StoredAuthSession | null, denied: AccessState | null = serverDenied) => {
       if (!nextSession) {
@@ -86,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsBootstrapping(true);
     try {
       const stored = await loadAuthSession();
-      setSession(stored);
+      cacheAndSetSession(stored);
       setServerDenied(null);
       await recomputeAccess(stored, null);
 
@@ -103,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               lastTrustedIat: verified?.issuedAt ?? Math.floor(Date.now() / 1000),
             };
             await saveAuthSession(next);
-            setSession(next);
+            cacheAndSetSession(next);
             setServerDenied(null);
             await recomputeAccess(next, null);
           } else {
@@ -132,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsBootstrapping(false);
     }
-  }, [recomputeAccess]);
+  }, [recomputeAccess, cacheAndSetSession]);
 
   useEffect(() => {
     void bootstrap();
@@ -199,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lastTrustedIat: verified?.issuedAt ?? Math.floor(Date.now() / 1000),
         };
         await saveAuthSession(next);
-        setSession(next);
+        cacheAndSetSession(next);
         setServerDenied(null);
         await recomputeAccess(next, null);
       } catch (error) {
@@ -217,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoginStep(null);
       }
     },
-    [recomputeAccess],
+    [recomputeAccess, cacheAndSetSession],
   );
 
   const refreshSession = useCallback(async () => {
@@ -239,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       try {
         await saveAuthSession(next);
-        setSession(next);
+        cacheAndSetSession(next);
         setServerDenied(null);
         await recomputeAccess(next, null);
       } catch (error) {
@@ -265,7 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     try {
       await saveAuthSession(next);
-      setSession(next);
+      cacheAndSetSession(next);
       await recomputeAccess(next, serverDenied);
     } catch (error) {
       console.warn("[AuthProvider] refreshSession me persist failed:", error);

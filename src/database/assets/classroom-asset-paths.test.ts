@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bannerAssetKey,
+  classroomAssetPathFromDataRoot,
   giftImageAssetKey,
   isAllowedCloudAssetPath,
   isLegacyGiftImagePath,
@@ -39,6 +40,12 @@ describe("classroom asset paths", () => {
     );
     expect(absolute).toBe(
       "C:\\AppData\\ClassroomManagement\\classrooms\\2-7_2026-2027\\assets\\banner.webp",
+    );
+  });
+
+  it("builds a data-root-relative asset path for Tauri", () => {
+    expect(classroomAssetPathFromDataRoot("2-7_2026-2027", bannerAssetKey())).toBe(
+      "classrooms/2-7_2026-2027/assets/banner.webp",
     );
   });
 });

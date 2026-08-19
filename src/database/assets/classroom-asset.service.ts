@@ -3,6 +3,7 @@ import type { Gift } from "../../types/models";
 import type { ClassroomDatabase } from "../types";
 import { processImageDataUrl, processImageFile } from "../../utils/images";
 import {
+  classroomAssetPathFromDataRoot,
   classroomAssetRootRelative,
   giftImageAssetKey,
   isClassroomAssetPath,
@@ -11,6 +12,7 @@ import {
   resolveClassroomAssetAbsolute,
 } from "./classroom-asset-paths";
 import { IndexedDbAssetAdapter, webAssetStorageKey } from "./indexeddb-asset.store";
+import { logCloudTrace } from "../../logging/app-log";
 
 /** @deprecated Use ASSET_IMAGE_RULES.gift — kept for callers during migration. */
 export const GIFT_IMAGE = {
@@ -35,9 +37,7 @@ export class ClassroomAssetService {
 
     if (isTauri()) {
       const fs = await this.getFs();
-      const dataDir = await fs!.getDataDirectory();
-      const dirPath = resolveClassroomAssetAbsolute(dataDir, classroomId, parent, fs!.joinPath);
-      await fs!.ensureDir(dirPath);
+      await fs!.ensureDir(classroomAssetPathFromDataRoot(classroomId, parent));
     }
   }
 
@@ -48,12 +48,22 @@ export class ClassroomAssetService {
 
     if (isTauri()) {
       const fs = await this.getFs();
-      const dataDir = await fs!.getDataDirectory();
       await this.ensureParentDir(classroomId, relativePath);
-      const absolutePath = resolveClassroomAssetAbsolute(dataDir, classroomId, relativePath, fs!.joinPath);
-      await fs!.writeBinaryFile(absolutePath, bytes);
+      const fromDataRoot = classroomAssetPathFromDataRoot(classroomId, relativePath);
+      await fs!.writeBinaryFile(fromDataRoot, bytes);
+      logCloudTrace("info", "cloud-restore", "saveAsset tauri", {
+        classroomId,
+        relativePath,
+        fromDataRoot,
+        bytes: bytes.length,
+      });
     } else {
       await this.webStore.writeBinaryFile(webAssetStorageKey(classroomId, relativePath), bytes);
+      logCloudTrace("info", "cloud-restore", "saveAsset indexeddb", {
+        classroomId,
+        relativePath,
+        bytes: bytes.length,
+      });
     }
 
     return relativePath;

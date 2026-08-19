@@ -28,6 +28,8 @@ import type { DatabaseSummary } from '@/src/database/types'
 import { useAppData } from '@/src/store/AppDataContext'
 import { formatRelativeUpdatedAt } from '@/src/utils/relativeTime'
 import { CloudRestoreCard } from '@/src/app/settings/components/cloud-restore-card'
+import { backupMetadataService } from '@/src/database/backup/backup-metadata.service'
+import { useAuth } from '@/src/store/AuthContext'
 import { cn } from '@/lib/utils'
 
 type ModalKind = 'create' | 'duplicate' | 'archive' | 'delete' | 'switch-prompt' | null
@@ -203,6 +205,9 @@ function ClassroomManagementCard({
   classroom,
   isActive,
   busy,
+  hydrateError,
+  hasCloudBackupPermission,
+  onRetryHydrate,
   onSwitch,
   onManage,
   onDuplicate,
@@ -213,6 +218,9 @@ function ClassroomManagementCard({
   classroom: DatabaseSummary
   isActive: boolean
   busy: boolean
+  hydrateError?: string
+  hasCloudBackupPermission: boolean
+  onRetryHydrate?: () => void
   onSwitch: () => void
   onManage: () => void
   onDuplicate: () => void
@@ -220,6 +228,33 @@ function ClassroomManagementCard({
   onDelete: () => void
   onRestore: () => void
 }) {
+  const [cloudLabel, setCloudLabel] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!hasCloudBackupPermission || classroom.hydrated === false) {
+      setCloudLabel(null)
+      return
+    }
+
+    let cancelled = false
+    void backupMetadataService.getClassroomMeta(classroom.id).then((meta) => {
+      if (cancelled) return
+      if (meta.lastCloudBackupStatus === 'success') {
+        setCloudLabel('Đã sao lưu')
+      } else if (meta.lastCloudBackupStatus === 'failed') {
+        setCloudLabel('Sao lưu thất bại')
+      } else if (meta.lastCloudBackupStatus === 'pending') {
+        setCloudLabel('Đang sao lưu')
+      } else {
+        setCloudLabel('Chỉ trên máy này')
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [classroom.id, classroom.hydrated, classroom.updatedAt, hasCloudBackupPermission])
+
   return (
     <ClassroomCard className={cn(isActive && !classroom.archived && 'border-brand/30 ring-2 ring-brand/15')}>
       <div className="flex items-start justify-between gap-3">
@@ -241,8 +276,21 @@ function ClassroomManagementCard({
                 Chưa tải về
               </span>
             ) : null}
+            {hydrateError ? (
+              <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-rose-700">
+                Không tải được
+              </span>
+            ) : null}
+            {cloudLabel && !hydrateError ? (
+              <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-sky-800">
+                {cloudLabel}
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-sm font-semibold text-slate-500">Năm học {classroom.schoolYear}</p>
+          {hydrateError ? (
+            <p className="mt-2 text-xs font-semibold text-rose-600">{hydrateError}</p>
+          ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-slate-500">
             <span className="inline-flex items-center gap-1">
               <Users className="size-3.5" />
@@ -263,7 +311,12 @@ function ClassroomManagementCard({
       </div>
 
       {!classroom.archived ? (
-        <div className="mt-4">
+        <div className="mt-4 grid gap-2">
+          {hydrateError && onRetryHydrate ? (
+            <ClassroomButton variant="outline" disabled={busy} onClick={onRetryHydrate}>
+              Thử tải lại
+            </ClassroomButton>
+          ) : null}
           {isActive ? (
             <ClassroomButton variant="outline" className="w-full" disabled>
               Đang sử dụng
@@ -297,6 +350,7 @@ export function ClassroomsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { showAlert } = useClassroomDialog()
+  const { permissions } = useAuth()
   const {
     data,
     switchDatabase,
@@ -306,7 +360,11 @@ export function ClassroomsPage() {
     restoreClassroom,
     deleteDatabase,
     restoreFromCloudPayload,
+    hydrateErrors,
+    retryHydrateClassroom,
   } = useAppData()
+
+  const hasCloudBackupPermission = permissions?.cloudBackup === true
 
   const [refreshKey, setRefreshKey] = useState(0)
   const { classrooms, loading, error, refresh } = useClassroomList(refreshKey)
@@ -534,6 +592,9 @@ export function ClassroomsPage() {
                     classroom={classroom}
                     isActive={activeId === classroom.id}
                     busy={busy}
+                    hydrateError={hydrateErrors[classroom.id]}
+                    hasCloudBackupPermission={hasCloudBackupPermission}
+                    onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
                     onSwitch={() => void handleSwitch(classroom.id)}
                     onManage={() =>
                       router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
@@ -573,6 +634,9 @@ export function ClassroomsPage() {
                     classroom={classroom}
                     isActive={activeId === classroom.id}
                     busy={busy}
+                    hydrateError={hydrateErrors[classroom.id]}
+                    hasCloudBackupPermission={hasCloudBackupPermission}
+                    onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
                     onSwitch={() => void handleSwitch(classroom.id)}
                     onManage={() =>
                       router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
@@ -595,7 +659,7 @@ export function ClassroomsPage() {
 
       <CloudRestoreCard
         reloadKey={String(refreshKey)}
-        importFromCloudPayload={(payload) => restoreFromCloudPayload(payload)}
+        importFromCloudPayload={(payload, cloudAssets) => restoreFromCloudPayload(payload, cloudAssets)}
         onRestored={() => bumpList()}
       />
 

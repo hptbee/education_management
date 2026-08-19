@@ -16,10 +16,11 @@ import {
   getCloudBackupUrl,
   isCloudBackupConfigured,
   resolveEntitlementToken,
+  inspectCloudBackupAuth,
 } from "./cloud-backup.service";
 import { uploadRegistryMerge } from "./cloud-sync.service";
 import type { ClassroomDatabase } from "../types";
-import { logAppEvent } from "@/src/logging/app-log";
+import { logAppEvent, logCloudTrace } from "@/src/logging/app-log";
 
 export type PullRegistryResult =
   | { ok: true; registry: CloudClassroomsRegistryFile; source: "registry" | "legacy" }
@@ -27,9 +28,40 @@ export type PullRegistryResult =
 
 let registryPullCompleted = false;
 let registryPullPromise: Promise<PullRegistryResult> | null = null;
+let lastMergedRegistry: CloudClassroomsRegistryFile | null = null;
+
+export class HydrateCancelledError extends Error {
+  constructor() {
+    super("hydrate-cancelled");
+    this.name = "HydrateCancelledError";
+  }
+}
+
+export function isHydrateCancelledError(error: unknown): boolean {
+  return error instanceof HydrateCancelledError;
+}
+
+interface InFlightHydrate {
+  promise: Promise<ClassroomDatabase>;
+  waiters: Set<() => boolean>;
+}
+
+const hydrateInFlight = new Map<string, InFlightHydrate>();
+
+function allWaitersCancelled(waiters: Set<() => boolean>): boolean {
+  if (waiters.size === 0) return false;
+  for (const isCancelled of waiters) {
+    if (!isCancelled()) return false;
+  }
+  return true;
+}
 
 export function isRegistryPullCompleted(): boolean {
   return registryPullCompleted;
+}
+
+export function getLastMergedRegistry(): CloudClassroomsRegistryFile | null {
+  return lastMergedRegistry;
 }
 
 export async function refreshCloudRegistrySummaries(): Promise<void> {
@@ -48,17 +80,23 @@ export async function refreshCloudRegistrySummaries(): Promise<void> {
 
 export async function pullClassroomRegistry(fetchImpl?: typeof fetch): Promise<PullRegistryResult> {
   if (!getCloudBackupUrl()) {
+    logCloudTrace("warn", "cloud-registry", "pull skipped: no backup URL");
     return { ok: false, reason: "not_configured" };
   }
 
   const token = await resolveEntitlementToken();
   if (!token) {
+    logCloudTrace("warn", "cloud-registry", "pull skipped: unauthorized", await inspectCloudBackupAuth());
     return { ok: false, reason: "unauthorized" };
   }
 
   try {
     const fetched = await fetchClassroomsRegistry(token, fetchImpl);
     if (fetched.source === "registry" && fetched.registry) {
+      logCloudTrace("info", "cloud-registry", "pulled classrooms.json", {
+        count: fetched.registry.classrooms.length,
+        source: fetched.source,
+      });
       return { ok: true, registry: fetched.registry, source: "registry" };
     }
 
@@ -86,22 +124,49 @@ export async function pullClassroomRegistry(fetchImpl?: typeof fetch): Promise<P
 export async function mergeAndRememberRegistry(registry: CloudClassroomsRegistryFile): Promise<void> {
   const entries = visibleRegistryEntries(registry);
   await databaseService.mergeRegistryStubs(entries);
+  lastMergedRegistry = registry;
   await refreshCloudRegistrySummaries();
 }
 
 export async function ensureRegistryPulled(fetchImpl?: typeof fetch): Promise<PullRegistryResult> {
+  if (registryPullCompleted && lastMergedRegistry) {
+    return { ok: true, registry: lastMergedRegistry, source: "registry" };
+  }
+
   if (registryPullCompleted) {
-    return { ok: true, registry: { version: 1, updatedAt: new Date().toISOString(), classrooms: [] }, source: "registry" };
+    const summaries = await databaseService.listDatabases();
+    const now = new Date().toISOString();
+    const registry = buildClassroomsRegistryFromSummaries(
+      summaries.map((s) => ({
+        id: s.id,
+        className: s.className,
+        schoolYear: s.schoolYear,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+        archived: s.archived,
+      })),
+      now,
+    );
+    lastMergedRegistry = registry;
+    return { ok: true, registry, source: "registry" };
   }
 
   if (!registryPullPromise) {
-    registryPullPromise = pullClassroomRegistry(fetchImpl).then(async (result) => {
-      if (result.ok) {
-        await mergeAndRememberRegistry(result.registry);
-        registryPullCompleted = true;
-      }
-      return result;
-    });
+    registryPullPromise = pullClassroomRegistry(fetchImpl)
+      .then(async (result) => {
+        if (result.ok) {
+          await mergeAndRememberRegistry(result.registry);
+          registryPullCompleted = true;
+        } else {
+          registryPullPromise = null;
+        }
+        return result;
+      })
+      .catch((error) => {
+        registryPullPromise = null;
+        logAppEvent("warn", "cloud-registry", "ensureRegistryPulled failed", error);
+        return { ok: false as const, reason: "network" as const };
+      });
   }
 
   return registryPullPromise;
@@ -109,10 +174,16 @@ export async function ensureRegistryPulled(fetchImpl?: typeof fetch): Promise<Pu
 
 export async function pullAndMergeAccountRegistry(fetchImpl?: typeof fetch): Promise<PullRegistryResult> {
   if (!(await isCloudBackupConfigured())) {
+    logCloudTrace("warn", "cloud-registry", "merge skipped: not configured", await inspectCloudBackupAuth());
     return { ok: false, reason: "not_configured" };
   }
 
   const result = await ensureRegistryPulled(fetchImpl);
+  logCloudTrace("info", "cloud-registry", "pullAndMergeAccountRegistry", {
+    ok: result.ok,
+    reason: result.ok ? result.source : result.reason,
+    classrooms: result.ok ? result.registry.classrooms.length : 0,
+  });
   if (result.ok) {
     await databaseService.enableCloudBackupOnAllHydratedClassrooms();
   }
@@ -183,27 +254,114 @@ export async function pushClassroomRegistryMerge(
 
   const merged = mergeClassroomRegistries(localRegistry, remoteRegistry);
   await uploadRegistryMerge(merged, options?.fetchImpl);
+  lastMergedRegistry = merged;
 }
 
-export async function hydrateClassroomFromCloud(classroomKey: string): Promise<ClassroomDatabase> {
+async function hydrateClassroomFromCloudInner(
+  classroomKey: string,
+  waiters: Set<() => boolean>,
+): Promise<ClassroomDatabase> {
   const token = await resolveEntitlementToken();
   if (!token) {
+    logCloudTrace("error", "cloud-restore", "hydrate aborted: no token", {
+      classroomKey,
+      ...(await inspectCloudBackupAuth()),
+    });
     throw new Error("Cloud backup not authorized");
   }
 
+  logCloudTrace("info", "cloud-restore", "hydrate start", { classroomKey, isTauri: (await inspectCloudBackupAuth()).isTauri });
+
   const payload = await restoreCloudClassroom(token, classroomKey);
   if (!payload) {
+    logCloudTrace("error", "cloud-restore", "GET /restore returned empty", { classroomKey });
     throw new Error("Không tìm thấy bản sao lưu trên đám mây.");
   }
 
+  if (allWaitersCancelled(waiters)) {
+    logCloudTrace("warn", "cloud-restore", "hydrate cancelled after JSON", { classroomKey });
+    throw new HydrateCancelledError();
+  }
+
   const assets = await restoreCloudClassroomAssets(token, classroomKey);
-  const db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets: assets });
+  logCloudTrace("info", "cloud-restore", "GET /restore assets", {
+    classroomKey,
+    count: assets.length,
+    paths: assets.map((item) => item.path),
+  });
+
+  if (allWaitersCancelled(waiters)) {
+    logCloudTrace("warn", "cloud-restore", "hydrate cancelled after assets", { classroomKey });
+    throw new HydrateCancelledError();
+  }
+
+  let db: ClassroomDatabase;
+  try {
+    db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets: assets });
+  } catch (error) {
+    const record = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+    const metadata = record?.metadata as Record<string, unknown> | undefined;
+    const nested = record?.payload as Record<string, unknown> | undefined;
+    logCloudTrace("error", "cloud-restore", "hydrate save failed", {
+      classroomKey,
+      message: error instanceof Error ? error.message : String(error),
+      payloadType: typeof payload,
+      payloadKeys: record ? Object.keys(record).slice(0, 20) : [],
+      hasPayloadWrapper: Boolean(nested && typeof nested === "object"),
+      metadataId: typeof metadata?.id === "string" ? metadata.id : null,
+      metadataVersion: typeof metadata?.version === "number" ? metadata.version : null,
+    });
+    throw error;
+  }
+  logCloudTrace("info", "cloud-restore", "hydrate saved locally", {
+    classroomKey,
+    classroomId: db.metadata.id,
+    bannerAssetKey: db.classroomSettings.bannerAssetKey ?? null,
+    teacherAvatarKey: db.classroomSettings.teacher?.avatarAssetKey ?? null,
+  });
 
   await refreshCloudRegistrySummaries();
   return db;
 }
 
+export async function hydrateClassroomFromCloud(
+  classroomKey: string,
+  options?: { isCancelled?: () => boolean },
+): Promise<ClassroomDatabase> {
+  const waiter = options?.isCancelled ?? (() => false);
+  const existing = hydrateInFlight.get(classroomKey);
+  if (existing) {
+    existing.waiters.add(waiter);
+    try {
+      const db = await existing.promise;
+      if (waiter()) {
+        throw new HydrateCancelledError();
+      }
+      return db;
+    } finally {
+      existing.waiters.delete(waiter);
+    }
+  }
+
+  const waiters = new Set<() => boolean>([waiter]);
+  const promise = hydrateClassroomFromCloudInner(classroomKey, waiters).finally(() => {
+    hydrateInFlight.delete(classroomKey);
+  });
+  hydrateInFlight.set(classroomKey, { promise, waiters });
+  try {
+    const db = await promise;
+    if (waiter()) {
+      throw new HydrateCancelledError();
+    }
+    return db;
+  } finally {
+    waiters.delete(waiter);
+  }
+}
+
 export function resetRegistryPullStateForTests(): void {
   registryPullCompleted = false;
   registryPullPromise = null;
+  lastMergedRegistry = null;
+  hydrateInFlight.clear();
 }

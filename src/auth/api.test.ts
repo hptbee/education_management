@@ -120,6 +120,26 @@ describe("api fetch wrappers", () => {
     expect(data).toEqual({ payload: {} });
   });
 
+  it("returns null when cloud restore is 404", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      text: async () => "not found",
+    } as Response);
+    await expect(restoreCloudClassroom("token", "c1")).resolves.toBeNull();
+  });
+
+  it("throws when cloud restore is not 404", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      text: async () => "unauthorized",
+    } as Response);
+    await expect(restoreCloudClassroom("token", "c1")).rejects.toThrow(
+      "Không thể tải bản sao lưu trên đám mây (401).",
+    );
+  });
+
   it("returns validation error without worker url", async () => {
     delete process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
     const result = await postAuthGoogle({ idToken: "x" });

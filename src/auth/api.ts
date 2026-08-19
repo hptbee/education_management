@@ -1,5 +1,6 @@
 import type { AuthApiError, AuthLicense, AuthUser } from "./types";
 import { isTauri } from "@/src/database/tauri-fs.service";
+import { logCloudTrace } from "@/src/logging/app-log";
 
 export function getWorkerBaseUrl(): string | null {
   const url = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL?.trim();
@@ -163,7 +164,21 @@ export async function restoreCloudClassroom(
     { headers: { Authorization: `Bearer ${entitlement}` } },
   );
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    logCloudTrace("error", "cloud-restore", "GET /restore", {
+      classroomId,
+      status: response.status,
+      body: body.slice(0, 300),
+    });
+    if (response.status === 404) return null;
+    throw new Error(`Không thể tải bản sao lưu trên đám mây (${response.status}).`);
+  }
+
+  logCloudTrace("info", "cloud-restore", "GET /restore", {
+    classroomId,
+    status: response.status,
+  });
   return response.json();
 }
 
@@ -180,10 +195,25 @@ export async function restoreCloudClassroomAssets(
     { headers: { Authorization: `Bearer ${entitlement}` } },
   );
 
-  if (!response.ok) return [];
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    logCloudTrace("error", "cloud-restore", "GET /restore/assets failed", {
+      classroomId,
+      status: response.status,
+      body: body.slice(0, 300),
+    });
+    return [];
+  }
 
   const json = (await response.json().catch(() => ({}))) as {
     assets?: Array<{ path: string; content: string; encoding?: string }>;
   };
-  return json.assets ?? [];
+  const assets = json.assets ?? [];
+  logCloudTrace("info", "cloud-restore", "GET /restore/assets ok", {
+    classroomId,
+    count: assets.length,
+    paths: assets.map((item) => item.path),
+    encodings: assets.map((item) => item.encoding ?? "missing"),
+  });
+  return assets;
 }

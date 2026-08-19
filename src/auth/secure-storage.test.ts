@@ -5,7 +5,7 @@ vi.mock("@/src/database/tauri-fs.service", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import { clearAuthSession, loadAuthSession, saveAuthSession } from "./secure-storage";
+import { clearAuthSession, loadAuthSession, rememberAuthSession, resetAuthSessionCacheForTests, saveAuthSession } from "./secure-storage";
 import { isTauri } from "@/src/database/tauri-fs.service";
 
 const session: StoredAuthSession = {
@@ -29,32 +29,50 @@ const session: StoredAuthSession = {
   lastTrustedIat: 1,
 };
 
+function memoryStorage(store: Record<string, string>) {
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+  };
+}
+
 describe("secure-storage web", () => {
-  const store: Record<string, string> = {};
+  const localStore: Record<string, string> = {};
+  const sessionStore: Record<string, string> = {};
 
   beforeEach(() => {
+    resetAuthSessionCacheForTests();
     vi.mocked(isTauri).mockReturnValue(false);
     vi.stubGlobal("window", {});
-    vi.stubGlobal("sessionStorage", {
-      getItem: (key: string) => store[key] ?? null,
-      setItem: (key: string, value: string) => {
-        store[key] = value;
-      },
-      removeItem: (key: string) => {
-        delete store[key];
-      },
-    });
+    vi.stubGlobal("localStorage", memoryStorage(localStore));
+    vi.stubGlobal("sessionStorage", memoryStorage(sessionStore));
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
-    Object.keys(store).forEach((k) => delete store[k]);
+    Object.keys(localStore).forEach((k) => delete localStore[k]);
+    Object.keys(sessionStore).forEach((k) => delete sessionStore[k]);
   });
 
-  it("saves and loads session", async () => {
+  it("saves and loads session from localStorage after cache reset", async () => {
     await saveAuthSession(session);
+    resetAuthSessionCacheForTests();
     const loaded = await loadAuthSession();
     expect(loaded?.entitlement).toBe("token");
+    expect(sessionStore["education-management:auth-session"]).toBeUndefined();
+  });
+
+  it("migrates a leftover sessionStorage payload into localStorage", async () => {
+    sessionStore["education-management:auth-session"] = JSON.stringify(session);
+    const loaded = await loadAuthSession();
+    expect(loaded?.entitlement).toBe("token");
+    expect(localStore["education-management:auth-session"]).toBeTruthy();
+    expect(sessionStore["education-management:auth-session"]).toBeUndefined();
   });
 
   it("clears session", async () => {
@@ -62,10 +80,16 @@ describe("secure-storage web", () => {
     await clearAuthSession();
     expect(await loadAuthSession()).toBeNull();
   });
+
+  it("uses in-memory session when store is empty", async () => {
+    rememberAuthSession(session);
+    expect(await loadAuthSession()).toEqual(session);
+  });
 });
 
 describe("secure-storage tauri", () => {
   beforeEach(() => {
+    resetAuthSessionCacheForTests();
     vi.mocked(isTauri).mockReturnValue(true);
     vi.doMock("@tauri-apps/api/core", () => ({
       invoke: vi.fn().mockResolvedValue(JSON.stringify(session)),

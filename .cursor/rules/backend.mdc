@@ -30,7 +30,7 @@ Do **not** move classroom CRUD, points, teams, or other feature logic to the Wor
 
 ## Storage
 
-- Web: IndexedDB (classroom JSON + `ClassroomAssets` binaries); `sessionStorage` for entitlement (dev)
+- Web: IndexedDB (classroom JSON + `ClassroomAssets` binaries); `localStorage` for entitlement (dev)
 - Desktop (Tauri): JSON files via Tauri FS (`classrooms/*.json` + `index.json`); image binaries under `classrooms/{id}/assets/**`; OS keychain for entitlement
 - Classroom photos (teacher/student/banner/gift): **local asset store** via `ClassroomAssetService` — JSON stores keys only (`avatarAssetKey`, `bannerAssetKey`, `Gift.imagePath`, etc.); WebP pipeline in `src/utils/images.ts`; migrate inline data URLs on `openDatabase`
 - A valid `index.json` is still reconciled against `classrooms/*.json` (orphan files are added; `activeClassroomId` is kept)

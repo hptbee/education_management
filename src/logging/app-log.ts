@@ -91,6 +91,26 @@ export function logAppEvent(
   scheduleFlush()
 }
 
+/** Desktop file log plus browser/Tauri console — use for cloud restore debugging. */
+export function logCloudTrace(
+  level: AppLogLevel,
+  category: string,
+  message: string,
+  detail?: unknown,
+): void {
+  logAppEvent(level, category, message, detail)
+  const suffix = normalizeDetail(detail)
+  const line = suffix ? `[${category}] ${message} ${suffix}` : `[${category}] ${message}`
+  // One string only: Next's overlay JSON.stringifies extra args (`Error` → `{}`).
+  if (level === "error") {
+    console.error(line)
+  } else if (level === "warn") {
+    console.warn(line)
+  } else {
+    console.info(line)
+  }
+}
+
 export async function readRecentAppLogs(maxLines = 200): Promise<string[]> {
   if (!isTauri()) return []
   const { invoke } = await import('@tauri-apps/api/core')

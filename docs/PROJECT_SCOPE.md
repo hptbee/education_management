@@ -1940,7 +1940,7 @@ Classroom JSON is the source of truth. On Tauri:
 
 Web dev still uses IndexedDB for classroom JSON.
 
-Entitlements: Tauri OS keychain; web dev `sessionStorage`. Google OAuth: web GIS `idToken`; desktop PKCE loopback with Desktop app client (see [ACCOUNTS.md](./ACCOUNTS.md)).
+Entitlements: Tauri OS keychain; web dev `localStorage`. Google OAuth: web GIS `idToken`; desktop PKCE loopback with Desktop app client (see [ACCOUNTS.md](./ACCOUNTS.md)).
 
 ## 10.1 Storage Strategy
 

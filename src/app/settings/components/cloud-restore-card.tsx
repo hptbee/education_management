@@ -10,6 +10,7 @@ import {
 } from '@/src/database/backup/cloud-backup.service'
 import type { ClassroomDatabase } from '@/src/database/types'
 import { useAuth } from '@/src/store/AuthContext'
+import { logCloudTrace } from '@/src/logging/app-log'
 
 interface CloudRestoreCardProps {
   /** Re-import cloud JSON into local storage (e.g. AppData or databaseService). */
@@ -79,6 +80,11 @@ export function CloudRestoreCard({
         throw new Error('Không tìm thấy bản sao lưu trên đám mây.')
       }
       const assets = await restoreCloudClassroomAssets(entitlement, classroomId)
+      logCloudTrace('info', 'cloud-restore', 'CloudRestoreCard importing', {
+        classroomId,
+        assetCount: assets.length,
+        paths: assets.map((item) => item.path),
+      })
       const db = await importFromCloudPayload(payload, assets)
       await onRestored?.(db)
       const assetNote =

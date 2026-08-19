@@ -35,10 +35,15 @@ import {
 import { backupMetadataService } from "../database/backup/backup-metadata.service";
 import {
   cloudBackupScheduler,
+  isCloudBackupConfigured,
+  isCloudBackupEnabledForDatabase,
+  inspectCloudBackupAuth,
   type CloudBackupState,
 } from "../database/backup/cloud-backup.service";
 import {
+  ensureRegistryPulled,
   hydrateClassroomFromCloud,
+  isHydrateCancelledError,
   pullAndMergeAccountRegistry,
   pushClassroomRegistryMerge,
   refreshCloudRegistrySummaries,
@@ -49,7 +54,7 @@ import {
   inferDirtyFromDatabaseChange,
 } from "../database/backup/cloud-dirty-tracker";
 import { toastError, toastSuccess } from "../utils/toast";
-import { logAppEvent } from "../logging/app-log";
+import { logAppEvent, logCloudTrace } from "../logging/app-log";
 import { useAuth } from "./AuthContext";
 
 export type { RecognizeStudentsInput };
@@ -130,6 +135,11 @@ interface AppDataContextValue {
   recordLuckyWheelSelection: (studentIds: string[]) => void;
   persistNow: () => Promise<boolean>;
   markDirtyAsset: (assetKey: string) => void;
+  /** Bumps when account registry merge changes local classroom list. */
+  classroomListEpoch: number;
+  hydrateErrors: Record<string, string>;
+  clearHydrateError: (id: string) => void;
+  retryHydrateClassroom: (id: string) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
@@ -138,8 +148,26 @@ const SAVE_DEBOUNCE_MS = 400;
 const SAVE_BACKOFF_MS = [1000, 2000, 5000];
 const MAX_AUTO_SAVE_ATTEMPTS = 3;
 
+function pickClassroomIdToOpen(
+  activeDatabases: DatabaseSummary[],
+  preferredId: string | null,
+  allowUnhydrated: boolean,
+): string | undefined {
+  const preferred = preferredId
+    ? activeDatabases.find((item) => item.id === preferredId && !item.archived)
+    : undefined;
+  const hydratedActive = activeDatabases.filter((item) => item.hydrated !== false);
+
+  if (preferred && (allowUnhydrated || preferred.hydrated !== false)) {
+    return preferred.id;
+  }
+  if (hydratedActive[0]) return hydratedActive[0].id;
+  if (allowUnhydrated) return activeDatabases[0]?.id;
+  return undefined;
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { permissions, entitlement } = useAuth();
+  const { permissions, entitlement, isBootstrapping } = useAuth();
   const [data, setDataState] = useState<ClassroomDatabase | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -147,7 +175,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [localSaveStatus, setLocalSaveStatus] = useState<LocalSaveStatus>("saved");
   const [cloudBackupState, setCloudBackupState] = useState<CloudBackupState>("disabled");
   const [cloudBackupError, setCloudBackupError] = useState<string | null>(null);
+  const [classroomListEpoch, setClassroomListEpoch] = useState(0);
+  const [hydrateErrors, setHydrateErrors] = useState<Record<string, string>>({});
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const dataRef = useRef<ClassroomDatabase | null>(null);
+  const switchGenerationRef = useRef(0);
+  const initialLoadDoneRef = useRef(false);
   const lastPersistedRef = useRef<ClassroomDatabase | null>(null);
   const saveGenerationRef = useRef(0);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -161,7 +194,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const prevCloudBackupRef = useRef<CloudBackupState>("disabled");
 
   useEffect(() => {
-    const unsubscribe = cloudBackupScheduler.subscribe((state, error) => {
+    const unsubscribe = cloudBackupScheduler.subscribe((state, error, classroomId) => {
+      const activeId = dataRef.current?.metadata.id;
+      if (classroomId && activeId && classroomId !== activeId) {
+        return;
+      }
+
       const prev = prevCloudBackupRef.current;
       if (state === "synced" && prev !== "synced") {
         toastSuccess("Đã sao lưu đám mây thành công");
@@ -211,21 +249,129 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openClassroomById = useCallback(
-    async (id: string): Promise<ClassroomDatabase | null> => {
+    async (
+      id: string,
+      generation?: number,
+      options?: { allowCloudHydrate?: boolean },
+    ): Promise<ClassroomDatabase | null> => {
+      const allowCloudHydrate = options?.allowCloudHydrate !== false;
+      const isCancelled = () =>
+        generation !== undefined && generation !== switchGenerationRef.current;
+
+      const hydrate = async () => {
+        if (!allowCloudHydrate) {
+          logCloudTrace("info", "cloud-restore", "hydrate skipped: allowCloudHydrate=false", { id });
+          return null;
+        }
+        if (!(await isCloudBackupConfigured())) {
+          logCloudTrace("warn", "cloud-restore", "hydrate skipped: not configured", {
+            id,
+            ...(await inspectCloudBackupAuth()),
+          });
+          return null;
+        }
+        try {
+          const db = await hydrateClassroomFromCloud(id, { isCancelled });
+          if (isCancelled()) return null;
+          return db;
+        } catch (error) {
+          if (isHydrateCancelledError(error)) return null;
+          logCloudTrace("error", "cloud-restore", "hydrate failed", {
+            id,
+            name: error instanceof Error ? error.name : typeof error,
+            message: error instanceof Error ? error.message || "(empty)" : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+          throw error;
+        }
+      };
+
       const hydrated = await databaseService.isClassroomHydrated(id);
       if (!hydrated) {
-        return await hydrateClassroomFromCloud(id);
+        logCloudTrace("info", "cloud-restore", "openClassroomById: stub, will hydrate", { id, allowCloudHydrate });
+        return await hydrate();
       }
       const db = await databaseService.openDatabase(id);
       if (!db) {
-        return await hydrateClassroomFromCloud(id);
+        logCloudTrace("warn", "cloud-restore", "openClassroomById: local JSON missing", { id, allowCloudHydrate });
+        return await hydrate();
       }
+      logCloudTrace("info", "cloud-restore", "openClassroomById: opened local JSON", { id });
+      if (isCancelled()) return null;
       return db;
     },
     [],
   );
 
+  const scheduleFirstCloudBackup = useCallback(async (db: ClassroomDatabase) => {
+    if (!isCloudBackupEnabledForDatabase(db)) return;
+    if (!(await isCloudBackupConfigured())) return;
+    await ensureRegistryPulled();
+    cloudDirtyTracker.markAll(db.metadata.id);
+    await cloudBackupScheduler.triggerUploadNow(db);
+  }, []);
+
+  const applyAccountRegistryDiscovery = useCallback(async () => {
+    const result = await pullAndMergeAccountRegistry();
+    logCloudTrace("info", "cloud-registry", "discovery result", {
+      ok: result.ok,
+      reason: result.ok ? result.source : result.reason,
+    });
+    if (!result.ok) return result;
+
+    await refreshCloudRegistrySummaries();
+    setClassroomListEpoch((epoch) => epoch + 1);
+
+    const databases = await databaseService.listDatabases();
+    const activeDatabases = databases.filter((item) => !item.archived);
+    const currentId = dataRef.current?.metadata.id;
+    const currentStillValid =
+      Boolean(currentId) && activeDatabases.some((item) => item.id === currentId);
+
+    logCloudTrace("info", "cloud-registry", "discovery classrooms", {
+      currentId: currentId ?? null,
+      currentStillValid,
+      activeCount: activeDatabases.length,
+      stubCount: activeDatabases.filter((item) => item.hydrated === false).length,
+    });
+
+    if (!currentStillValid && activeDatabases.length > 0) {
+      const preferredId = await databaseService.getPreferredClassroomId();
+      const targetId = pickClassroomIdToOpen(activeDatabases, preferredId, true);
+      const currentBeforeOpen = dataRef.current?.metadata.id;
+      const stillNeedsOpen =
+        !currentBeforeOpen || !activeDatabases.some((item) => item.id === currentBeforeOpen);
+
+      if (targetId && stillNeedsOpen) {
+        const generation = ++switchGenerationRef.current;
+        try {
+          const db = await openClassroomById(targetId, generation);
+          if (generation !== switchGenerationRef.current) return result;
+          if (db) {
+            setHydrateErrors((prev) => {
+              if (!prev[targetId]) return prev;
+              const next = { ...prev };
+              delete next[targetId];
+              return next;
+            });
+            applyLoadedDatabase(db);
+            await cloudBackupScheduler.checkStartupBackup(db);
+          }
+        } catch (error) {
+          if (generation !== switchGenerationRef.current) return result;
+          if (isHydrateCancelledError(error)) return result;
+          const message =
+            error instanceof Error ? error.message : "Không thể tải lớp học từ đám mây.";
+          setHydrateErrors((prev) => ({ ...prev, [targetId]: message }));
+        }
+      }
+    }
+
+    return result;
+  }, [applyLoadedDatabase, openClassroomById]);
+
   const loadInitialDatabase = useCallback(async () => {
+    const generation = switchGenerationRef.current;
     setIsLoading(true);
     setInitError(null);
     try {
@@ -240,41 +386,55 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const activeDatabases = databases.filter((item) => !item.archived);
       if (activeDatabases.length > 0) {
         const preferredId = await databaseService.getPreferredClassroomId();
-        const preferred = preferredId
-          ? activeDatabases.find((item) => item.id === preferredId)
-          : undefined;
-        const hydratedActive = activeDatabases.filter((item) => item.hydrated !== false);
-        const targetId =
-          preferred && !preferred.archived
-            ? preferred.id
-            : (hydratedActive[0]?.id ?? activeDatabases[0]?.id);
-        const db = targetId ? await openClassroomById(targetId) : null;
-        applyLoadedDatabase(db);
-        if (db) {
-          await cloudBackupScheduler.checkStartupBackup(db);
+        const targetId = pickClassroomIdToOpen(activeDatabases, preferredId, false);
+        if (!targetId) {
+          if (generation === switchGenerationRef.current) {
+            applyLoadedDatabase(null);
+          }
+        } else {
+          const db = await openClassroomById(targetId, generation, { allowCloudHydrate: false });
+          if (generation !== switchGenerationRef.current) return;
+          applyLoadedDatabase(db);
+          if (db) {
+            await cloudBackupScheduler.checkStartupBackup(db);
+          }
         }
-      } else {
+      } else if (generation === switchGenerationRef.current) {
         applyLoadedDatabase(null);
       }
     } catch (error) {
+      if (generation !== switchGenerationRef.current) return;
       const message = error instanceof Error ? error.message : "Không thể khởi tạo dữ liệu lớp học.";
       console.error("[AppDataProvider] init failed:", error);
       logAppEvent("error", "app-data.init", message, error);
       setInitError(message);
       applyLoadedDatabase(null);
     } finally {
-      setIsLoading(false);
+      initialLoadDoneRef.current = true;
+      setInitialLoadDone(true);
+      if (generation === switchGenerationRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [applyLoadedDatabase, openClassroomById]);
 
   useEffect(() => {
-    if (!permissions?.cloudBackup || !entitlement) return;
-    void pullAndMergeAccountRegistry().then(async (result) => {
-      if (result.ok) {
-        await refreshCloudRegistrySummaries();
-      }
+    if (!initialLoadDone || isBootstrapping || !permissions?.cloudBackup || !entitlement) return;
+    void applyAccountRegistryDiscovery().catch((error) => {
+      console.warn("[AppDataProvider] account registry discovery failed:", error);
     });
-  }, [permissions?.cloudBackup, entitlement]);
+  }, [initialLoadDone, isBootstrapping, permissions?.cloudBackup, entitlement, applyAccountRegistryDiscovery]);
+
+  useEffect(() => {
+    if (!initialLoadDone || isBootstrapping || !permissions?.cloudBackup || !entitlement) return;
+    const retryRegistryPull = () => {
+      void applyAccountRegistryDiscovery().catch((error) => {
+        console.warn("[AppDataProvider] account registry retry failed:", error);
+      });
+    };
+    window.addEventListener("online", retryRegistryPull);
+    return () => window.removeEventListener("online", retryRegistryPull);
+  }, [permissions?.cloudBackup, entitlement, applyAccountRegistryDiscovery, initialLoadDone, isBootstrapping]);
 
   useEffect(() => {
     void loadInitialDatabase();
@@ -285,6 +445,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!current?.appSettings.cloudBackupEnabled) return;
     void cloudBackupScheduler.checkStartupBackup(current);
   }, [data?.metadata.id, data?.appSettings.cloudBackupEnabled]);
+
+  useEffect(() => {
+    const classroomId = data?.metadata.id;
+    if (!classroomId) return;
+    const snapshot = cloudBackupScheduler.getStateForClassroom(classroomId);
+    prevCloudBackupRef.current = snapshot.state;
+    setCloudBackupState(snapshot.state);
+    setCloudBackupError(snapshot.state === "failed" ? snapshot.error : null);
+  }, [data?.metadata.id]);
 
   const flushSave = useCallback(async (): Promise<boolean> => {
     if (saveInFlightRef.current) return false;
@@ -470,6 +639,59 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [commitData],
   );
 
+  const switchDatabase = useCallback(
+    async (id: string) => {
+      const generation = ++switchGenerationRef.current;
+      setIsLoading(true);
+      try {
+        const persisted = await persistNow();
+        if (!persisted) return;
+        const current = dataRef.current;
+        if (current?.metadata.id && current.metadata.id !== id) {
+          void cloudBackupScheduler.flushCloudSyncForClassroom(current.metadata.id, current);
+        }
+        const db = await openClassroomById(id, generation);
+        if (generation !== switchGenerationRef.current) return;
+        if (!db) {
+          setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
+          return;
+        }
+        setHydrateErrors((prev) => {
+          if (!prev[id]) return prev;
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        applyLoadedDatabase(db);
+      } catch (error) {
+        if (generation !== switchGenerationRef.current) return;
+        if (isHydrateCancelledError(error)) return;
+        const message = error instanceof Error ? error.message : "Không thể chuyển lớp học.";
+        console.error("[AppDataProvider] switchDatabase failed:", error);
+        setHydrateErrors((prev) => ({ ...prev, [id]: message }));
+        setSaveError(message);
+      } finally {
+        if (generation === switchGenerationRef.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [applyLoadedDatabase, openClassroomById, persistNow],
+  );
+
+  const retryHydrateClassroom = useCallback(
+    async (id: string) => {
+      setHydrateErrors((prev) => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      await switchDatabase(id);
+    },
+    [switchDatabase],
+  );
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       data,
@@ -484,27 +706,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       retrySave,
       retryInit: loadInitialDatabase,
       listClassrooms: () => databaseService.listDatabases(),
-      switchDatabase: async (id: string) => {
-        setIsLoading(true);
-        try {
-          const persisted = await persistNow();
-          if (!persisted) return;
-          await cloudBackupScheduler.flushPending();
-          const db = await openClassroomById(id);
-          if (!db) {
-            setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
-            return;
-          }
-          applyLoadedDatabase(db);
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Không thể chuyển lớp học.";
-          console.error("[AppDataProvider] switchDatabase failed:", error);
-          setSaveError(message);
-        } finally {
-          setIsLoading(false);
-        }
-      },
+      switchDatabase,
       closeDatabase: async () => {
         const persisted = await persistNow();
         if (!persisted) return;
@@ -526,7 +728,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           if (options?.activate !== false) {
             applyLoadedDatabase(db);
           }
-          await syncRegistryAfterChange();
+          if (isCloudBackupEnabledForDatabase(db) && (await isCloudBackupConfigured())) {
+            await scheduleFirstCloudBackup(db);
+          } else {
+            await syncRegistryAfterChange();
+          }
+          setClassroomListEpoch((epoch) => epoch + 1);
           return db;
         } finally {
           setIsLoading(false);
@@ -554,6 +761,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       restoreFromCloudPayload: async (payload, cloudAssets) => {
         setIsLoading(true);
         try {
+          logCloudTrace("info", "cloud-restore", "manual restoreFromCloudPayload", {
+            assetCount: cloudAssets?.length ?? 0,
+            paths: cloudAssets?.map((item) => item.path) ?? [],
+          });
           const db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets });
           applyLoadedDatabase(db);
           await refreshCloudRegistrySummaries();
@@ -600,7 +811,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           if (options?.activate !== false) {
             applyLoadedDatabase(db);
           }
-          await syncRegistryAfterChange();
+          if (isCloudBackupEnabledForDatabase(db) && (await isCloudBackupConfigured())) {
+            await scheduleFirstCloudBackup(db);
+          } else {
+            await syncRegistryAfterChange();
+          }
+          setClassroomListEpoch((epoch) => epoch + 1);
           return db;
         } finally {
           setIsLoading(false);
@@ -1249,8 +1465,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       persistNow,
       markDirtyAsset,
+      classroomListEpoch,
+      hydrateErrors,
+      clearHydrateError: (id: string) => {
+        setHydrateErrors((prev) => {
+          if (!prev[id]) return prev;
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      },
+      retryHydrateClassroom,
     }),
-    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, cloudBackupError, loadInitialDatabase, applyLoadedDatabase, openClassroomById, syncRegistryAfterChange, setData, commitData, retrySave, retryCloudBackup, persistNow, markDirtyAsset],
+    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, cloudBackupError, classroomListEpoch, hydrateErrors, loadInitialDatabase, applyLoadedDatabase, openClassroomById, syncRegistryAfterChange, scheduleFirstCloudBackup, setData, commitData, retrySave, retryCloudBackup, persistNow, markDirtyAsset, switchDatabase, retryHydrateClassroom],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

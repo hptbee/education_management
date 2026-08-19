@@ -5,7 +5,10 @@ import {
   buildUserClassroomStorageKey,
   uploadClassroomBackup,
 } from "./cloud-backup.service";
+import { uploadCloudSyncBatch } from "./cloud-sync.service";
+import { backupMetadataService } from "./backup-metadata.service";
 import { verifyEntitlementToken } from "@/src/auth/entitlement";
+import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 
 vi.mock("@/src/auth/secure-storage", () => ({
   loadAuthSession: vi.fn().mockResolvedValue({
@@ -50,10 +53,23 @@ vi.mock("./backup-metadata.service", () => ({
   },
 }));
 
-function makeDb(cloudBackupEnabled = true) {
+vi.mock("./cloud-registry.service", () => ({
+  isRegistryPullCompleted: vi.fn().mockReturnValue(true),
+  refreshCloudRegistrySummaries: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("./cloud-sync.service", () => ({
+  uploadCloudSyncBatch: vi.fn().mockResolvedValue({ uploadedPaths: ["classroom.json"], skippedPaths: [] }),
+}));
+
+vi.mock("@/src/auth/api", () => ({
+  fetchClassroomsRegistry: vi.fn().mockResolvedValue({ registry: null, source: "missing" }),
+}));
+
+function makeDb(cloudBackupEnabled = true, className = "2/7", schoolYear = "2026-2027") {
   const db = createEmptyDatabase({
-    className: "2/7",
-    schoolYear: "2026-2027",
+    className,
+    schoolYear,
     teacher: {
       id: "teacher-1",
       name: "Cô Thu",
@@ -147,8 +163,8 @@ describe("CloudBackupScheduler", () => {
   });
 
   it("records failure without blocking local usage semantics", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response("nope", { status: 500 }));
-    const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);
+    vi.mocked(uploadCloudSyncBatch).mockRejectedValueOnce(new Error("nope"));
+    const scheduler = new CloudBackupScheduler();
     const states: string[] = [];
     scheduler.subscribe((state) => states.push(state));
 
@@ -157,6 +173,8 @@ describe("CloudBackupScheduler", () => {
     await scheduler.flushPending();
 
     expect(states).toContain("failed");
+    expect(backupMetadataService.recordCloudBackupSuccess).not.toHaveBeenCalled();
+    scheduler.stop();
   });
 
   it("uploads newer pending snapshot after the first upload completes", async () => {
@@ -165,15 +183,14 @@ describe("CloudBackupScheduler", () => {
       releaseFirstUpload = resolve;
     });
 
-    const fetchMock = vi
-      .fn()
+    vi.mocked(uploadCloudSyncBatch)
       .mockImplementationOnce(async () => {
         await firstUploadGate;
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
       })
-      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+      .mockResolvedValue({ uploadedPaths: ["classroom.json"], skippedPaths: [] });
 
-    const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);
+    const scheduler = new CloudBackupScheduler();
     const db1 = makeDb();
     const db2 = makeDb();
     db2.metadata.updatedAt = new Date(Date.now() + 60_000).toISOString();
@@ -187,11 +204,33 @@ describe("CloudBackupScheduler", () => {
 
     releaseFirstUpload();
     await firstFlush;
+
+    expect(uploadCloudSyncBatch).toHaveBeenCalledTimes(2);
+  });
+
+  it("uploads pending sync for multiple classrooms without dropping earlier classes", async () => {
+    vi.mocked(uploadCloudSyncBatch).mockResolvedValue({
+      uploadedPaths: ["classroom.json"],
+      skippedPaths: [],
+    });
+
+    const scheduler = new CloudBackupScheduler();
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+    const classC = makeDb(true, "4/2", "2026-2027");
+
+    scheduler.scheduleAfterLocalSave(classA);
+    scheduler.scheduleAfterLocalSave(classB);
+    scheduler.scheduleAfterLocalSave(classC);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const secondUrl = String(fetchMock.mock.calls[1][0]);
-    expect(secondUrl).toContain("/sync");
+    await scheduler.flushPending();
+
+    expect(uploadCloudSyncBatch).toHaveBeenCalledTimes(3);
+    const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
+    expect(uploadedKeys).toEqual(
+      expect.arrayContaining(["2-7_2026-2027", "3-1_2026-2027", "4-2_2026-2027"]),
+    );
   });
 
   it("does not enter pending when entitlement lacks cloudBackup permission", async () => {
@@ -220,5 +259,48 @@ describe("CloudBackupScheduler", () => {
     expect(states).not.toContain("pending");
     expect(states).toContain("disabled");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("continues draining other classrooms after one upload fails", async () => {
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+    vi.mocked(uploadCloudSyncBatch).mockImplementation(async (db) => {
+      if (db.metadata.id === classA.metadata.id) {
+        throw new Error("quota");
+      }
+      return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
+    });
+
+    const scheduler = new CloudBackupScheduler();
+    scheduler.scheduleAfterLocalSave(classA);
+    scheduler.scheduleAfterLocalSave(classB);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await scheduler.flushPending();
+
+    const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
+    expect(uploadedKeys).toContain(classB.metadata.id);
+    expect(scheduler.getStateForClassroom(classA.metadata.id).state).toBe("failed");
+    expect(scheduler.getStateForClassroom(classB.metadata.id).state).toBe("synced");
+    scheduler.stop();
+  });
+
+  it("flushes dirty classroom when no pending map entry exists", async () => {
+    vi.mocked(uploadCloudSyncBatch).mockResolvedValue({
+      uploadedPaths: ["classroom.json"],
+      skippedPaths: [],
+    });
+    const scheduler = new CloudBackupScheduler();
+    const db = makeDb();
+    cloudDirtyTracker.markAll(db.metadata.id);
+
+    await scheduler.flushCloudSyncForClassroom(db.metadata.id, db);
+
+    expect(uploadCloudSyncBatch).toHaveBeenCalledTimes(1);
+    expect(uploadCloudSyncBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: expect.objectContaining({ id: db.metadata.id }) }),
+      expect.anything(),
+      expect.anything(),
+    );
+    scheduler.stop();
   });
 });

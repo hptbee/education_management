@@ -12,7 +12,8 @@ import { assertImportFileSize } from "./importLimits";
 import { getLastClassroomId, setLastClassroomId, clearLastClassroomId } from "../utils/lastClassroom";
 import { isCloudBackupConfigured } from "./backup/cloud-backup.service";
 import type { CloudClassroomRegistryEntry } from "./backup/cloud-types";
-import { restoreCloudAssetsLocally } from "./backup/cloud-asset-sync";
+import { restoreCloudAssetsLocally, applyAssetKeysFromRestoredPaths } from "./backup/cloud-asset-sync";
+import { logCloudTrace } from "../logging/app-log";
 
 function assertEntityArray(
   record: Record<string, unknown>,
@@ -238,7 +239,24 @@ export class DatabaseService {
     }
 
     if (options?.cloudAssets?.length) {
-      await restoreCloudAssetsLocally(db.metadata.id, options.cloudAssets);
+      const written = await restoreCloudAssetsLocally(db.metadata.id, options.cloudAssets);
+      const beforeBanner = db.classroomSettings.bannerAssetKey;
+      const beforeTeacher = db.classroomSettings.teacher?.avatarAssetKey;
+      db = applyAssetKeysFromRestoredPaths(db, options.cloudAssets);
+      logCloudTrace("info", "cloud-restore", "saveCloudRestoredDatabase assets", {
+        classroomId: db.metadata.id,
+        incoming: options.cloudAssets.length,
+        written,
+        bannerBefore: beforeBanner ?? null,
+        bannerAfter: db.classroomSettings.bannerAssetKey ?? null,
+        teacherBefore: beforeTeacher ?? null,
+        teacherAfter: db.classroomSettings.teacher?.avatarAssetKey ?? null,
+        isTauri: isTauri(),
+      });
+    } else {
+      logCloudTrace("warn", "cloud-restore", "saveCloudRestoredDatabase with no cloudAssets", {
+        classroomId: db.metadata.id,
+      });
     }
 
     const { database: migrated } = await migrateLegacyClassroomImages(db);

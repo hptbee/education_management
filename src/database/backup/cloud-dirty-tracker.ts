@@ -103,8 +103,16 @@ export function inferDirtyFromDatabaseChange(
 ): Partial<CloudDirtyState> {
   const patch: Partial<CloudDirtyState> = {};
 
-  if (!prev || prev.metadata?.updatedAt !== next.metadata.updatedAt) {
+  const prevClassroom = prev as typeof next | null;
+  if (
+    !prevClassroom ||
+    prevClassroom.metadata?.updatedAt !== next.metadata.updatedAt ||
+    JSON.stringify(prevClassroom.classroomSettings) !== JSON.stringify(next.classroomSettings)
+  ) {
     patch.classroom = true;
+  }
+
+  if (!prev || prev.metadata?.updatedAt !== next.metadata.updatedAt) {
     patch.registry = true;
   }
 

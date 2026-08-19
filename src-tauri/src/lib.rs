@@ -19,8 +19,26 @@ fn path_has_forbidden_components(path: &Path) -> bool {
     false
 }
 
+/// Windows `canonicalize` uses the `\\?\` verbatim prefix. JS then passes a normal
+/// `C:\...` absolute path. `Path::starts_with` treats those as different prefixes,
+/// so creating a nested folder that does not exist yet (`classrooms/{id}/assets`)
+/// was rejected as "outside application data directory".
+fn strip_windows_verbatim_prefix(path: &Path) -> PathBuf {
+    let raw = path.to_string_lossy();
+    if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{rest}"))
+    } else if let Some(rest) = raw.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 fn path_is_under(base: &Path, candidate: &Path) -> bool {
-    candidate.starts_with(base)
+    if candidate.starts_with(base) {
+        return true;
+    }
+    strip_windows_verbatim_prefix(candidate).starts_with(&strip_windows_verbatim_prefix(base))
 }
 
 fn resolve_under_data_path(
@@ -891,5 +909,34 @@ mod path_tests {
                 .expect_err("parent traversal must be denied");
             assert!(err.contains("invalid path components") || err.contains("outside application data directory"));
         });
+    }
+
+    #[test]
+    fn allows_nested_missing_asset_dir_under_data_dir() {
+        with_temp_data_dir(|data_dir| {
+            let canonical_data = fs::canonicalize(data_dir).expect("canonicalize data dir");
+            let nested = data_dir
+                .join("classrooms")
+                .join("2-7_2026-2027")
+                .join("assets")
+                .join("banner.webp");
+
+            let resolved = resolve_under_data_path(&nested, &canonical_data, true)
+                .expect("nested missing classroom asset path must be allowed");
+            assert!(path_is_under(&canonical_data, &resolved));
+            assert!(resolved.parent().expect("parent").exists());
+        });
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn path_is_under_ignores_windows_verbatim_prefix() {
+        let base = PathBuf::from(r"\\?\C:\Users\NCPC\AppData\Roaming\app\ClassroomManagement");
+        let candidate = PathBuf::from(
+            r"C:\Users\NCPC\AppData\Roaming\app\ClassroomManagement\classrooms\2-7_2026-2027\assets",
+        );
+        assert!(path_is_under(&base, &candidate));
+        let outside = PathBuf::from(r"C:\Users\NCPC\AppData\Roaming\other\file.txt");
+        assert!(!path_is_under(&base, &outside));
     }
 }
