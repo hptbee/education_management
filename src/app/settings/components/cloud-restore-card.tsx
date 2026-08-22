@@ -93,7 +93,7 @@ export function CloudRestoreCard({
           : ' — không có ảnh trên đám mây; chỉ khôi phục dữ liệu JSON.'
       void showAlert(
         `Đã khôi phục lớp "${db.classroomSettings.className}" (${db.classroomSettings.schoolYear}) từ đám mây${assetNote}`,
-        { variant: 'success' },
+        { variant: 'info' },
       )
     } catch (err) {
       setCloudError(err instanceof Error ? err.message : 'Khôi phục thất bại.')

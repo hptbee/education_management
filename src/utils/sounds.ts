@@ -187,8 +187,8 @@ export function startDuckRaceQuacks(enabled = true): () => void {
   }
 
   let stopped = false
-  let timeoutId: ReturnType<typeof setTimeout> | null = null
-  let gapTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let timeoutId: number | null = null
+  let gapTimeoutId: number | null = null
   let activeAudio: HTMLAudioElement | null = null
   let releaseActivePlay: (() => void) | null = null
 

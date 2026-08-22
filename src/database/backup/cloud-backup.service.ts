@@ -377,12 +377,12 @@ export class CloudBackupScheduler {
   }
 
   private async flushClassroom(classroomId: string, dbSnapshot?: ClassroomDatabase): Promise<void> {
-    let entry = this.pendingByClassroom.get(classroomId);
+    let entry: PendingSyncEntry | undefined = this.pendingByClassroom.get(classroomId);
     if (!entry) {
       if (!cloudDirtyTracker.hasDirty(classroomId) && !dbSnapshot) {
         return;
       }
-      entry = this.ensurePendingEntry(classroomId, dbSnapshot);
+      entry = this.ensurePendingEntry(classroomId, dbSnapshot) ?? undefined;
       if (!entry) return;
     } else if (dbSnapshot) {
       entry.db = dbSnapshot;

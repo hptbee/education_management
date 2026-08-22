@@ -100,7 +100,7 @@ describe("DatabaseService", () => {
     const legacy = { ...db } as Record<string, unknown>;
     delete legacy.duckRaceStudentBag;
 
-    const normalized = normalizeClassroomDatabase(legacy as typeof db);
+    const normalized = normalizeClassroomDatabase(legacy as unknown as typeof db);
     expect(normalized.duckRaceStudentBag).toEqual([]);
   });
 
@@ -111,6 +111,9 @@ describe("DatabaseService", () => {
       id: "local-only",
       name: "Local",
       points: 0,
+      classroomRoleIds: [],
+      badgeIds: [],
+      totalRewards: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -122,6 +125,9 @@ describe("DatabaseService", () => {
       id: "cloud-only",
       name: "Cloud",
       points: 5,
+      classroomRoleIds: [],
+      badgeIds: [],
+      totalRewards: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

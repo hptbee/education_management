@@ -31,6 +31,7 @@ export function LuckyWheelTool() {
 
     const tool = searchParams?.get('tool')
     if (tool !== 'wheel' && tool !== 'lucky-wheel') return
+    if (!searchParams) return
 
     const params = new URLSearchParams(searchParams.toString())
     params.delete('tool')

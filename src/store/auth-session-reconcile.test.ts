@@ -24,13 +24,21 @@ const stored = {
   lastTrustedIat: 1000,
 };
 
+const sampleLicense = {
+  id: "lic-1",
+  plan: "premium" as const,
+  status: "active",
+  startsAt: "2026-01-01T00:00:00.000Z",
+  expiresAt: null,
+};
+
 describe("reconcileStoredSessionOnline", () => {
   it("returns updated session when refresh succeeds", async () => {
     vi.mocked(refreshEntitlement).mockResolvedValue({
       ok: true,
       entitlement: "new-token",
       user: stored.user,
-      license: null,
+      license: sampleLicense,
     });
 
     const result = await reconcileStoredSessionOnline(stored);
