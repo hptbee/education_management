@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import confetti from 'canvas-confetti'
-import { X } from 'lucide-react'
+import { X, Volume2, VolumeX } from 'lucide-react'
 import type { Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
@@ -14,7 +14,7 @@ import {
   type PickerScope,
 } from '@/src/utils/pickerSession'
 import { canAnimate } from '@/src/utils/motion'
-import { playSound } from '@/src/utils/sounds'
+import { playDuckRaceFinish, playDuckRaceStart, playSound } from '@/src/utils/sounds'
 import { toastInfo } from '@/src/utils/toast'
 import {
   assignDuckRaceFieldYs,
@@ -70,7 +70,7 @@ interface DuckRaceDialogProps {
 }
 
 export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDialogProps) {
-  const { data, setDuckRaceStudentBag, recordDuckRaceResult } = useAppData()
+  const { data, setDuckRaceStudentBag, recordDuckRaceResult, updateAppSettings } = useAppData()
   const classroomId = data?.metadata.id
   const { showConfirm } = useClassroomDialog()
   const animationsEnabled = data?.appSettings.animationsEnabled ?? true
@@ -256,8 +256,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
         setDuckRaceStudentBag(next)
       }
 
-      playSound('success', { enabled: soundEnabled })
-      playSound('applause', { enabled: soundEnabled })
+      playDuckRaceFinish(soundEnabled)
       if (allowMotion) {
         void confetti({
           particleCount: 90,
@@ -287,7 +286,9 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
       planRef.current = plan
       winnerAnnouncedRef.current = false
       setPhase('racing')
-      playSound('success', { enabled: soundEnabled })
+      if (allowMotion) {
+        playDuckRaceStart(soundEnabled)
+      }
 
       const winnerProfile = plan.profiles.find((p) => p.studentId === plan.winnerId)
       const winnerFinishMs = winnerProfile?.finishMs ?? plan.durationMs
@@ -371,7 +372,9 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
         const timer = setTimeout(() => {
           if (generation !== raceGenerationRef.current) return
           setCountdownLabel(label)
-          playSound('click', { enabled: soundEnabled })
+          if (index < steps.length - 1) {
+            playSound('click', { enabled: soundEnabled })
+          }
           if (index === steps.length - 1) {
             const goTimer = setTimeout(() => {
               if (generation !== raceGenerationRef.current) return
@@ -505,13 +508,22 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
               Chọn học sinh và bắt đầu cuộc đua vui nhộn
             </p>
           </div>
-          <IconTouchButton
-            onClick={() => void requestClose()}
-            aria-label="Đóng"
-            className="text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X className="size-5" />
-          </IconTouchButton>
+          <div className="flex shrink-0 items-center gap-1">
+            <IconTouchButton
+              onClick={() => updateAppSettings({ soundEnabled: !soundEnabled })}
+              aria-label={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+              className="text-slate-400 hover:bg-slate-100 hover:text-brand"
+            >
+              {soundEnabled ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
+            </IconTouchButton>
+            <IconTouchButton
+              onClick={() => void requestClose()}
+              aria-label="Đóng"
+              className="text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X className="size-5" />
+            </IconTouchButton>
+          </div>
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">

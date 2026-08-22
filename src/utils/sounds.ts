@@ -133,6 +133,21 @@ export function playRecognitionCelebration(enabled = true): void {
   }, 400)
 }
 
+/** Duck Race — race actually begins (after countdown). */
+export function playDuckRaceStart(enabled = true): void {
+  if (!enabled) return
+  playSound('success', { enabled })
+}
+
+/** Duck Race — first duck crosses finish (once per race). */
+export function playDuckRaceFinish(enabled = true): void {
+  if (!enabled) return
+  playSound('wheel-result', { enabled })
+  window.setTimeout(() => {
+    playSound('applause', { enabled })
+  }, 400)
+}
+
 const WHEEL_TICK_INTERVAL_MS = 140
 
 /** Plays wheel tick SFX on an interval for the spin duration. Returns a cleanup function. */

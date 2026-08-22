@@ -28,13 +28,13 @@ Future app paths: `/sounds/click.wav`, etc.
 
 | Filename | Mixkit title | Mixkit ID | Source (download page) | Duration (Mixkit listing) | Intended event(s) |
 |---|---|---:|---|---|---|
-| `click.wav` | Cool interface click tone | 2568 | https://mixkit.co/free-sound-effects/download/2568/ | 0:01 | Generic UI click |
-| `success.wav` | Instant win | 2021 | https://mixkit.co/free-sound-effects/download/2021/ | 0:01 | Success; alias: `points-added`, `correct-answer` |
+| `click.wav` | Cool interface click tone | 2568 | https://mixkit.co/free-sound-effects/download/2568/ | 0:01 | Generic UI click; Duck Race countdown (3/2/1) |
+| `success.wav` | Instant win | 2021 | https://mixkit.co/free-sound-effects/download/2021/ | 0:01 | Success; Duck Race start; alias: `points-added`, `correct-answer` |
 | `wrong-answer.wav` | Negative tone interface tap | 2569 | https://mixkit.co/free-sound-effects/download/2569/ | 0:01 | Wrong / failed answer (gentle, not a buzzer) |
 | `wheel-tick.wav` | Game click | 1114 | https://mixkit.co/free-sound-effects/download/1114/ | 0:01 | Lucky Wheel and Points Wheel tick during spin |
-| `wheel-result.wav` | Melodic bonus collect | 1938 | https://mixkit.co/free-sound-effects/download/1938/ | 0:02 | Lucky Wheel and Points Wheel result (exciting, not a siren) |
+| `wheel-result.wav` | Melodic bonus collect | 1938 | https://mixkit.co/free-sound-effects/download/1938/ | 0:02 | Lucky Wheel and Points Wheel result; Duck Race finish |
 | `recognition.wav` | Achievement bell | 600 | https://mixkit.co/free-sound-effects/download/600/ | 0:02 | Recognition ceremony; alias: `badge-awarded` |
-| `applause.wav` | Animated small group applause | 523 | https://mixkit.co/free-sound-effects/download/523/ | 0:04 | Recognition / ceremony applause sting |
+| `applause.wav` | Animated small group applause | 523 | https://mixkit.co/free-sound-effects/download/523/ | 0:04 | Recognition / ceremony; Duck Race winner celebration |
 
 Category browse pages used during selection:
 
