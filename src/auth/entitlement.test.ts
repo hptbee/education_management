@@ -3,6 +3,8 @@ import * as jose from "jose";
 import { mapApiCodeToAccessState, mapRefreshDenial, resolveAccessState, verifyEntitlementToken } from "./entitlement";
 import type { EntitlementClaims } from "./types";
 
+const futureLicenseExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
 const baseClaims: EntitlementClaims = {
   userId: "usr_1",
   role: "teacher",
@@ -11,6 +13,7 @@ const baseClaims: EntitlementClaims = {
   permissions: { appAccess: true, cloudBackup: true },
   licenseVersion: 1,
   offlineValidUntil: Math.floor(Date.now() / 1000) + 86400,
+  licenseExpiresAt: futureLicenseExpiry,
 };
 
 describe("resolveAccessState", () => {
@@ -108,11 +111,10 @@ describe("resolveAccessState", () => {
     expect(
       resolveAccessState({
         hasSession: true,
-        claims: baseClaims,
+        claims: { ...baseClaims, licenseExpiresAt: pastExpiry },
         issuedAt: Math.floor(Date.now() / 1000),
         lastTrustedIat: Math.floor(Date.now() / 1000),
         isOnline: false,
-        licenseExpiresAt: pastExpiry,
       }),
     ).toBe("LICENSE_EXPIRED");
   });
@@ -121,11 +123,10 @@ describe("resolveAccessState", () => {
     expect(
       resolveAccessState({
         hasSession: true,
-        claims: baseClaims,
+        claims: { ...baseClaims, plan: "lifetime", licenseExpiresAt: null },
         issuedAt: Math.floor(Date.now() / 1000),
         lastTrustedIat: Math.floor(Date.now() / 1000),
         isOnline: false,
-        licenseExpiresAt: null,
       }),
     ).toBe("OFFLINE_GRACE");
   });

@@ -54,6 +54,8 @@ export interface EntitlementClaims {
   permissions: EntitlementPermissions;
   licenseVersion: number;
   offlineValidUntil: number;
+  /** ISO timestamp; null for lifetime. Signed — do not trust session JSON for expiry. */
+  licenseExpiresAt?: string | null;
 }
 
 export interface GoogleProfile {

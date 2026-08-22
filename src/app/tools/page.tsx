@@ -55,39 +55,49 @@ export default function ToolsPage() {
     )
   }
 
-  if (isPresentationMode) {
-    return (
-      <PresentationChrome title="Thử thách & Công cụ" subtitle="Hoạt động vui nhộn cho cả lớp">
-        <div className="mx-auto flex max-w-6xl flex-col gap-8">
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {isPresentationMode ? (
+        <PresentationChrome
+          variant="overlay"
+          title="Thử thách & Công cụ"
+          subtitle="Hoạt động vui nhộn cho cả lớp"
+        />
+      ) : null}
+
+      <div
+        className={`flex-1 overflow-y-auto scrollbar-thin ${
+          isPresentationMode ? 'pt-[5.5rem]' : ''
+        }`}
+      >
+        <div
+          className={`mx-auto flex flex-col gap-8 ${
+            isPresentationMode ? 'max-w-6xl p-6' : 'max-w-[1200px] p-5'
+          }`}
+        >
+          {!isPresentationMode ? (
+            <div className="flex items-start gap-6">
+              <PageHeader
+                icon={Sparkles}
+                title="Thử thách & Công cụ"
+                subtitle="Hoạt động vui và công cụ nhanh cho giờ học"
+                className="flex-1"
+                actions={
+                  <ClassroomButton variant="secondary" onClick={enterPresentationMode}>
+                    <MonitorPlay className="size-4" aria-hidden /> Trình chiếu
+                  </ClassroomButton>
+                }
+              />
+              <img
+                src="/banner-girl.png"
+                alt=""
+                className="hidden h-24 w-auto shrink-0 object-contain mix-blend-multiply lg:block"
+              />
+            </div>
+          ) : null}
+
           <ToolsContent />
         </div>
-      </PresentationChrome>
-    )
-  }
-
-  return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-8 p-5">
-        <div className="flex items-start gap-6">
-          <PageHeader
-            icon={Sparkles}
-            title="Thử thách & Công cụ"
-            subtitle="Hoạt động vui và công cụ nhanh cho giờ học"
-            className="flex-1"
-            actions={
-              <ClassroomButton variant="secondary" onClick={enterPresentationMode}>
-                <MonitorPlay className="size-4" aria-hidden /> Trình chiếu
-              </ClassroomButton>
-            }
-          />
-          <img
-            src="/banner-girl.png"
-            alt=""
-            className="hidden h-24 w-auto shrink-0 object-contain mix-blend-multiply lg:block"
-          />
-        </div>
-
-        <ToolsContent />
       </div>
     </div>
   )

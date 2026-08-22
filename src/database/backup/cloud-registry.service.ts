@@ -214,9 +214,6 @@ export async function pullAndMergeAccountRegistry(
     classrooms: result.ok ? result.registry.classrooms.length : 0,
     force: options?.force !== false,
   });
-  if (result.ok) {
-    await databaseService.enableCloudBackupOnAllHydratedClassrooms();
-  }
   return result;
 }
 
@@ -330,7 +327,10 @@ async function hydrateClassroomFromCloudInner(
 
     let db: ClassroomDatabase;
     try {
-      db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets: assets });
+      db = await databaseService.saveCloudRestoredDatabase(payload, {
+        cloudAssets: assets,
+        expectedClassroomId: classroomKey,
+      });
     } catch (error) {
       const record = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
       const metadata = record?.metadata as Record<string, unknown> | undefined;

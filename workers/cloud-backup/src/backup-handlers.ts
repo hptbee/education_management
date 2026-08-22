@@ -126,6 +126,18 @@ export function assertSyncBody(data: unknown): SyncUploadBody {
     if (!isAllowedSyncPath(path)) {
       throw new ValidationError(`Disallowed sync path: ${file.path}`);
     }
+    if (path === "classroom.json") {
+      try {
+        const classroomMeta = JSON.parse(file.content) as { metadata?: { id?: string } };
+        const id = classroomMeta?.metadata?.id;
+        if (typeof id !== "string" || id !== record.classroomKey) {
+          throw new ValidationError("classroom.json metadata.id must match classroomKey");
+        }
+      } catch (error) {
+        if (error instanceof ValidationError) throw error;
+        throw new ValidationError("Invalid classroom.json");
+      }
+    }
     const encoding = file.encoding === "base64" ? "base64" : undefined;
     const contentLimit = encoding === "base64" ? Math.ceil(MAX_SYNC_FILE_BYTES * 1.37) : MAX_SYNC_FILE_BYTES;
     if (file.content.length > contentLimit) {

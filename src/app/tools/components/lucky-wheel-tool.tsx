@@ -5,6 +5,7 @@ import { Disc3, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { LuckyWheelDialog } from './lucky-wheel-dialog'
+import { useGameDialogForceClose } from './game-dialog-portal'
 import { WheelPreview } from './named-wheel'
 import { ToolCardShell } from './tool-card-shell'
 import { ClassroomButton, EmptyState } from '@/src/components/classroom'
@@ -18,7 +19,8 @@ export function LuckyWheelTool() {
   const [dialogOpen, setDialogOpen] = useState(false)
 
   useEffect(() => {
-    if (searchParams?.get('tool') === 'wheel') {
+    const tool = searchParams?.get('tool')
+    if (tool === 'wheel' || tool === 'lucky-wheel') {
       setDialogOpen(true)
     }
   }, [searchParams])
@@ -26,13 +28,18 @@ export function LuckyWheelTool() {
   const handleDialogClose = useCallback(() => {
     setDialogOpen(false)
 
-    if (searchParams?.get('tool') !== 'wheel') return
+    const tool = searchParams?.get('tool')
+    if (tool !== 'wheel' && tool !== 'lucky-wheel') return
 
     const params = new URLSearchParams(searchParams.toString())
     params.delete('tool')
     const query = params.toString()
     router.replace(query ? `/tools?${query}` : '/tools')
   }, [router, searchParams])
+
+  useGameDialogForceClose(() => {
+    if (dialogOpen) handleDialogClose()
+  })
 
   return (
     <>

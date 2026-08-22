@@ -36,6 +36,9 @@ export async function verifyEntitlementToken(
     if (!claims.userId || !claims.permissions?.appAccess) return null;
     claims.licenseVersion = Number(claims.licenseVersion);
     claims.offlineValidUntil = Number(claims.offlineValidUntil);
+    if (claims.licenseExpiresAt === undefined) {
+      claims.licenseExpiresAt = null;
+    }
     return {
       claims,
       issuedAt: payload.iat ?? 0,
@@ -66,9 +69,14 @@ export function resolveAccessState(input: {
   if (input.claims.status === "disabled") return "ACCOUNT_DISABLED";
   if (input.claims.status === "suspended") return "ACCOUNT_SUSPENDED";
 
-  if (input.licenseExpiresAt) {
-    const expiryMs = Date.parse(input.licenseExpiresAt);
-    if (!Number.isNaN(expiryMs) && Date.now() >= expiryMs) {
+  const plan = input.claims.plan;
+  if (plan !== "lifetime") {
+    const signedExpiry = input.claims.licenseExpiresAt;
+    if (!signedExpiry) {
+      return "LICENSE_EXPIRED";
+    }
+    const expiryMs = Date.parse(signedExpiry);
+    if (Number.isNaN(expiryMs) || Date.now() >= expiryMs) {
       return "LICENSE_EXPIRED";
     }
   }

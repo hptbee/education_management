@@ -23,6 +23,7 @@ import { formatPointsWheelLabel, pickWinningSegmentIndex } from '@/src/utils/poi
 import { ValueWheel, ValueWheelPreview } from './value-wheel'
 import { PointsWheelSetup } from './points-wheel-setup'
 import { PointsWheelResult } from './points-wheel-result'
+import { GameDialogPortal } from './game-dialog-portal'
 
 const LIST_HIDE_DURATION_MS = 450
 
@@ -313,11 +314,12 @@ export function PointsWheelDialog({ isOpen, onClose, students }: PointsWheelDial
   const showWheel = phase === 'ready' || phase === 'spinning' || phase === 'result'
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
-      onClick={() => void requestClose()}
-      role="presentation"
-    >
+    <GameDialogPortal>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
+        onClick={() => void requestClose()}
+        role="presentation"
+      >
       <div
         role="dialog"
         aria-modal="true"
@@ -453,5 +455,6 @@ export function PointsWheelDialog({ isOpen, onClose, students }: PointsWheelDial
         </div>
       </div>
     </div>
+    </GameDialogPortal>
   )
 }

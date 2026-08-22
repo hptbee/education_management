@@ -26,6 +26,8 @@ export interface EntitlementClaims {
   permissions: EntitlementPermissions;
   licenseVersion: number;
   offlineValidUntil: number;
+  /** ISO timestamp; null for lifetime. Must come from signed JWT, not session JSON. */
+  licenseExpiresAt?: string | null;
   iat?: number;
   exp?: number;
 }

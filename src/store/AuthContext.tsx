@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { fetchMe, postAuthGoogle, refreshEntitlement } from "@/src/auth/api";
+import { fetchMe, postAuthGoogle, postAuthLogout, refreshEntitlement } from "@/src/auth/api";
 import { mapApiCodeToAccessState, resolveAccessState, verifyEntitlementToken } from "@/src/auth/entitlement";
 import { loginWithGoogleDesktop, loginWithGoogleWeb } from "@/src/auth/google-login";
 import {
@@ -80,7 +80,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastTrustedIat: nextSession.lastTrustedIat,
         isOnline: isOnline(),
         serverDenied: denied,
-        licenseExpiresAt: nextSession.license?.expiresAt ?? null,
       });
       setAccessState(state);
     },
@@ -279,13 +278,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [recomputeAccess, serverDenied, session]);
 
   const logout = useCallback(async () => {
+    const token = session?.entitlement;
+    if (token && isOnline()) {
+      try {
+        await postAuthLogout(token);
+      } catch (error) {
+        console.warn("[AuthProvider] server logout revoke failed:", error);
+      }
+    }
     await clearAuthSession();
     setSession(null);
     setServerDenied(null);
     setOfflineValidUntil(null);
     setPermissions(null);
     setAccessState("AUTH_REQUIRED");
-  }, []);
+  }, [session?.entitlement]);
 
   useEffect(() => {
     const onOnline = () => {

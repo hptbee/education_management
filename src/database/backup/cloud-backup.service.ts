@@ -9,6 +9,7 @@ import { logAppEvent } from "@/src/logging/app-log";
 import { isTauri } from "../tauri-fs.service";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { uploadCloudSyncBatch } from "./cloud-sync.service";
+import { splitClassroomToCloudFiles } from "./cloud-serializer";
 import { isRegistryPullCompleted, refreshCloudRegistrySummaries } from "./cloud-registry.service";
 import { fetchClassroomsRegistry } from "@/src/auth/api";
 import { isCloudRestoreInProgress } from "./cloud-restore-gate";
@@ -71,6 +72,14 @@ export async function isCloudBackupConfigured(): Promise<boolean> {
 
 export function isCloudBackupEnabledForDatabase(db: ClassroomDatabase): boolean {
   return Boolean(db.appSettings?.cloudBackupEnabled);
+}
+
+function markAllDomainsForClassroom(db: ClassroomDatabase): void {
+  const split = splitClassroomToCloudFiles(db);
+  const activityDates = split.paths
+    .filter((path) => path.startsWith("activity/") && path.endsWith(".json"))
+    .map((path) => path.slice("activity/".length, -".json".length));
+  cloudDirtyTracker.markAll(db.metadata.id, activityDates);
 }
 
 export { sanitizeBackupIdentifier };
@@ -175,8 +184,13 @@ export class CloudBackupScheduler {
   private lastError: string | null = null;
   private classroomStates = new Map<string, ClassroomBackupState>();
   private listeners = new Set<BackupListener>();
+  private hasPendingLocalSave: ((classroomId: string) => boolean) | null = null;
 
   constructor(private readonly fetchImpl: typeof fetch = fetch) {}
+
+  setHasPendingLocalSave(fn: ((classroomId: string) => boolean) | null): void {
+    this.hasPendingLocalSave = fn;
+  }
 
   subscribe(listener: BackupListener): () => void {
     this.listeners.add(listener);
@@ -374,7 +388,7 @@ export class CloudBackupScheduler {
 
     if (needsBackup) {
       if (!syncState.migratedToStructured) {
-        cloudDirtyTracker.markAll(db.metadata.id);
+        markAllDomainsForClassroom(db);
       }
       this.scheduleAfterLocalSave(db);
     } else if (meta.lastCloudBackupStatus === "success") {
@@ -485,8 +499,10 @@ export class CloudBackupScheduler {
       const hasNewerPending =
         currentEntry !== undefined &&
         currentEntry.db.metadata.updatedAt !== uploadedAt;
+      const hasUnflushedLocal = this.hasPendingLocalSave?.(uploadedId) ?? false;
+      const stillDirty = cloudDirtyTracker.hasDirty(uploadedId);
 
-      if (hasNewerPending) {
+      if (hasNewerPending || hasUnflushedLocal || stillDirty) {
         currentEntry.failureCount = 0;
         this.setState("pending", null, uploadedId);
       } else {
@@ -588,7 +604,7 @@ export class CloudBackupScheduler {
       return;
     }
 
-    cloudDirtyTracker.markAll(db.metadata.id);
+    markAllDomainsForClassroom(db);
     let entry = this.pendingByClassroom.get(db.metadata.id);
     if (!entry) {
       entry = { db, debounceTimer: null, failureCount: 0 };

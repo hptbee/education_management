@@ -51,7 +51,7 @@ export class CloudDirtyTracker {
     });
   }
 
-  markAll(classroomKey: string): void {
+  markAll(classroomKey: string, activityDates: string[] = []): void {
     this.byClassroom.set(classroomKey, {
       classroom: true,
       students: true,
@@ -62,7 +62,7 @@ export class CloudDirtyTracker {
       settings: true,
       catalog: true,
       activityIndex: true,
-      activityDates: [],
+      activityDates: [...activityDates],
       registry: true,
       dirtyAssets: [],
     });
@@ -291,6 +291,25 @@ export function activityDatesFromHistoryChange(
   addNew(next.luckyWheelHistory, prev.luckyWheelHistory ?? []);
   addNew(next.duckRaceHistory, prev.duckRaceHistory ?? []);
   addNew(next.badgeAwardHistory, prev.badgeAwardHistory ?? []);
+
+  const collectRemovedDates = (
+    prevEntries: Array<{ id: string; createdAt: string }>,
+    nextEntries: Array<{ id: string; createdAt: string }>,
+  ) => {
+    const nextIds = new Set(nextEntries.map((entry) => entry.id));
+    for (const entry of prevEntries) {
+      if (!nextIds.has(entry.id)) {
+        dates.add(toLocalDateKey(entry.createdAt));
+      }
+    }
+  };
+
+  collectRemovedDates(prev.pointHistory ?? [], next.pointHistory);
+  collectRemovedDates(prev.rewardHistory ?? [], next.rewardHistory);
+  collectRemovedDates(prev.teamScoreHistory ?? [], next.teamScoreHistory);
+  collectRemovedDates(prev.luckyWheelHistory ?? [], next.luckyWheelHistory);
+  collectRemovedDates(prev.duckRaceHistory ?? [], next.duckRaceHistory);
+  collectRemovedDates(prev.badgeAwardHistory ?? [], next.badgeAwardHistory);
 
   return [...dates];
 }

@@ -5,6 +5,7 @@ import { Bird, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { DuckRaceDialog } from './duck-race-dialog'
+import { useGameDialogForceClose } from './game-dialog-portal'
 import { DuckRacePreview } from './duck-race-preview'
 import { ToolCardShell } from './tool-card-shell'
 import { ClassroomButton, EmptyState } from '@/src/components/classroom'
@@ -33,6 +34,10 @@ export function DuckRaceTool() {
     const query = params.toString()
     router.replace(query ? `/tools?${query}` : '/tools')
   }, [router, searchParams])
+
+  useGameDialogForceClose(() => {
+    if (dialogOpen) handleDialogClose()
+  })
 
   return (
     <>

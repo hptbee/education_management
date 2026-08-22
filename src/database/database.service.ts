@@ -260,6 +260,7 @@ export class DatabaseService {
     data: unknown,
     options?: {
       cloudAssets?: Array<{ path: string; content: string; encoding?: string }>;
+      expectedClassroomId?: string;
     },
   ): Promise<ClassroomDatabase> {
     const record = data as Record<string, unknown>;
@@ -268,6 +269,14 @@ export class DatabaseService {
     assertImportShape(classroomData);
 
     let db = normalizeClassroomDatabase(classroomData as ClassroomDatabase);
+    if (
+      options?.expectedClassroomId &&
+      db.metadata.id !== options.expectedClassroomId
+    ) {
+      throw new Error(
+        `ID lớp không khớp: mong đợi "${options.expectedClassroomId}", nhận "${db.metadata.id}".`,
+      );
+    }
     if (db.metadata.cloudStub) {
       delete db.metadata.cloudStub;
     }

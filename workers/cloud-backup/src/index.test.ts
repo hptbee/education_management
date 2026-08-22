@@ -94,6 +94,43 @@ describe("auth and entitlement", () => {
     expect(response.status).toBe(200);
   });
 
+  it("rejects refresh after logout bumps license version", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+
+    const login = await handleAuthGoogle(
+      new Request("https://example.com/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: "mock" }),
+      }),
+      env,
+      async () => ({ sub: "logout-refresh-sub", email: "lr@example.com" }),
+    );
+    const { entitlement } = (await login.json()) as { entitlement: string };
+
+    const logout = await worker.fetch(
+      new Request("https://example.com/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${entitlement}` },
+      }),
+      env,
+    );
+    expect(logout.status).toBe(204);
+
+    const refresh = await worker.fetch(
+      new Request("https://example.com/auth/refresh", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${entitlement}` },
+      }),
+      env,
+    );
+    expect(refresh.status).toBe(401);
+    const body = (await refresh.json()) as { code: string };
+    expect(body.code).toBe("AUTH_REQUIRED");
+  });
+
   it("rejects disabled user on refresh", async () => {
     const { privateKeyPem, publicKeyPem } = await generateTestKeys();
     const mockDb = new MockD1();

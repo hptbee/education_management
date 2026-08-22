@@ -88,29 +88,48 @@ export const MAX_JSON_BODY_BYTES = 64 * 1024;
 export const MAX_SYNC_BATCH_FILES = 64;
 export const MAX_SYNC_FILE_BYTES = 5 * 1024 * 1024;
 
-export async function readBodyWithLimit(request: Request): Promise<string> {
+async function readBodyWithMaxBytes(request: Request, maxBytes: number): Promise<string> {
   const contentLength = request.headers.get("content-length");
-  if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
-    throw new ValidationError("Payload too large");
+  if (contentLength !== null && contentLength !== "") {
+    const len = Number(contentLength);
+    if (!Number.isFinite(len) || len < 0) {
+      throw new ValidationError("Invalid Content-Length");
+    }
+    if (len > maxBytes) {
+      throw new ValidationError("Payload too large");
+    }
   }
 
-  const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) {
-    throw new ValidationError("Payload too large");
+  if (!request.body) {
+    return "";
   }
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new ValidationError("Payload too large");
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+
+  text += decoder.decode();
   return text;
 }
 
-export async function readJsonWithLimit<T = unknown>(request: Request): Promise<T> {
-  const contentLength = request.headers.get("content-length");
-  if (contentLength && Number(contentLength) > MAX_JSON_BODY_BYTES) {
-    throw new ValidationError("Payload too large");
-  }
+export async function readBodyWithLimit(request: Request): Promise<string> {
+  return readBodyWithMaxBytes(request, MAX_BODY_BYTES);
+}
 
-  const text = await request.text();
-  if (text.length > MAX_JSON_BODY_BYTES) {
-    throw new ValidationError("Payload too large");
-  }
+export async function readJsonWithLimit<T = unknown>(request: Request): Promise<T> {
+  const text = await readBodyWithMaxBytes(request, MAX_JSON_BODY_BYTES);
 
   try {
     return JSON.parse(text) as T;

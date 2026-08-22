@@ -103,6 +103,7 @@ export async function signEntitlement(
     permissions,
     licenseVersion: user.license_version,
     offlineValidUntil: issuedAt + OFFLINE_GRACE_SECONDS,
+    licenseExpiresAt: license.expires_at ?? null,
   };
 
   const privateKey = await importPrivateKey(env.ENTITLEMENT_PRIVATE_KEY);

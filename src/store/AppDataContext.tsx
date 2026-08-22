@@ -228,6 +228,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    cloudBackupScheduler.setHasPendingLocalSave((classroomId) => {
+      const pending = pendingSaveRef.current;
+      return pending?.metadata.id === classroomId;
+    });
+    return () => cloudBackupScheduler.setHasPendingLocalSave(null);
+  }, []);
+
   const applyLoadedDatabase = useCallback((db: ClassroomDatabase | null) => {
     setDataState(db);
     dataRef.current = db;
@@ -562,7 +570,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (!pendingSaveRef.current && !dataRef.current) return true;
       pendingSaveRef.current = dataRef.current;
       const ok = await flushSave();
-      if (!ok) return false;
+      if (!ok) {
+        if (saveInFlightRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+          continue;
+        }
+        return false;
+      }
       if (!pendingSaveRef.current) return true;
     }
   }, [flushSave]);
@@ -798,13 +812,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           (record?.metadata as { id?: string } | undefined);
         const gateId = typeof meta?.id === "string" ? meta.id : "restore";
         const heldGateIds = new Set<string>([gateId]);
+
+        saveGenerationRef.current += 1;
+        if (saveDebounceRef.current) {
+          clearTimeout(saveDebounceRef.current);
+          saveDebounceRef.current = null;
+        }
+        const pending = pendingSaveRef.current;
+        if (pending && pending.metadata.id === gateId) {
+          pendingSaveRef.current = null;
+        }
+
         beginCloudRestore(gateId);
         try {
           logCloudTrace("info", "cloud-restore", "manual restoreFromCloudPayload", {
             assetCount: cloudAssets?.length ?? 0,
             paths: cloudAssets?.map((item) => item.path) ?? [],
           });
-          const db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets });
+          const db = await databaseService.saveCloudRestoredDatabase(payload, {
+            cloudAssets,
+            expectedClassroomId: gateId,
+          });
           heldGateIds.add(db.metadata.id);
           beginCloudRestore(db.metadata.id);
           await recordCloudRestoreSyncBaseline(db);

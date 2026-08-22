@@ -9,7 +9,7 @@ import type { Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
-import { pickWithoutRepeat } from '@/src/utils/randomSelection'
+import { pickWithoutRepeat, pickStudentIdsFromBag } from '@/src/utils/randomSelection'
 import { createRandomSpinPlan, getWinnerRotation, type WheelSpinPlan } from '@/src/utils/wheelSpin'
 import {
   clampQuantity,
@@ -24,6 +24,7 @@ import {
 } from '@/src/utils/pickerSession'
 import { NamedWheel } from './named-wheel'
 import { PickerConfigPanel } from './picker-config-panel'
+import { GameDialogPortal } from './game-dialog-portal'
 import { useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
 import { canAnimate } from '@/src/utils/motion'
 import { playSound, startWheelTicks } from '@/src/utils/sounds'
@@ -304,11 +305,10 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
     }))
   }, [session.preventRepeat])
 
-  const updateBagForStudent = useCallback(
-    (student: Student) => {
+  const removePickedStudentFromBag = useCallback(
+    (studentId: string) => {
       if (!session.preventRepeat) return
-      const result = pickWithoutRepeat([student], bagRef.current)
-      setWheelStudentBag(result.nextBag)
+      setWheelStudentBag(bagRef.current.filter((id) => id !== studentId))
     },
     [session.preventRepeat, setWheelStudentBag],
   )
@@ -330,7 +330,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
 
       setMultipleRevealIndex(index)
       runSpinToStudent(nextStudent, () => {
-        updateBagForStudent(nextStudent)
+        removePickedStudentFromBag(nextStudent.id)
         recordSessionPick(nextStudent.id)
         const updated = [...accumulated, nextStudent]
         setMultipleResults(updated)
@@ -351,7 +351,7 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
         }, MULTIPLE_AUTO_ADVANCE_MS)
       })
     },
-    [recordSessionPick, runSpinToStudent, students, updateBagForStudent, recordLuckyWheelSelection, allowMotion],
+    [recordSessionPick, runSpinToStudent, students, removePickedStudentFromBag, recordLuckyWheelSelection, allowMotion],
   )
 
   const startMultipleBatch = () => {
@@ -365,8 +365,22 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
     }
 
     setQuantityError(null)
-    const picked = pickUniqueStudents(eligibleStudents, session.quantity)
-    const pendingIds = picked.map((s) => s.id)
+    let pendingIds: string[]
+    if (session.preventRepeat) {
+      const { pickedIds, nextBag } = pickStudentIdsFromBag(
+        eligibleStudents,
+        bagRef.current,
+        session.quantity,
+      )
+      if (pickedIds.length < session.quantity) {
+        setQuantityError(`Chỉ còn ${pickedIds.length} bạn trong vòng — giảm số lượng hoặc bắt đầu lượt mới.`)
+        return
+      }
+      bagRef.current = nextBag
+      pendingIds = pickedIds
+    } else {
+      pendingIds = pickUniqueStudents(eligibleStudents, session.quantity).map((s) => s.id)
+    }
     setSession((prev) => ({ ...prev, pendingRevealIds: pendingIds }))
     setMultipleResults([])
     setMultipleComplete(false)
@@ -490,11 +504,12 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
-      onClick={requestClose}
-      role="presentation"
-    >
+    <GameDialogPortal>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
+        onClick={requestClose}
+        role="presentation"
+      >
       <div
         role="dialog"
         aria-modal="true"
@@ -705,5 +720,6 @@ export function LuckyWheelDialog({ isOpen, onClose, students, teams }: LuckyWhee
         </div>
       </div>
     </div>
+    </GameDialogPortal>
   )
 }

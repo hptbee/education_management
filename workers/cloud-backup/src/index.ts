@@ -38,7 +38,7 @@ export default {
       } else if (request.method === "POST" && url.pathname === "/auth/refresh") {
         response = await handleAuthRefresh(request, env);
       } else if (request.method === "POST" && url.pathname === "/auth/logout") {
-        response = await handleAuthLogout();
+        response = await handleAuthLogout(request, env);
       } else if (request.method === "PUT" && url.pathname === "/backup") {
         response = await handleBackupPut(request, env);
       } else if (request.method === "PUT" && url.pathname === "/sync") {

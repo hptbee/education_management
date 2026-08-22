@@ -1,4 +1,4 @@
-import { findActiveLicense, findOrCreateUserFromGoogle, findUserById } from "./db";
+import { findActiveLicense, findOrCreateUserFromGoogle, findUserById, bumpLicenseVersion } from "./db";
 import {
   accessErrorForLicense,
   accessErrorForUser,
@@ -55,11 +55,12 @@ export async function handleAuthGoogle(
     return errorResponse(licenseError, "License is not active", 403);
   }
 
-  const entitlement = await signEntitlement(env, user, license);
+  const userForToken = (await findUserById(env.DB, user.id)) ?? user;
+  const entitlement = await signEntitlement(env, userForToken, license);
   return jsonResponse({
     ok: true,
     entitlement,
-    user: publicUser(user),
+    user: publicUser(userForToken),
     license: publicLicense(license),
   });
 }
@@ -139,6 +140,10 @@ export async function handleAuthRefresh(request: Request, env: Env): Promise<Res
     return errorResponse(licenseError, "License is not active", 403);
   }
 
+  if (user.license_version !== verified.claims.licenseVersion) {
+    return errorResponse("AUTH_REQUIRED", "Entitlement outdated", 401);
+  }
+
   const entitlement = await signEntitlement(env, user, license!);
   return jsonResponse({
     ok: true,
@@ -148,7 +153,10 @@ export async function handleAuthRefresh(request: Request, env: Env): Promise<Res
   });
 }
 
-export async function handleAuthLogout(): Promise<Response> {
+export async function handleAuthLogout(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if ("error" in auth) return auth.error;
+  await bumpLicenseVersion(env.DB, auth.user.id);
   return new Response(null, { status: 204 });
 }
 

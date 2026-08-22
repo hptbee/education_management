@@ -31,6 +31,7 @@ import {
 import { DuckRaceSetup } from './duck-race-setup'
 import { DuckRaceTrack } from './duck-race-track'
 import { DuckRaceResult } from './duck-race-result'
+import { GameDialogPortal } from './game-dialog-portal'
 
 type RacePhase = 'setup' | 'ready' | 'racing' | 'result'
 
@@ -108,6 +109,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
   const rafRef = useRef<number | null>(null)
   const countdownTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([])
   const planRef = useRef<DuckRacePlan | null>(null)
+  const raceStartedAtRef = useRef<number | null>(null)
   const trackWidthRef = useRef(0)
   const winnerAnnouncedRef = useRef(false)
   /** Last frozen progress snapshot — re-applied after React re-renders so winner stays at finish. */
@@ -296,6 +298,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
       }
 
       const startedAt = performance.now()
+      raceStartedAtRef.current = startedAt
 
       const tick = (now: number) => {
         if (generation !== raceGenerationRef.current) return
@@ -321,6 +324,27 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
     const el = fieldElRef.current
     trackWidthRef.current = el?.clientWidth ?? 480
   }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    if (phase !== 'ready' && phase !== 'racing' && phase !== 'result') return
+    const el = fieldElRef.current
+    if (!el) return
+
+    const onResize = () => {
+      measureField()
+      const plan = planRef.current
+      const startedAt = raceStartedAtRef.current
+      if (phase === 'racing' && plan && startedAt != null) {
+        const elapsed = performance.now() - startedAt
+        applyFieldProgress(sampleRaceProgress(plan, elapsed), racers, elapsed)
+      }
+    }
+
+    const observer = new ResizeObserver(() => onResize())
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [applyFieldProgress, isOpen, measureField, phase, racers])
 
   const beginCountdownThenRace = useCallback(
     (plan: DuckRacePlan, racerList: Student[], generation: number) => {
@@ -459,11 +483,12 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
   )
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
-      onClick={() => void requestClose()}
-      role="presentation"
-    >
+    <GameDialogPortal>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
+        onClick={() => void requestClose()}
+        role="presentation"
+      >
       <div
         role="dialog"
         aria-modal="true"
@@ -554,5 +579,6 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
         </div>
       </div>
     </div>
+    </GameDialogPortal>
   )
 }

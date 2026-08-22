@@ -65,6 +65,20 @@ export async function refreshEntitlement(entitlement: string): Promise<GoogleAut
   return (await response.json()) as GoogleAuthResult | AuthApiError;
 }
 
+export async function postAuthLogout(entitlement: string): Promise<void> {
+  const baseUrl = getWorkerBaseUrl();
+  if (!baseUrl) return;
+
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/logout`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${entitlement}` },
+  });
+
+  if (!response.ok && response.status !== 204) {
+    throw new Error(`Logout revoke failed (${response.status})`);
+  }
+}
+
 export async function fetchMe(entitlement: string): Promise<{ ok: true; user: AuthUser; license: AuthLicense | null } | AuthApiError> {
   const baseUrl = getWorkerBaseUrl();
   if (!baseUrl) {

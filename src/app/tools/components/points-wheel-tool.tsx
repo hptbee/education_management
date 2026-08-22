@@ -5,6 +5,7 @@ import { CircleDollarSign, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { PointsWheelDialog } from './points-wheel-dialog'
+import { useGameDialogForceClose } from './game-dialog-portal'
 import { ValueWheelPreview } from './value-wheel'
 import { ToolCardShell } from './tool-card-shell'
 import { ClassroomButton, EmptyState } from '@/src/components/classroom'
@@ -32,6 +33,10 @@ export function PointsWheelTool() {
     const query = params.toString()
     router.replace(query ? `/tools?${query}` : '/tools')
   }, [router, searchParams])
+
+  useGameDialogForceClose(() => {
+    if (dialogOpen) handleDialogClose()
+  })
 
   return (
     <>
