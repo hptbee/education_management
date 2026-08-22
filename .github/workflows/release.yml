@@ -70,12 +70,6 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: npm test
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Run Rust tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
-
   build:
     needs: [prepare, test]
     strategy:
@@ -138,6 +132,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
 
       - name: Build Tauri bundle
         run: npm run tauri:build -- ${{ matrix.tauri_args }}
