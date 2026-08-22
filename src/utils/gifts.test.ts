@@ -5,8 +5,9 @@ import {
   normalizeGiftsOnDatabase,
   migrateLegacyGiftImages,
 } from "./gifts";
-import type { ClassroomDatabase } from "../database/types";
+import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "./pointsWheelConfig";
 import type { Gift, Student } from "../types/models";
+import type { ClassroomDatabase } from "../database/types";
 
 vi.mock("../database/assets/classroom-asset.service", () => ({
   classroomAssetService: {
@@ -49,8 +50,12 @@ function minimalDb(rewards: ClassroomDatabase["rewards"], students: Student[] = 
     badges: [],
     recognitionTitles: [],
     luckyWheelHistory: [],
+    duckRaceHistory: [],
     badgeAwardHistory: [],
     wheelStudentBag: [],
+    duckRaceStudentBag: [],
+    pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((s) => ({ ...s })),
+    pointsWheelStudentBag: [],
     appSettings: { soundEnabled: true, animationsEnabled: true, cloudBackupEnabled: false },
   };
 }

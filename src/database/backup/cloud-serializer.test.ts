@@ -135,6 +135,45 @@ describe("cloud-serializer", () => {
     expect(paths).toContain("manifest.json");
     expect(paths).not.toContain("teams.json");
   });
+
+  it("keeps wheelStudentBag and duckRaceStudentBag distinct in catalog split/merge", () => {
+    const db = makeDb("2/7", "2026-2027");
+    db.wheelStudentBag = ["wheel-a", "wheel-b"];
+    db.duckRaceStudentBag = ["duck-x", "duck-y"];
+
+    const split = splitClassroomToCloudFiles(db);
+    const catalog = split.files["catalog.json"] as {
+      wheelStudentBag: string[];
+      duckRaceStudentBag: string[];
+    };
+    expect(catalog.wheelStudentBag).toEqual(["wheel-a", "wheel-b"]);
+    expect(catalog.duckRaceStudentBag).toEqual(["duck-x", "duck-y"]);
+
+    const uploads = serializeCloudFilesForUpload(split.files, split.paths);
+    const fileMap: Record<string, string> = {};
+    for (const u of uploads) fileMap[u.path] = u.content;
+
+    const merged = mergeCloudFilesToClassroom(fileMap);
+    expect(merged.wheelStudentBag).toEqual(["wheel-a", "wheel-b"]);
+    expect(merged.duckRaceStudentBag).toEqual(["duck-x", "duck-y"]);
+  });
+
+  it("defaults duckRaceStudentBag to [] when catalog omits the field", () => {
+    const db = makeDb("2/7", "2026-2027");
+    db.wheelStudentBag = ["wheel-only"];
+    const split = splitClassroomToCloudFiles(db);
+    const uploads = serializeCloudFilesForUpload(split.files, split.paths);
+    const fileMap: Record<string, string> = {};
+    for (const u of uploads) fileMap[u.path] = u.content;
+
+    const catalog = JSON.parse(fileMap["catalog.json"]) as Record<string, unknown>;
+    delete catalog.duckRaceStudentBag;
+    fileMap["catalog.json"] = JSON.stringify(catalog);
+
+    const merged = mergeCloudFilesToClassroom(fileMap);
+    expect(merged.wheelStudentBag).toEqual(["wheel-only"]);
+    expect(merged.duckRaceStudentBag).toEqual([]);
+  });
 });
 
 describe("mergeClassroomRegistries", () => {

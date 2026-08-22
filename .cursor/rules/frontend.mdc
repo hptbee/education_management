@@ -49,4 +49,4 @@ Per `docs/PROJECT_SCOPE.md` §12:
 
 ## Dialogs
 
-CRUD/scoring overlays: `useModalFocusTrap` + `role="dialog"` + `aria-modal` + labelled heading (`gift-redeem-dialog.tsx`). Stacked modals: `modalTrapStack` (top trap only). Full-screen overlays that must cover the shell: `createPortal(..., document.body)` (e.g. recognition celebration). Leave Lucky Wheel without a keyboard trap unless requested.
+CRUD/scoring overlays: `useModalFocusTrap` + `role="dialog"` + `aria-modal` + labelled heading (`gift-redeem-dialog.tsx`). Stacked modals: `modalTrapStack` (top trap only). Full-screen overlays that must cover the shell: `createPortal(..., document.body)` (e.g. recognition celebration). Leave Lucky Wheel (and sibling game modals: Duck Race, Points Wheel) without a keyboard trap unless requested.

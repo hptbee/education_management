@@ -171,6 +171,15 @@ export interface LuckyWheelSelection {
   createdAt: string;
 }
 
+export interface DuckRaceResult {
+  id: string;
+  winnerId: string;
+  /** Future multi-winner support; v1 is always `[winnerId]`. */
+  winnerIds?: string[];
+  participantIds: string[];
+  createdAt: string;
+}
+
 export interface BadgeAwardHistory {
   id: string;
   badgeId: string;
@@ -190,6 +199,14 @@ export interface AppSettings {
 
 export type LuckyWheelMode = "student" | "team" | "reward" | "activity";
 
+export interface PointsWheelSegment {
+  id: string;
+  value: number;
+  enabled: boolean;
+  /** Reserved for future weighted spins. */
+  weight?: number;
+}
+
 export interface AppData {
   classroomSettings: ClassroomSettings;
   classroomRoles: ClassroomRole[];
@@ -204,7 +221,14 @@ export interface AppData {
   recognitionTitles: RecognitionTitle[];
   recognitions: Recognition[];
   luckyWheelHistory: LuckyWheelSelection[];
+  duckRaceHistory: DuckRaceResult[];
   badgeAwardHistory: BadgeAwardHistory[];
   wheelStudentBag: string[];
+  /** Prevent-repeat pool for Đua vịt — separate from Lucky Wheel. */
+  duckRaceStudentBag: string[];
+  /** Configurable point values for Vòng quay điểm. */
+  pointsWheelConfig: PointsWheelSegment[];
+  /** Prevent-repeat pool for Vòng quay điểm — separate from Lucky Wheel. */
+  pointsWheelStudentBag: string[];
   appSettings: AppSettings;
 }

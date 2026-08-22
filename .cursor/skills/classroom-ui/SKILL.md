@@ -61,7 +61,7 @@ Reuse before creating:
 
 - Min 44×44px touch targets for classroom actions (+1, spin, pick student)
 - Visible focus rings for keyboard nav
-- CRUD/scoring overlays: `useModalFocusTrap` + `role="dialog"` + `aria-modal` + labelled heading (`gift-redeem-dialog.tsx`). Leave Lucky Wheel without a keyboard trap unless requested.
+- CRUD/scoring overlays: `useModalFocusTrap` + `role="dialog"` + `aria-modal` + labelled heading (`gift-redeem-dialog.tsx`). Leave Lucky Wheel and sibling game modals (Duck Race, Points Wheel) without a keyboard trap unless requested.
 - Do not rely on color alone for important state
 - No emoji as icons — use Lucide
 

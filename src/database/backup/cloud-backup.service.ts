@@ -11,6 +11,7 @@ import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { uploadCloudSyncBatch } from "./cloud-sync.service";
 import { isRegistryPullCompleted, refreshCloudRegistrySummaries } from "./cloud-registry.service";
 import { fetchClassroomsRegistry } from "@/src/auth/api";
+import { isCloudRestoreInProgress } from "./cloud-restore-gate";
 
 export interface BackupUploadRequest {
   classroomId: string;
@@ -310,6 +311,10 @@ export class CloudBackupScheduler {
   }
 
   scheduleAfterLocalSave(db: ClassroomDatabase): void {
+    if (isCloudRestoreInProgress(db.metadata.id)) {
+      return;
+    }
+
     if (!isCloudBackupEnabledForDatabase(db)) {
       this.updateAggregateState();
       return;
@@ -351,6 +356,10 @@ export class CloudBackupScheduler {
   }
 
   async checkStartupBackup(db: ClassroomDatabase): Promise<void> {
+    if (isCloudRestoreInProgress(db.metadata.id)) {
+      return;
+    }
+
     if (!(await this.canUpload(db))) {
       this.setState("disabled", null, db.metadata.id);
       return;

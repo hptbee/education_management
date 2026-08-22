@@ -4,9 +4,11 @@ import type {
   BadgeAwardHistory,
   ClassroomRole,
   ClassroomSettings,
+  DuckRaceResult,
   LuckyWheelSelection,
   PointAction,
   PointHistory,
+  PointsWheelSegment,
   Recognition,
   RecognitionTitle,
   Reward,
@@ -41,8 +43,12 @@ export interface ClassroomDatabase {
   recognitionTitles: RecognitionTitle[];
   recognitions: Recognition[];
   luckyWheelHistory: LuckyWheelSelection[];
+  duckRaceHistory: DuckRaceResult[];
   badgeAwardHistory: BadgeAwardHistory[];
   wheelStudentBag: string[];
+  duckRaceStudentBag: string[];
+  pointsWheelConfig: PointsWheelSegment[];
+  pointsWheelStudentBag: string[];
   teamScoreHistory: TeamScoreHistory[];
   appSettings: AppSettings;
 }

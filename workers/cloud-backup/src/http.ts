@@ -68,6 +68,14 @@ export function errorResponse(code: ApiErrorCode, error: string, status: number)
   return jsonResponse({ ok: false, code, error }, status);
 }
 
+/** Client/request validation failures — mapped to HTTP 400 by the top-level catch. */
+export class ValidationError extends Error {
+  readonly name = "ValidationError";
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 export function readBearerToken(request: Request): string | null {
   const auth = request.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) return null;
@@ -83,12 +91,12 @@ export const MAX_SYNC_FILE_BYTES = 5 * 1024 * 1024;
 export async function readBodyWithLimit(request: Request): Promise<string> {
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
-    throw new Error("Payload too large");
+    throw new ValidationError("Payload too large");
   }
 
   const text = await request.text();
   if (text.length > MAX_BODY_BYTES) {
-    throw new Error("Payload too large");
+    throw new ValidationError("Payload too large");
   }
   return text;
 }
@@ -96,13 +104,17 @@ export async function readBodyWithLimit(request: Request): Promise<string> {
 export async function readJsonWithLimit<T = unknown>(request: Request): Promise<T> {
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > MAX_JSON_BODY_BYTES) {
-    throw new Error("Payload too large");
+    throw new ValidationError("Payload too large");
   }
 
   const text = await request.text();
   if (text.length > MAX_JSON_BODY_BYTES) {
-    throw new Error("Payload too large");
+    throw new ValidationError("Payload too large");
   }
 
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new ValidationError("Invalid request body");
+  }
 }

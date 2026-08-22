@@ -166,14 +166,6 @@ async fn get_data_directory(app: AppHandle) -> Result<String, String> {
     Ok(dir.to_string_lossy().to_string())
 }
 
-#[tauri::command]
-fn get_cloud_backup_token() -> Option<String> {
-    std::env::var("CLOUD_BACKUP_TOKEN")
-        .ok()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-}
-
 const ENTITLEMENT_SERVICE: &str = "education-management";
 const ENTITLEMENT_USER: &str = "teacher-entitlement";
 
@@ -812,7 +804,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_data_directory,
-            get_cloud_backup_token,
             save_entitlement,
             load_entitlement,
             clear_entitlement,

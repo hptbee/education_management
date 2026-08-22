@@ -7,6 +7,7 @@ import type {
   PointAction,
   PointHistory,
   PointHistorySource,
+  PointsWheelSegment,
   Recognition,
   RecognitionTitle,
   Gift,
@@ -33,6 +34,7 @@ import {
   setLastClassroomId,
 } from "../utils/lastClassroom";
 import { backupMetadataService } from "../database/backup/backup-metadata.service";
+import { recordCloudRestoreSyncBaseline } from "../database/backup/cloud-restore-sync";
 import {
   cloudBackupScheduler,
   isCloudBackupConfigured,
@@ -53,6 +55,7 @@ import {
   cloudDirtyTracker,
   inferDirtyFromDatabaseChange,
 } from "../database/backup/cloud-dirty-tracker";
+import { beginCloudRestore, endCloudRestore, isCloudRestoreInProgress } from "../database/backup/cloud-restore-gate";
 import { toastError, toastSuccess } from "../utils/toast";
 import { logAppEvent, logCloudTrace } from "../logging/app-log";
 import { useAuth } from "./AuthContext";
@@ -132,7 +135,15 @@ interface AppDataContextValue {
   deleteRecognition: (recognitionId: string) => void;
   addRecognition: (recognition: Omit<Recognition, "id" | "createdAt">) => Recognition;
   setWheelStudentBag: (bag: string[]) => void;
+  setDuckRaceStudentBag: (bag: string[]) => void;
+  setPointsWheelStudentBag: (bag: string[]) => void;
+  setPointsWheelConfig: (config: PointsWheelSegment[]) => void;
   recordLuckyWheelSelection: (studentIds: string[]) => void;
+  recordDuckRaceResult: (input: {
+    winnerId: string;
+    winnerIds?: string[];
+    participantIds: string[];
+  }) => void;
   persistNow: () => Promise<boolean>;
   markDirtyAsset: (assetKey: string) => void;
   /** Bumps when account registry merge changes local classroom list. */
@@ -456,6 +467,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const current = dataRef.current;
     if (!current?.appSettings.cloudBackupEnabled) return;
+    if (isCloudRestoreInProgress(current.metadata.id)) return;
     void cloudBackupScheduler.checkStartupBackup(current);
   }, [data?.metadata.id, data?.appSettings.cloudBackupEnabled]);
 
@@ -779,16 +791,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       restoreFromCloudPayload: async (payload, cloudAssets) => {
         setIsLoading(true);
+        const record = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+        const nested = record?.payload && typeof record.payload === "object" ? (record.payload as Record<string, unknown>) : null;
+        const meta =
+          (nested?.metadata as { id?: string } | undefined) ??
+          (record?.metadata as { id?: string } | undefined);
+        const gateId = typeof meta?.id === "string" ? meta.id : "restore";
+        const heldGateIds = new Set<string>([gateId]);
+        beginCloudRestore(gateId);
         try {
           logCloudTrace("info", "cloud-restore", "manual restoreFromCloudPayload", {
             assetCount: cloudAssets?.length ?? 0,
             paths: cloudAssets?.map((item) => item.path) ?? [],
           });
           const db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets });
+          heldGateIds.add(db.metadata.id);
+          beginCloudRestore(db.metadata.id);
+          await recordCloudRestoreSyncBaseline(db);
+          cloudDirtyTracker.clear(db.metadata.id);
           applyLoadedDatabase(db);
           await refreshCloudRegistrySummaries();
           return db;
         } finally {
+          for (const id of heldGateIds) endCloudRestore(id);
           setIsLoading(false);
         }
       },
@@ -1141,6 +1166,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             })
             .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
+          const duckRaceHistory = (prev.duckRaceHistory ?? [])
+            .map((entry) => {
+              const remainingParticipants = entry.participantIds.filter((id) => id !== studentId);
+              if (remainingParticipants.length === 0) return null;
+              const winnerIds = (entry.winnerIds?.length ? entry.winnerIds : [entry.winnerId]).filter(
+                (id) => id !== studentId,
+              );
+              if (winnerIds.length === 0) return null;
+              return {
+                ...entry,
+                winnerId: winnerIds[0],
+                winnerIds,
+                participantIds: remainingParticipants,
+              };
+            })
+            .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
           const badgeAwardHistory = (prev.badgeAwardHistory ?? [])
             .map((entry) => {
               const remainingIds = entry.studentIds.filter((id) => id !== studentId);
@@ -1157,8 +1199,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             rewardHistory: prev.rewardHistory.filter((item) => item.studentId !== studentId),
             recognitions: prev.recognitions.filter((item) => item.studentId !== studentId),
             luckyWheelHistory,
+            duckRaceHistory,
             badgeAwardHistory,
             wheelStudentBag: prev.wheelStudentBag.filter((id) => id !== studentId),
+            duckRaceStudentBag: (prev.duckRaceStudentBag ?? []).filter((id) => id !== studentId),
+            pointsWheelStudentBag: (prev.pointsWheelStudentBag ?? []).filter((id) => id !== studentId),
           };
         });
 
@@ -1472,6 +1517,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return saved;
       },
       setWheelStudentBag: (bag) => setData((current) => ({ ...current, wheelStudentBag: bag })),
+      setDuckRaceStudentBag: (bag) => setData((current) => ({ ...current, duckRaceStudentBag: bag })),
+      setPointsWheelStudentBag: (bag) => setData((current) => ({ ...current, pointsWheelStudentBag: bag })),
+      setPointsWheelConfig: (config) => setData((current) => ({ ...current, pointsWheelConfig: config })),
       recordLuckyWheelSelection: (studentIds) => {
         const uniqueIds = [...new Set(studentIds)].filter(Boolean);
         if (uniqueIds.length === 0) return;
@@ -1486,6 +1534,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return {
             ...current,
             luckyWheelHistory: capHistory([entry, ...(current.luckyWheelHistory ?? [])]),
+          };
+        });
+      },
+      recordDuckRaceResult: ({ winnerId, winnerIds, participantIds }) => {
+        const uniqueParticipants = [...new Set(participantIds)].filter(Boolean);
+        const winners = [...new Set(winnerIds?.length ? winnerIds : [winnerId])].filter(Boolean);
+        if (uniqueParticipants.length === 0 || winners.length === 0) return;
+        setData((current) => {
+          const now = new Date().toISOString();
+          const entry = {
+            id: createId("duck-race"),
+            winnerId: winners[0],
+            winnerIds: winners,
+            participantIds: uniqueParticipants,
+            createdAt: now,
+          };
+          return {
+            ...current,
+            duckRaceHistory: capHistory([entry, ...(current.duckRaceHistory ?? [])]),
           };
         });
       },

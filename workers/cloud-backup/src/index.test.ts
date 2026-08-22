@@ -431,6 +431,94 @@ describe("backup ownership", () => {
     const body = (await response.json()) as { code: string };
     expect(body.code).toBe("VALIDATION_ERROR");
   });
+
+  it("returns 400 when request body is malformed JSON", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    env.BACKUP_BUCKET = {
+      put: async () => undefined,
+      get: async () => null,
+      list: async () => ({ objects: [] }),
+    } as unknown as R2Bucket;
+
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "backup-malformed-json" }, "teacher");
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const response = await worker.fetch(
+      new Request("https://example.com/backup", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${entitlement}`,
+          "Content-Type": "application/json",
+        },
+        body: "{not-json",
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { code: string; error: string };
+    expect(body.code).toBe("VALIDATION_ERROR");
+    expect(body.error).toBe("Invalid request body");
+  });
+
+  it("returns 500 INTERNAL_ERROR for unexpected failures", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    env.BACKUP_BUCKET = {
+      put: async () => {
+        throw new Error("R2 unavailable");
+      },
+      get: async () => null,
+      list: async () => ({ objects: [] }),
+    } as unknown as R2Bucket;
+
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "backup-internal-error" }, "teacher");
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const response = await worker.fetch(
+      new Request("https://example.com/backup", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${entitlement}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          classroomId: "2-7_2026-2027",
+          fileName: "class.json",
+          schemaVersion: 1,
+          timestamp: new Date().toISOString(),
+          payload: {
+            metadata: { id: "2-7_2026-2027", version: 1 },
+          },
+        }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(500);
+    const body = (await response.json()) as { code: string; error: string };
+    expect(body.code).toBe("INTERNAL_ERROR");
+    expect(body.error).toBe("An unexpected error occurred");
+  });
 });
 
 describe("classroom list and restore", () => {
@@ -640,6 +728,80 @@ describe("classroom list and restore", () => {
 
     expect(response.status).toBe(200);
     expect(putKeys).toContain(`users/${user.id}/classrooms/2-7_2026-2027/assets/banner.webp`);
+  });
+
+  it("GET /restore/:id/assets paginates R2 list results", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    const user = await createUser(mockDb as unknown as D1Database, { sub: "asset-page-sub" }, "teacher");
+    const license = await createLicense(
+      mockDb as unknown as D1Database,
+      user.id,
+      "premium",
+      new Date().toISOString(),
+      null,
+    );
+    const userFromDb = (await findUserById(mockDb as unknown as D1Database, user.id))!;
+    const entitlement = await signEntitlement(env, userFromDb, license);
+
+    const prefix = `users/${user.id}/classrooms/2-7_2026-2027/assets/`;
+    const keyA = `${prefix}banner.webp`;
+    const keyB = `${prefix}teacher/avatar.webp`;
+    const blobs = new Map<string, Uint8Array>([
+      [keyA, new Uint8Array([1, 2, 3])],
+      [keyB, new Uint8Array([4, 5, 6])],
+    ]);
+
+    let listCalls = 0;
+    env.BACKUP_BUCKET = {
+      put: async () => undefined,
+      get: async (key: string) => {
+        const bytes = blobs.get(key);
+        if (!bytes) return null;
+        return {
+          arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+        };
+      },
+      list: async (opts?: { prefix?: string; cursor?: string }) => {
+        listCalls += 1;
+        if (opts?.prefix !== prefix) {
+          return { objects: [], truncated: false };
+        }
+        if (!opts.cursor) {
+          return {
+            objects: [{ key: keyA }],
+            truncated: true,
+            cursor: "page-2",
+          };
+        }
+        expect(opts.cursor).toBe("page-2");
+        return {
+          objects: [{ key: keyB }],
+          truncated: false,
+        };
+      },
+    } as unknown as R2Bucket;
+
+    const response = await worker.fetch(
+      new Request("https://example.com/restore/2-7_2026-2027/assets", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${entitlement}` },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(listCalls).toBeGreaterThanOrEqual(2);
+    const body = (await response.json()) as {
+      ok?: boolean;
+      assets?: Array<{ path: string }>;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.assets?.map((item) => item.path).sort()).toEqual([
+      "assets/banner.webp",
+      "assets/teacher/avatar.webp",
+    ]);
   });
 
   it("PUT /sync merges registry and refuses empty overwrite", async () => {

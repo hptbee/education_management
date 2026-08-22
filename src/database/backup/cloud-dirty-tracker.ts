@@ -79,6 +79,68 @@ export class CloudDirtyTracker {
 
 export const cloudDirtyTracker = new CloudDirtyTracker();
 
+function itemChangeToken(item: unknown): string {
+  if (item === null || item === undefined) return "";
+  if (typeof item !== "object") return String(item);
+  const record = item as Record<string, unknown>;
+  const id = typeof record.id === "string" ? record.id : "";
+  if (typeof record.updatedAt === "string") {
+    const mutable: Record<string, unknown> = { ...record };
+    delete mutable.id;
+    delete mutable.updatedAt;
+    delete mutable.createdAt;
+    return `${id}\0${record.updatedAt}\0${nestedObjectFingerprint(mutable)}`;
+  }
+  return `${id}\0${nestedObjectFingerprint(record)}`;
+}
+
+function entityFingerprint(items: unknown[] | undefined): string {
+  if (!items || items.length === 0) return "0";
+
+  const allPrimitive = items.every(
+    (item) => typeof item === "string" || typeof item === "number" || typeof item === "boolean",
+  );
+  if (allPrimitive) {
+    return `p:${items.length}|${[...items].map(String).sort().join("\0")}`;
+  }
+
+  const tokens = items.map(itemChangeToken).sort();
+  return `e:${items.length}|${tokens.join("\0")}`;
+}
+
+function nestedObjectFingerprint(value: Record<string, unknown>): string {
+  return Object.keys(value)
+    .sort()
+    .map((key) => {
+      const entry = value[key];
+      if (entry === null || entry === undefined) return `${key}=`;
+      if (typeof entry !== "object") return `${key}=${String(entry)}`;
+      return `${key}:[${nestedObjectFingerprint(entry as Record<string, unknown>)}]`;
+    })
+    .join(",");
+}
+
+function settingsFingerprint(value: unknown): string {
+  if (!value || typeof value !== "object") return String(value);
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return keys
+    .map((key) => {
+      const entry = record[key];
+      if (entry === null || entry === undefined) return `${key}=`;
+      if (typeof entry === "object") {
+        return `${key}:{${nestedObjectFingerprint(entry as Record<string, unknown>)}}`;
+      }
+      return `${key}=${String(entry)}`;
+    })
+    .join(";");
+}
+
+function arrayChanged(prev: unknown[] | undefined, next: unknown[]): boolean {
+  if (prev === next) return false;
+  return entityFingerprint(prev) !== entityFingerprint(next);
+}
+
 export function inferDirtyFromDatabaseChange(
   prev: { metadata?: { updatedAt?: string }; students?: unknown[] } | null,
   next: {
@@ -94,10 +156,14 @@ export function inferDirtyFromDatabaseChange(
     pointActions: unknown[];
     recognitionTitles: unknown[];
     wheelStudentBag: unknown[];
+    duckRaceStudentBag: unknown[];
+    pointsWheelConfig: unknown[];
+    pointsWheelStudentBag: unknown[];
     pointHistory: unknown[];
     rewardHistory: unknown[];
     teamScoreHistory: unknown[];
     luckyWheelHistory: unknown[];
+    duckRaceHistory: unknown[];
     badgeAwardHistory: unknown[];
   },
 ): Partial<CloudDirtyState> {
@@ -107,7 +173,7 @@ export function inferDirtyFromDatabaseChange(
   if (
     !prevClassroom ||
     prevClassroom.metadata?.updatedAt !== next.metadata.updatedAt ||
-    JSON.stringify(prevClassroom.classroomSettings) !== JSON.stringify(next.classroomSettings)
+    settingsFingerprint(prevClassroom.classroomSettings) !== settingsFingerprint(next.classroomSettings)
   ) {
     patch.classroom = true;
   }
@@ -116,36 +182,42 @@ export function inferDirtyFromDatabaseChange(
     patch.registry = true;
   }
 
-  if (!prev || JSON.stringify(prev.students) !== JSON.stringify(next.students)) {
+  if (!prev || arrayChanged(prev.students, next.students)) {
     patch.students = true;
   }
 
-  if (!prev || JSON.stringify((prev as typeof next).teams) !== JSON.stringify(next.teams)) {
+  if (!prev || arrayChanged((prev as typeof next).teams, next.teams)) {
     patch.teams = true;
   }
 
-  if (!prev || JSON.stringify((prev as typeof next).classroomRoles) !== JSON.stringify(next.classroomRoles)) {
+  if (!prev || arrayChanged((prev as typeof next).classroomRoles, next.classroomRoles)) {
     patch.roles = true;
   }
 
-  if (!prev || JSON.stringify((prev as typeof next).recognitions) !== JSON.stringify(next.recognitions)) {
+  if (!prev || arrayChanged((prev as typeof next).recognitions, next.recognitions)) {
     patch.recognitions = true;
   }
 
-  if (!prev || JSON.stringify((prev as typeof next).rewards) !== JSON.stringify(next.rewards)) {
+  if (!prev || arrayChanged((prev as typeof next).rewards, next.rewards)) {
     patch.rewards = true;
   }
 
-  if (!prev || JSON.stringify((prev as typeof next).appSettings) !== JSON.stringify(next.appSettings)) {
+  if (
+    !prev ||
+    settingsFingerprint((prev as typeof next).appSettings) !== settingsFingerprint(next.appSettings)
+  ) {
     patch.settings = true;
   }
 
   const catalogChanged =
     !prev ||
-    JSON.stringify((prev as typeof next).badges) !== JSON.stringify(next.badges) ||
-    JSON.stringify((prev as typeof next).pointActions) !== JSON.stringify(next.pointActions) ||
-    JSON.stringify((prev as typeof next).recognitionTitles) !== JSON.stringify(next.recognitionTitles) ||
-    JSON.stringify((prev as typeof next).wheelStudentBag) !== JSON.stringify(next.wheelStudentBag);
+    arrayChanged((prev as typeof next).badges, next.badges) ||
+    arrayChanged((prev as typeof next).pointActions, next.pointActions) ||
+    arrayChanged((prev as typeof next).recognitionTitles, next.recognitionTitles) ||
+    arrayChanged((prev as typeof next).wheelStudentBag, next.wheelStudentBag) ||
+    arrayChanged((prev as typeof next).duckRaceStudentBag, next.duckRaceStudentBag) ||
+    arrayChanged((prev as typeof next).pointsWheelConfig, next.pointsWheelConfig) ||
+    arrayChanged((prev as typeof next).pointsWheelStudentBag, next.pointsWheelStudentBag);
 
   if (catalogChanged) {
     patch.catalog = true;
@@ -153,11 +225,12 @@ export function inferDirtyFromDatabaseChange(
 
   const historyChanged =
     !prev ||
-    JSON.stringify((prev as typeof next).pointHistory) !== JSON.stringify(next.pointHistory) ||
-    JSON.stringify((prev as typeof next).rewardHistory) !== JSON.stringify(next.rewardHistory) ||
-    JSON.stringify((prev as typeof next).teamScoreHistory) !== JSON.stringify(next.teamScoreHistory) ||
-    JSON.stringify((prev as typeof next).luckyWheelHistory) !== JSON.stringify(next.luckyWheelHistory) ||
-    JSON.stringify((prev as typeof next).badgeAwardHistory) !== JSON.stringify(next.badgeAwardHistory);
+    arrayChanged((prev as typeof next).pointHistory, next.pointHistory) ||
+    arrayChanged((prev as typeof next).rewardHistory, next.rewardHistory) ||
+    arrayChanged((prev as typeof next).teamScoreHistory, next.teamScoreHistory) ||
+    arrayChanged((prev as typeof next).luckyWheelHistory, next.luckyWheelHistory) ||
+    arrayChanged((prev as typeof next).duckRaceHistory, next.duckRaceHistory) ||
+    arrayChanged((prev as typeof next).badgeAwardHistory, next.badgeAwardHistory);
 
   if (historyChanged) {
     patch.activityIndex = true;
@@ -172,6 +245,7 @@ export function activityDatesFromHistoryChange(
     rewardHistory?: Array<{ id: string; createdAt: string }>;
     teamScoreHistory?: Array<{ id: string; createdAt: string }>;
     luckyWheelHistory?: Array<{ id: string; createdAt: string }>;
+    duckRaceHistory?: Array<{ id: string; createdAt: string }>;
     badgeAwardHistory?: Array<{ id: string; createdAt: string }>;
   } | null,
   next: {
@@ -179,6 +253,7 @@ export function activityDatesFromHistoryChange(
     rewardHistory: Array<{ id: string; createdAt: string }>;
     teamScoreHistory: Array<{ id: string; createdAt: string }>;
     luckyWheelHistory: Array<{ id: string; createdAt: string }>;
+    duckRaceHistory: Array<{ id: string; createdAt: string }>;
     badgeAwardHistory: Array<{ id: string; createdAt: string }>;
   },
 ): string[] {
@@ -194,6 +269,7 @@ export function activityDatesFromHistoryChange(
     collect(next.rewardHistory);
     collect(next.teamScoreHistory);
     collect(next.luckyWheelHistory);
+    collect(next.duckRaceHistory);
     collect(next.badgeAwardHistory);
     return [...dates];
   }
@@ -213,6 +289,7 @@ export function activityDatesFromHistoryChange(
   addNew(next.rewardHistory, prev.rewardHistory ?? []);
   addNew(next.teamScoreHistory, prev.teamScoreHistory ?? []);
   addNew(next.luckyWheelHistory, prev.luckyWheelHistory ?? []);
+  addNew(next.duckRaceHistory, prev.duckRaceHistory ?? []);
   addNew(next.badgeAwardHistory, prev.badgeAwardHistory ?? []);
 
   return [...dates];

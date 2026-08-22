@@ -25,7 +25,7 @@ export function PointsChallengeStrip() {
           <Trophy className="size-5 text-amber-600" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl font-black text-slate-800">Thử thách cộng điểm</h2>
+          <h2 className="font-display text-lg font-extrabold text-slate-800">Thử thách cộng điểm</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             Học sinh tích cực tham gia các hoạt động sẽ được cộng điểm.
           </p>
@@ -51,7 +51,7 @@ export function PointsChallengeStrip() {
           {topStudents.map((student, index) => (
             <div
               key={student.id}
-              className={`flex flex-col items-center rounded-2xl border p-4 text-center ${
+              className={`flex min-h-[11.5rem] flex-col items-center rounded-2xl border p-4 text-center ${
                 index === 0
                   ? 'border-amber-100 bg-pastel-yellow/70'
                   : 'border-slate-100 bg-slate-50/80'
@@ -69,10 +69,12 @@ export function PointsChallengeStrip() {
                 {student.points}
               </p>
               {index === 0 ? (
-                <span className="mt-2 rounded-full bg-pastel-yellow px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                  Dẫn đầu
+                <span className="mt-auto rounded-full bg-pastel-yellow px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                  #1 · Dẫn đầu
                 </span>
-              ) : null}
+              ) : (
+                <span className="mt-auto text-[10px] font-bold text-slate-400">#{index + 1}</span>
+              )}
             </div>
           ))}
         </div>

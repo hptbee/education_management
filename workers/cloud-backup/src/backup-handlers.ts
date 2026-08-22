@@ -6,6 +6,7 @@ import {
   MAX_SYNC_BATCH_FILES,
   MAX_SYNC_FILE_BYTES,
   readBodyWithLimit,
+  ValidationError,
 } from "./http";
 import {
   buildClassroomFileKey,
@@ -33,7 +34,7 @@ function isAllowedSyncPath(path: string): boolean {
 
 export function assertUploadBody(data: unknown): BackupUploadBody {
   if (!data || typeof data !== "object") {
-    throw new Error("Invalid request body");
+    throw new ValidationError("Invalid request body");
   }
 
   const record = data as Record<string, unknown>;
@@ -41,36 +42,36 @@ export function assertUploadBody(data: unknown): BackupUploadBody {
 
   for (const key of required) {
     if (record[key] === undefined || record[key] === null) {
-      throw new Error(`Missing field: ${key}`);
+      throw new ValidationError(`Missing field: ${key}`);
     }
   }
 
   if (typeof record.classroomId !== "string") {
-    throw new Error("Invalid classroomId");
+    throw new ValidationError("Invalid classroomId");
   }
 
   if (typeof record.fileName !== "string" || typeof record.timestamp !== "string") {
-    throw new Error("Invalid metadata");
+    throw new ValidationError("Invalid metadata");
   }
 
   if (typeof record.schemaVersion !== "number") {
-    throw new Error("Invalid schemaVersion");
+    throw new ValidationError("Invalid schemaVersion");
   }
 
   if (!record.payload || typeof record.payload !== "object") {
-    throw new Error("Invalid payload");
+    throw new ValidationError("Invalid payload");
   }
 
   const payload = record.payload as Record<string, unknown>;
   const metadata = payload.metadata as Record<string, unknown> | undefined;
   if (!metadata || typeof metadata.id !== "string" || metadata.id !== record.classroomId) {
-    throw new Error("payload.metadata.id must match classroomId");
+    throw new ValidationError("payload.metadata.id must match classroomId");
   }
   if (typeof metadata.version !== "number") {
-    throw new Error("Invalid payload.metadata.version");
+    throw new ValidationError("Invalid payload.metadata.version");
   }
   if (metadata.version !== record.schemaVersion) {
-    throw new Error("payload.metadata.version must match schemaVersion");
+    throw new ValidationError("payload.metadata.version must match schemaVersion");
   }
 
   return record as unknown as BackupUploadBody;
@@ -78,57 +79,57 @@ export function assertUploadBody(data: unknown): BackupUploadBody {
 
 export function assertSyncBody(data: unknown): SyncUploadBody {
   if (!data || typeof data !== "object") {
-    throw new Error("Invalid request body");
+    throw new ValidationError("Invalid request body");
   }
 
   const record = data as Record<string, unknown>;
   if (typeof record.classroomKey !== "string" || !sanitizeBackupIdentifier(record.classroomKey)) {
-    throw new Error("Invalid classroomKey");
+    throw new ValidationError("Invalid classroomKey");
   }
 
   if (!Array.isArray(record.files)) {
-    throw new Error("Invalid files");
+    throw new ValidationError("Invalid files");
   }
 
   let registry: string | undefined;
   if (record.registry !== undefined && record.registry !== null) {
     if (typeof record.registry !== "string") {
-      throw new Error("Invalid registry");
+      throw new ValidationError("Invalid registry");
     }
     if (record.registry.length > MAX_SYNC_FILE_BYTES) {
-      throw new Error("Registry file too large");
+      throw new ValidationError("Registry file too large");
     }
     registry = record.registry;
   }
 
   if (record.files.length === 0 && !registry) {
-    throw new Error("files must not be empty");
+    throw new ValidationError("files must not be empty");
   }
 
   if (record.files.length > MAX_SYNC_BATCH_FILES) {
-    throw new Error("Too many files in sync batch");
+    throw new ValidationError("Too many files in sync batch");
   }
 
   const files: SyncUploadBody["files"] = [];
   for (const entry of record.files) {
     if (!entry || typeof entry !== "object") {
-      throw new Error("Invalid file entry");
+      throw new ValidationError("Invalid file entry");
     }
     const file = entry as Record<string, unknown>;
     if (typeof file.path !== "string" || typeof file.content !== "string") {
-      throw new Error("Invalid file path or content");
+      throw new ValidationError("Invalid file path or content");
     }
     const path = normalizeSyncRelativePath(file.path);
     if (!path) {
-      throw new Error("Invalid file path or content");
+      throw new ValidationError("Invalid file path or content");
     }
     if (!isAllowedSyncPath(path)) {
-      throw new Error(`Disallowed sync path: ${file.path}`);
+      throw new ValidationError(`Disallowed sync path: ${file.path}`);
     }
     const encoding = file.encoding === "base64" ? "base64" : undefined;
     const contentLimit = encoding === "base64" ? Math.ceil(MAX_SYNC_FILE_BYTES * 1.37) : MAX_SYNC_FILE_BYTES;
     if (file.content.length > contentLimit) {
-      throw new Error(`File too large: ${file.path}`);
+      throw new ValidationError(`File too large: ${file.path}`);
     }
     files.push({
       path,
@@ -145,12 +146,20 @@ export function assertSyncBody(data: unknown): SyncUploadBody {
   };
 }
 
+function parseJsonBody(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new ValidationError("Invalid request body");
+  }
+}
+
 export async function handleBackupPut(request: Request, env: Env): Promise<Response> {
   const auth = await requireCloudBackup(request, env);
   if ("error" in auth) return auth.error;
 
   const raw = await readBodyWithLimit(request);
-  const body = assertUploadBody(JSON.parse(raw));
+  const body = assertUploadBody(parseJsonBody(raw));
   const key = buildUserClassroomKey(auth.user.id, body.classroomId);
 
   await env.BACKUP_BUCKET.put(key, raw, {
@@ -171,7 +180,7 @@ export async function handleSyncPut(request: Request, env: Env): Promise<Respons
   if ("error" in auth) return auth.error;
 
   const raw = await readBodyWithLimit(request);
-  const body = assertSyncBody(JSON.parse(raw));
+  const body = assertSyncBody(parseJsonBody(raw));
   const writtenKeys: string[] = [];
 
   for (const file of body.files) {
@@ -452,19 +461,23 @@ export async function handleRestoreAssets(
   const assets: Array<{ path: string; content: string; encoding: "base64" }> = [];
 
   for (const assetPrefix of [`${classroomPrefix}assets/`, `${classroomPrefix}images/gifts/`]) {
-    const listed = await env.BACKUP_BUCKET.list({ prefix: assetPrefix });
-    for (const object of listed.objects) {
-      const relativePath = object.key.slice(classroomPrefix.length);
-      if (!isAllowedCloudAssetPath(relativePath)) continue;
-      const file = await env.BACKUP_BUCKET.get(object.key);
-      if (!file) continue;
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      assets.push({
-        path: object.key.slice(classroomPrefix.length),
-        content: bytesToBase64(bytes),
-        encoding: "base64",
-      });
-    }
+    let cursor: string | undefined;
+    do {
+      const listed = await env.BACKUP_BUCKET.list({ prefix: assetPrefix, cursor });
+      for (const object of listed.objects) {
+        const relativePath = object.key.slice(classroomPrefix.length);
+        if (!isAllowedCloudAssetPath(relativePath)) continue;
+        const file = await env.BACKUP_BUCKET.get(object.key);
+        if (!file) continue;
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        assets.push({
+          path: relativePath,
+          content: bytesToBase64(bytes),
+          encoding: "base64",
+        });
+      }
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
   }
 
   return jsonResponse({ ok: true, assets });

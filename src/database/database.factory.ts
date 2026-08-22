@@ -4,6 +4,7 @@ import { generateDatabaseId } from "./database.utils";
 import { createDefaultBadges } from "../utils/badges";
 import { createDefaultClassroomRoles } from "../utils/classroomRoles";
 import { createDefaultRecognitionTitles } from "../utils/recognitionTitles";
+import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "../utils/pointsWheelConfig";
 import type { ClassroomDatabase } from "./types";
 import type { ClassroomSettings } from "../types/models";
 
@@ -42,8 +43,12 @@ export function createEmptyDatabase(
     recognitionTitles: createDefaultRecognitionTitles(),
     recognitions: [],
     luckyWheelHistory: [],
+    duckRaceHistory: [],
     badgeAwardHistory: [],
     wheelStudentBag: [],
+    duckRaceStudentBag: [],
+    pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((segment) => ({ ...segment })),
+    pointsWheelStudentBag: [],
     teamScoreHistory: [],
     appSettings: {
       soundEnabled: true,

@@ -198,6 +198,16 @@ Add under **Settings → Secrets and variables → Actions**:
 
 The workflow fails fast if any secret is missing.
 
+**Desktop CSP:** Tauri `connect-src` in `src-tauri/tauri.conf.json` pins the production Worker host (`https://classroom-cloud-backup.phuontun-01.workers.dev`). If you change `NEXT_PUBLIC_CLOUD_BACKUP_URL` to a different Worker hostname, update that CSP entry and rebuild the desktop app.
+
+**Local / staging Worker:** Desktop builds embed CSP at compile time. For a non-production Worker URL:
+
+1. Set `NEXT_PUBLIC_CLOUD_BACKUP_URL` in `.env.local` (or your build env).
+2. Add the same origin to `connect-src` in `src-tauri/tauri.conf.json` (keep Google OAuth hosts).
+3. Rebuild Tauri (`npm run tauri build` or your dev flow). Web dev (`next dev`) is not limited by Tauri CSP.
+
+Until step 2, cloud backup/auth calls from the packaged desktop app will be blocked by CSP even if the env URL is correct.
+
 Enable **Read and write permissions** for GitHub Actions (**Settings → Actions → General → Workflow permissions**) if uploads fail with "Resource not accessible by integration".
 
 ---

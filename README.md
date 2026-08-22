@@ -107,14 +107,15 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - The source of truth for classroom data is local JSON files in the OS app-data directory (`classrooms/*.json` plus `index.json`).
 - A valid `index.json` is still reconciled against `classrooms/*.json` so a classroom file is not hidden if the index write was interrupted.
 - IndexedDB → JSON migration writes `indexeddb-migration.complete` only after every IDB classroom is verified. If the marker is missing, remaining IDs are copied without overwriting JSON that already exists.
-- The **Dữ liệu** settings tab (rename DB, export, data folder, cloud backup toggle) is **hidden** by default (`SETTINGS_TABS.showDataTab`). **Khôi phục từ đám mây** is on the classroom selector when no class is open (and when switching classes).
+- Classroom list, create/import, and **Khôi phục từ đám mây** live on **`/classrooms`**. Per-class **Dữ liệu** (rename DB, export, data folder, cloud backup toggle) is on **`/classrooms/manage`** and is **hidden** by default (`SETTINGS_TABS.showDataTab`). **Cài đặt** (`/settings`) is account & license only.
 
 ## Current Features
 
 ### Classroom & Students
 - Classroom dashboard
-- **Settings** (`/settings`) — classroom selector when no class is open; tabs when a class is active:
-  - **Tài khoản** — Google account, plan, verification status, logout; first-login cloud backup prompt
+- **Settings** (`/settings`) — Google account, plan, verification, logout; first-login cloud backup prompt
+- **Quản lý lớp** (`/classrooms`) — list, create, import JSON, cloud restore
+- **Cài đặt lớp** (`/classrooms/manage`) — per-class tabs when a class is selected:
   - **Hồ sơ** — teacher name, display class name, avatar (auto-save on pick), home banner; single **Lưu thay đổi** for text fields
   - **Vai trò** — classroom role catalog
   - **Dữ liệu** — switch class, rename database / school year, duplicate, export JSON, open data folder (Tauri), opt-in cloud backup, restore from cloud (**hidden** unless `SETTINGS_TABS.showDataTab` is `true`)
@@ -136,19 +137,32 @@ The application has been migrated from a web-based `localStorage`/`IndexedDB` se
 - Projector-friendly student and team ranking (`/ranking` presentation follows the current student/teams mode)
 
 ### Activities & Tools (`/tools`)
-- **Lucky Wheel** — fair random student selection with animated wheel, student checklist, randomized spin duration, and confetti
+
+Page title: **Thử thách & Công cụ**. Two sections plus a points strip:
+
+**Trò chơi** (modal dialogs, projector-friendly):
+
+- **Lucky Wheel** — fair random student selection with animated wheel, student checklist, scope (class/team), single/multiple/sequential modes, randomized spin duration, and confetti
+- **Đua vịt (Duck Race)** — animated race among selected students; scope and prevent-repeat options; results stored in history
+- **Vòng quay điểm (Points Wheel)** — spin configurable point values for **one chosen student** per round; teacher confirms before points are applied (`source: game`). Deep link: `/tools?tool=points-wheel` (legacy `/points-wheel` redirects)
+
+**Công cụ nhanh** (inline cards):
+
 - **Study Timer** — preset (1/2/5/10 min) or custom duration (1–180 min), start/pause/reset; state persists across page refresh via `localStorage`
-- **Lucky Star** — pick-a-star surprise student reveal
-- **Points Challenge** — top-students strip with shortcut to the points page
+- **Chọn ngẫu nhiên** — fair in-card random student picker (bag-based, no repeat until cycle completes)
+
+**Points Challenge** — top-students strip with shortcut to the points page
+
+Presentation mode hides the sidebar and enlarges the tools layout for classroom display.
 
 ### Other
 - **Tuyên dương** (`/recognition`) — ceremony, badge roster, title catalog (1:1 badge per title), Wall of Fame; `/badges` redirects here
-- Activity history (`/history`) — points, rewards, recognition, lucky wheel, badges
+- Activity history (`/history`) — points, rewards, recognition, lucky wheel, duck race, badges
 - Classroom tools (`/tools`; `/games` redirects here)
 - Local image uploads (teacher/student photos, home banner, gift images) — processed to WebP and stored in the local asset store; JSON keeps stable keys only (`assets/**`). See [docs/DATA_ARCHITECTURE.md](./docs/DATA_ARCHITECTURE.md).
 - Export / Import JSON database backups
 - **Cloud backup** (opt-in per class; requires **premium** or **lifetime** plan) — incremental structured upload to R2 after local save (`PUT /sync`) when signed in. Restore still imports a monolith JSON snapshot.
-- **Cloud restore** — list and import classrooms from the teacher's cloud account (**Cài đặt** classroom selector, or **Dữ liệu** when that tab is enabled). Premium/lifetime only. Cloud list HTTP errors surface as errors instead of an empty list.
+- **Cloud restore** — list and import classrooms from the teacher's cloud account (**Quản lý lớp** `/classrooms`, or **Dữ liệu** on `/classrooms/manage` when that tab is enabled). Premium/lifetime only. Cloud list HTTP errors surface as errors instead of an empty list.
 - Duplicate databases for new school years
 
 ## Design System
@@ -172,7 +186,7 @@ Design tokens in `src/app/globals.css`:
 - Typography: Nunito (body) + Baloo 2 (display headings)
 
 Teacher pages (Dashboard, Students, Teams, Settings): ~70% clean / 30% playful.
-Student-facing tools (Lucky Wheel, Timer, Lucky Star): larger type, more celebration, still readable from a projector.
+Student-facing tools (Lucky Wheel, Duck Race, Points Wheel, Timer, Chọn ngẫu nhiên): larger type, more celebration, still readable from a projector.
 
 ## Project Scope
 

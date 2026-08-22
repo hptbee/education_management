@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { LuckyWheelDialog } from './lucky-wheel-dialog'
 import { WheelPreview } from './named-wheel'
-import { ClassroomCard, ClassroomButton, EmptyState } from '@/src/components/classroom'
+import { ToolCardShell } from './tool-card-shell'
+import { ClassroomButton, EmptyState } from '@/src/components/classroom'
 
 export function LuckyWheelTool() {
   const { data } = useAppData()
@@ -35,19 +36,12 @@ export function LuckyWheelTool() {
 
   return (
     <>
-      <ClassroomCard className="flex h-full flex-col">
-        <header className="mb-4 flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pastel-sky">
-            <Disc3 className="size-5 text-brand-dark" />
-          </span>
-          <div>
-            <h2 className="font-display text-lg font-extrabold text-slate-800">Vòng quay may mắn</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">
-              Quay vòng lớn để cả lớp cùng xem.
-            </p>
-          </div>
-        </header>
-
+      <ToolCardShell
+        icon={Disc3}
+        iconBg="bg-pastel-sky"
+        title="Vòng quay may mắn"
+        description="Quay vòng lớn để cả lớp cùng xem."
+      >
         {students.length === 0 ? (
           <EmptyState
             compact
@@ -66,11 +60,11 @@ export function LuckyWheelTool() {
               className="mt-4 min-h-11 w-full shadow-md shadow-brand-purple/25"
               onClick={() => setDialogOpen(true)}
             >
-              QUAY NGAY
+              Quay ngay
             </ClassroomButton>
           </div>
         )}
-      </ClassroomCard>
+      </ToolCardShell>
 
       <LuckyWheelDialog
         isOpen={dialogOpen}

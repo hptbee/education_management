@@ -71,7 +71,8 @@ export type ApiErrorCode =
   | "OFFLINE_VERIFICATION_REQUIRED"
   | "FORBIDDEN"
   | "NOT_FOUND"
-  | "VALIDATION_ERROR";
+  | "VALIDATION_ERROR"
+  | "INTERNAL_ERROR";
 
 export interface BackupUploadBody {
   classroomId: string;

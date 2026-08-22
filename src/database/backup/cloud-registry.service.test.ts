@@ -42,9 +42,14 @@ vi.mock("../database.service", () => ({
   },
 }));
 
+vi.mock("./cloud-restore-sync", () => ({
+  recordCloudRestoreSyncBaseline: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { fetchClassroomsRegistry, restoreCloudClassroom, restoreCloudClassroomAssets } from "@/src/auth/api";
 import { databaseService } from "../database.service";
 import { createEmptyDatabase } from "../database.factory";
+import { recordCloudRestoreSyncBaseline } from "./cloud-restore-sync";
 
 const sampleRegistry: CloudClassroomsRegistryFile = {
   version: 1,
@@ -129,6 +134,50 @@ describe("cloud-registry.service", () => {
     expect(restoreCloudClassroom).toHaveBeenCalled();
     expect(restoreCloudClassroomAssets).not.toHaveBeenCalled();
     expect(databaseService.saveCloudRestoredDatabase).not.toHaveBeenCalled();
+  });
+
+  it("does not save when asset restore fails", async () => {
+    const payload = createEmptyDatabase({
+      className: "2/7",
+      schoolYear: "2026-2027",
+      teacher: {
+        id: "teacher-1",
+        name: "Cô Thu",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    vi.mocked(restoreCloudClassroom).mockResolvedValue(payload);
+    vi.mocked(restoreCloudClassroomAssets).mockRejectedValue(
+      new Error("Không thể tải ảnh lớp từ đám mây (500)."),
+    );
+
+    await expect(hydrateClassroomFromCloud(payload.metadata.id)).rejects.toThrow(
+      /Không thể tải ảnh lớp/,
+    );
+    expect(databaseService.saveCloudRestoredDatabase).not.toHaveBeenCalled();
+    expect(recordCloudRestoreSyncBaseline).not.toHaveBeenCalled();
+  });
+
+  it("records cloud restore sync baseline after successful hydrate", async () => {
+    const payload = createEmptyDatabase({
+      className: "2/7",
+      schoolYear: "2026-2027",
+      teacher: {
+        id: "teacher-1",
+        name: "Cô Thu",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    vi.mocked(restoreCloudClassroom).mockResolvedValue(payload);
+    vi.mocked(restoreCloudClassroomAssets).mockResolvedValue([]);
+    vi.mocked(databaseService.saveCloudRestoredDatabase).mockResolvedValue(payload);
+
+    const result = await hydrateClassroomFromCloud(payload.metadata.id);
+
+    expect(result.metadata.id).toBe(payload.metadata.id);
+    expect(recordCloudRestoreSyncBaseline).toHaveBeenCalledWith(payload);
   });
 
   it("force-refreshes the remote registry after a successful first pull", async () => {

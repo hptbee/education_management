@@ -82,6 +82,7 @@ function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
     "teamScoreHistory",
     "badgeAwardHistory",
     "luckyWheelHistory",
+    "duckRaceHistory",
   ] as const;
 
   for (const field of historyArrays) {
@@ -95,6 +96,30 @@ function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
   for (let i = 0; i < wheelBag.length; i++) {
     if (typeof wheelBag[i] !== "string") {
       throw new Error(`Định dạng file không hợp lệ: wheelStudentBag[${i}] phải là chuỗi.`);
+    }
+  }
+
+  const duckRaceBag = record.duckRaceStudentBag;
+  if (duckRaceBag !== undefined && duckRaceBag !== null) {
+    if (!Array.isArray(duckRaceBag)) {
+      throw new Error('Định dạng file không hợp lệ: thiếu hoặc sai kiểu mảng "duckRaceStudentBag".');
+    }
+    for (let i = 0; i < duckRaceBag.length; i++) {
+      if (typeof duckRaceBag[i] !== "string") {
+        throw new Error(`Định dạng file không hợp lệ: duckRaceStudentBag[${i}] phải là chuỗi.`);
+      }
+    }
+  }
+
+  const pointsWheelBag = record.pointsWheelStudentBag;
+  if (pointsWheelBag !== undefined && pointsWheelBag !== null) {
+    if (!Array.isArray(pointsWheelBag)) {
+      throw new Error('Định dạng file không hợp lệ: thiếu hoặc sai kiểu mảng "pointsWheelStudentBag".');
+    }
+    for (let i = 0; i < pointsWheelBag.length; i++) {
+      if (typeof pointsWheelBag[i] !== "string") {
+        throw new Error(`Định dạng file không hợp lệ: pointsWheelStudentBag[${i}] phải là chuỗi.`);
+      }
     }
   }
 }
@@ -185,8 +210,12 @@ export class DatabaseService {
         newDb.rewardHistory = parsed.rewardHistory || [];
         newDb.recognitions = parsed.recognitions || [];
         newDb.luckyWheelHistory = parsed.luckyWheelHistory || [];
+        newDb.duckRaceHistory = parsed.duckRaceHistory || [];
         newDb.badgeAwardHistory = parsed.badgeAwardHistory || [];
         newDb.wheelStudentBag = parsed.wheelStudentBag || [];
+        newDb.duckRaceStudentBag = parsed.duckRaceStudentBag || [];
+        newDb.pointsWheelConfig = parsed.pointsWheelConfig;
+        newDb.pointsWheelStudentBag = parsed.pointsWheelStudentBag || [];
         newDb.teamScoreHistory = parsed.teamScoreHistory || [];
         newDb.appSettings = parsed.appSettings || newDb.appSettings;
 

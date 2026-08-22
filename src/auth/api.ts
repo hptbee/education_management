@@ -188,7 +188,9 @@ export async function restoreCloudClassroomAssets(
   fetchImpl: typeof fetch = fetch,
 ): Promise<Array<{ path: string; content: string; encoding?: string }>> {
   const baseUrl = getWorkerBaseUrl();
-  if (!baseUrl) return [];
+  if (!baseUrl) {
+    throw new Error("Cloud backup chưa được cấu hình (thiếu URL Worker).");
+  }
 
   const response = await fetchImpl(
     `${baseUrl.replace(/\/$/, "")}/restore/${encodeURIComponent(classroomId)}/assets`,
@@ -202,7 +204,7 @@ export async function restoreCloudClassroomAssets(
       status: response.status,
       body: body.slice(0, 300),
     });
-    return [];
+    throw new Error(`Không thể tải ảnh lớp từ đám mây (${response.status}).`);
   }
 
   const json = (await response.json().catch(() => ({}))) as {

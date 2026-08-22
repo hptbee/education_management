@@ -43,35 +43,56 @@ Inspect:
 | `/points` | Point actions & quick scoring |
 | `/rewards` | Rewards |
 | `/badges` | Redirects to `/recognition?tab=catalog` (legacy route) |
-| `/tools` | Lucky Wheel, Study Timer, Lucky Star |
+| `/tools` | **Trò chơi** (modals): Lucky Wheel, Đua vịt, Vòng quay điểm — **Công cụ nhanh** (inline): Study Timer, Chọn ngẫu nhiên; Points Challenge strip; presentation mode |
+| `/points-wheel` | Redirects to `/tools?tool=points-wheel` |
 | `/games` | Redirects to `/tools` (legacy route) |
 | `/recognition` | Recognition ceremony, badge roster, title catalog, Wall of Fame |
 | `/ranking` | Student & team rankings |
 | `/history` | Activity history |
-| `/settings` | Classroom selector (create / import JSON / **cloud restore** when no class open); in-class tabs: Tài khoản, Hồ sơ, Vai trò; **Dữ liệu** hidden by flag |
+| `/settings` | Account & license only (`account-section.tsx`) |
+| `/classrooms` | Classroom list, create / import JSON, **cloud restore** |
+| `/classrooms/manage` | Per-class tabs: Hồ sơ, Vai trò, Dữ liệu (and Nguy hiểm when enabled) |
 
 ## Settings (`/settings`)
 
-Route: `src/app/settings/page.tsx`. When `data` is null, render `ClassroomSelectorScreen`; otherwise `SettingsPage` (max width 1100px).
+Route: `src/app/settings/page.tsx` — **account / license only** (max width 1100px). Classroom selector and per-class settings live under `/classrooms`.
 
-| Tab | Component | Purpose |
-|---|---|---|
-| Tài khoản | `account-section.tsx` | Google account, plan, verification, logout; backup prompt |
-| Hồ sơ | `profile-section.tsx` | Teacher name, display class name, avatar, home banner |
-| Vai trò | `classroom-roles-section.tsx` | Role catalog CRUD |
-| Dữ liệu | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder, cloud backup opt-in, cloud restore (**hidden:** `SETTINGS_TABS.showDataTab`). Cloud restore also on `classroom-selector-screen.tsx` via `cloud-restore-card.tsx`. |
+| Area | Route | Component | Purpose |
+|---|---|---|---|
+| Tài khoản | `/settings` | `account-section.tsx` | Google account, plan, verification, logout; backup prompt |
+| Hồ sơ | `/classrooms/manage` | `profile-section.tsx` | Teacher name, display class name, avatar, home banner |
+| Vai trò | `/classrooms/manage` | `classroom-roles-section.tsx` | Role catalog CRUD |
+| Dữ liệu | `/classrooms/manage` | `data-section.tsx` | Switch class, rename DB, duplicate, export, data folder, cloud backup opt-in, cloud restore (**hidden:** `SETTINGS_TABS.showDataTab`). Cloud restore also on `/classrooms` via `cloud-restore-card.tsx`. |
 
-**Nguy hiểm** (delete classroom) exists in `settings-page.tsx` but is hidden by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` — currently `false`).
+**Nguy hiểm** (delete classroom) exists in manage UI but is hidden by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` — currently `false`).
 
-Shared: `settings-tabs.tsx`, `classroom-list.tsx`, `classroom-selector-screen.tsx`.
+Shared: `settings-tabs.tsx` / `classroom-manage-tabs.tsx`, `classroom-list.tsx`, classrooms page.
 
 **Auth shell:** `AuthProvider` → `AppDataProvider` → `AccessGate` → `AppShell` in `src/app/layout.tsx`. Layout also mounts `SoundInit` (preload + first-gesture unlock) and `DesktopLoggingInit`. Lock screens hide Sidebar (same pattern as presentation mode). Never delete local classrooms on lock/logout.
 
-**Display name vs database rename:** Tab **Hồ sơ** updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity (tab hidden by default — same pattern as **Nguy hiểm**).
+**Display name vs database rename:** Tab **Hồ sơ** (manage) updates sidebar/dashboard labels. Tab **Dữ liệu** → **Đổi tên / Năm học** renames the on-disk database identity (tab hidden by default — same pattern as **Nguy hiểm**).
 
 **Trial license:** First Google login auto-creates a **one-time 7-day** trial (`DEFAULT_TRIAL_DAYS` on the Worker). Existing users with **zero license rows** also get that one-time trial. If any license row exists (including expired), do **not** remint — admin `POST /admin/licenses` or D1 `UPDATE` + `license_version` bump restores access. Trial includes app access only — no cloud backup. Existing trial rows in D1 keep their original `expires_at` until admin changes the plan. Redeploy the Worker after license-logic changes.
 
 **Google OAuth clients (v0.1.8+):** Web dev uses `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (GIS `idToken`). Tauri uses `NEXT_PUBLIC_GOOGLE_CLIENT_ID_DESKTOP` (PKCE via Rust `start_google_oauth`). Worker secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID_DESKTOP`, `GOOGLE_CLIENT_SECRET`. `getGoogleClientId()` in `src/auth/api.ts` selects by runtime. Rebuild `.exe` after `.env.local` changes.
+
+## Tools (`/tools`)
+
+Page: `src/app/tools/page.tsx` — **Thử thách & Công cụ**. Shared card shell: `tool-card-shell.tsx`.
+
+| Section | Tools | UX |
+|---|---|---|
+| **Trò chơi** (3-col grid) | Lucky Wheel, Đua vịt, Vòng quay điểm | Full-screen modal dialogs; deep links `?tool=lucky-wheel`, `?tool=duck-race`, `?tool=points-wheel` |
+| **Công cụ nhanh** (2-col grid) | Study Timer, Chọn ngẫu nhiên | Inline on the page (no modal) |
+| Footer strip | Points Challenge | Top students + shortcut to `/points` |
+
+**Vòng quay điểm:** teacher picks **one student** per round (radio, whole class — no scope filter). Configurable point segments (`pointsWheelConfig`). Spin reveals a value; teacher **explicitly applies** points (`applyPoints`, `source: 'game'`). Does not auto-apply. Legacy route `/points-wheel` redirects here.
+
+**Đua vịt:** multi-student checklist, classroom/team scope, optional prevent-repeat (`duckRaceStudentBag`). Records `duckRaceHistory`.
+
+**Lucky Wheel:** fair bag (`wheelStudentBag`), checklist, single/multiple/sequential modes — see FR-010 in `PROJECT_SCOPE.md`.
+
+Presentation mode: entire tools page can render inside `PresentationChrome` (sidebar hidden).
 
 ## Ranking (`/ranking`)
 
@@ -88,7 +109,7 @@ Presentation mode follows the current `mode`: students show podium + list; teams
 
 ## Dialogs
 
-CRUD/scoring overlays use `useModalFocusTrap` plus `role="dialog"`, `aria-modal`, labelled heading, and `tabIndex={-1}`. Pattern: `gift-redeem-dialog.tsx`. Nested overlays use `modalTrapStack` so only the top trap handles Escape/Tab. Leave `lucky-wheel-dialog.tsx` without a keyboard trap unless explicitly requested.
+CRUD/scoring overlays use `useModalFocusTrap` plus `role="dialog"`, `aria-modal`, labelled heading, and `tabIndex={-1}`. Pattern: `gift-redeem-dialog.tsx`. Nested overlays use `modalTrapStack` so only the top trap handles Escape/Tab. Leave `lucky-wheel-dialog.tsx` and sibling game modals (Duck Race, Points Wheel) without a keyboard trap unless explicitly requested.
 
 Full-screen overlays that must cover the shell (e.g. recognition `CelebrationOverlay`) portal to `document.body` with high z-index — `main` uses `overflow-hidden` and traps focus incorrectly if the overlay stays inside it.
 

@@ -257,7 +257,10 @@ Presentation mode is optimized for TV/projector display.
 Typical screens:
 
 - Lucky Wheel
-- Random Student
+- Duck Race
+- Points Wheel
+- Tools page (presentation layout)
+- Random Student (Chọn ngẫu nhiên)
 - Quick Answer
 - Who Is Next
 - Recognition
@@ -632,6 +635,42 @@ interface LuckyWheelSelection {
 }
 ```
 
+## 6.10a Duck Race History
+
+```ts
+interface DuckRaceResult {
+  id: string;
+  winnerStudentId: string;
+  participantStudentIds: string[];
+  createdAt: string;
+}
+```
+
+## 6.10b Points Wheel Configuration
+
+```ts
+interface PointsWheelSegment {
+  id: string;
+  value: number; // integer, -100..100
+  enabled: boolean;
+  weight?: number; // reserved for future weighted spins
+}
+```
+
+Persisted per classroom as `pointsWheelConfig` (default: five enabled segments: 1, 2, 3, 5, 10).
+
+## 6.10c Prevent-Repeat Bags
+
+Separate string-id arrays on the classroom database — do not share bags across tools:
+
+| Field | Tool |
+|---|---|
+| `wheelStudentBag` | Lucky Wheel |
+| `duckRaceStudentBag` | Đua vịt |
+| `pointsWheelStudentBag` | Reserved for Vòng quay điểm (UI currently uses explicit single-student pick; bag kept for schema compatibility) |
+
+Synced in cloud `catalog.json` with badges and point actions.
+
 ## 6.11 Application Settings
 
 Optional UI preferences may be grouped separately.
@@ -717,15 +756,13 @@ Allow the teacher to update classroom identity after initial setup.
 - School year (database identity — change in **Dữ liệu** tab, not **Hồ sơ**)
 - Home banner image (dashboard hero)
 
-## Settings Page UI (`/settings`)
+## Settings & classroom manage UI
 
-When no classroom database is open, show the classroom selector:
+**`/settings`** — account and license only (`account-section.tsx`). Max content width ~1100px.
 
-- Recent classes list (`ClassroomList`)
-- Create new class form
-- Import JSON backup
+**`/classrooms`** — classroom list, create, import JSON, cloud restore.
 
-When a classroom is active, show four pill tabs:
+**`/classrooms/manage`** — per-class pill tabs:
 
 | Tab | Label | Contents |
 |---|---|---|
@@ -739,7 +776,7 @@ When a classroom is active, show four pill tabs:
 
 **Display name vs database rename:** Changing **Tên lớp (hiển thị)** on **Hồ sơ** updates UI labels only. **Đổi tên database** on **Dữ liệu** changes the stored database identity (file/folder name and school year metadata).
 
-Use shared primitives: `PageHeader`, `ClassroomCard`, `ClassroomButton`, `SettingsTabs`. Max content width ~1100px.
+Use shared primitives: `PageHeader`, `ClassroomCard`, `ClassroomButton`, manage tabs. Max content width ~1100px.
 
 ## Behavior
 
@@ -1361,9 +1398,35 @@ Do not show private student information.
 
 ## Goal
 
-Provide a single page (`/tools`) with lightweight classroom utilities the teacher can use during lessons.
+Provide a single page (`/tools`, sidebar **Công cụ** / title **Thử thách & Công cụ**) with classroom utilities the teacher can use during lessons. The page supports **presentation mode** (sidebar hidden, enlarged layout via `PresentationChrome`).
 
-## Tools
+## Layout
+
+```text
+PageHeader (+ Trình chiếu)
+├── Trò chơi (3-column grid) — modal games
+│   ├── Lucky Wheel
+│   ├── Đua vịt
+│   └── Vòng quay điểm
+├── Công cụ nhanh (2-column grid) — inline tools
+│   ├── Study Timer
+│   └── Chọn ngẫu nhiên
+└── Points Challenge strip
+```
+
+Shared tool cards use `ToolCardShell` (`tool-card-shell.tsx`).
+
+## Trò chơi (modal dialogs)
+
+Open from card CTA; deep links via query `?tool=` (`lucky-wheel`, `duck-race`, `points-wheel`). Closing a deep-linked dialog clears the query param.
+
+| Tool | Modal | Notes |
+|---|---|---|
+| Lucky Wheel | `lucky-wheel-dialog.tsx` | See FR-010 |
+| Đua vịt | `duck-race-dialog.tsx` | See FR-010a-1 |
+| Vòng quay điểm | `points-wheel-dialog.tsx` | See FR-010a-2; `/points-wheel` redirects here |
+
+## Công cụ nhanh (inline)
 
 ### Study Timer
 
@@ -1373,10 +1436,12 @@ Provide a single page (`/tools`) with lightweight classroom utilities the teache
 - Visual finish state when timer reaches zero
 - Persist timer state in `localStorage` so refresh does not reset duration, running state, or remaining time
 
-### Lucky Star
+### Chọn ngẫu nhiên
 
-- Grid of hidden stars; teacher picks one to reveal a random student
+- In-card fair random student picker (bag-based; no repeat until cycle completes)
+- Spin animation cycles avatars before revealing the winner
 - Requires at least one student
+- Replaces the earlier “Lucky Star” star-grid concept
 
 ### Points Challenge Strip
 
@@ -1385,8 +1450,73 @@ Provide a single page (`/tools`) with lightweight classroom utilities the teache
 
 ## Presentation
 
-Tools render inside the normal application shell (sidebar visible).
-The Lucky Wheel opens in a full-screen modal from this page.
+Tools render inside the normal application shell (sidebar visible) unless presentation mode is active.
+Lucky Wheel, Đua vịt, and Vòng quay điểm open in large modal overlays from this page.
+
+---
+
+# FR-010a-1 — Duck Race (Đua vịt)
+
+## Goal
+
+Animated classroom race where selected students’ ducks compete; one winner is revealed with celebration.
+
+## Flow
+
+```text
+Setup (scope, checklist, duration)
+  ↓
+Ready
+  ↓
+Race animation
+  ↓
+Result (winner + history)
+```
+
+## Requirements
+
+- Multi-student checklist with search, select all/none
+- **Scope:** entire classroom or a single team
+- **Prevent repeat:** optional; uses `duckRaceStudentBag` (separate from Lucky Wheel)
+- Configurable race duration; simulated progress per racer
+- Record result in `duckRaceHistory`
+- Deep link: `/tools?tool=duck-race`
+
+---
+
+# FR-010a-2 — Points Wheel (Vòng quay điểm)
+
+## Goal
+
+Spin a value wheel to award (or deduct) points for **one student per round**. Points are **never auto-applied** — the teacher confirms after the spin.
+
+## Flow
+
+```text
+Setup (configure segments + pick one student)
+  ↓
+Ready
+  ↓
+Spin (predetermined winning segment)
+  ↓
+Result → teacher taps Apply
+  ↓
+Optional: spin again (same student) or pick another student
+```
+
+## Requirements
+
+- **One student per round:** radio list over the whole class (no scope / team filter)
+- Configurable segments: integer values −100…100, max 12 segments, enable/disable per segment
+- Persist segment config as `pointsWheelConfig` on the classroom database
+- Shared `ValueWheel` UI; spin uses randomized duration/easing like Lucky Wheel
+- Apply points via `applyPoints` with `source: "game"` and action name **Vòng quay điểm**
+- Deep link: `/tools?tool=points-wheel`; legacy route `/points-wheel` redirects
+
+## Non-goals
+
+- Do not reuse Lucky Wheel’s `wheelStudentBag` or student-name segments
+- Do not auto-apply points on spin land
 
 ---
 
@@ -1653,8 +1783,7 @@ Sort newest first.
 Include clear shortcuts to:
 
 - Add/deduct points
-- Lucky Wheel
-- Games
+- Tools (`/tools`)
 - Recognition
 - Rewards
 - Teams
@@ -1688,7 +1817,10 @@ Presentation mode must:
 Prioritize:
 
 - Lucky Wheel
-- Random Student
+- Duck Race
+- Points Wheel
+- Tools page (presentation layout)
+- Chọn ngẫu nhiên
 - Quick Answer result
 - Who Is Next result
 - Recognition
@@ -1709,15 +1841,19 @@ Dashboard
 Classroom
 ├── Students
 ├── Teams
-└── Settings (`/settings`)
+├── Quản lý lớp (`/classrooms`) — list, create, import, cloud restore
+└── Cài đặt lớp (`/classrooms/manage`)
     ├── Hồ sơ — identity & banner
     ├── Vai trò — role catalog
     ├── Dữ liệu — backup, switch class, rename DB
     └── Nguy hiểm — delete class (hidden unless `showDangerTab` is enabled)
 
+Account
+└── Settings (`/settings`) — Google account & license only
+
 Activities
-├── Tools (Lucky Wheel, Study Timer, Lucky Star)
-├── Games
+├── Tools (`/tools`) — Lucky Wheel, Đua vịt, Vòng quay điểm, Study Timer, Chọn ngẫu nhiên, Points Challenge
+├── Games (legacy → `/tools`)
 └── Recognition
 
 Gamification
@@ -1767,7 +1903,7 @@ When signed in with a valid entitlement, **premium** or **lifetime** plan (`perm
 
 - After each local save, the app may upload classroom data to R2 via the Cloudflare Worker (`PUT /sync` structured domain files; `PUT /backup` kept for compatibility).
 - R2 layout: `users/{userId}/classrooms.json` plus `classrooms/{classroomKey}/*.json` (see [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md)). Legacy `database.json` is kept after migration, not deleted.
-- Teacher can list and restore cloud backups from **Cài đặt** classroom selector (and **Dữ liệu** when that tab is enabled). Restore returns monolith JSON for `importDatabaseFromJson`. Not automatic on login.
+- Teacher can list and restore cloud backups from **Quản lý lớp** (`/classrooms`) (and **Dữ liệu** on `/classrooms/manage` when that tab is enabled). Restore returns monolith JSON for `importDatabaseFromJson`. Not automatic on login.
 - Cloud backup does not replace local JSON; local save always happens first.
 - **Not multi-device sync:** each PC has its own local files; cloud is last-upload-wins per classroom id (per uploaded file). See [ACCOUNTS.md](./ACCOUNTS.md) § Multi-device usage.
 
@@ -1883,7 +2019,9 @@ Affected features:
 
 - Student list
 - Lucky Wheel
-- Games
+- Duck Race
+- Points Wheel
+- Tools / games
 - Student leaderboard
 - Recognition selection
 - Reward redemption
@@ -2202,7 +2340,10 @@ Teacher management pages (~70% clean / 30% playful):
 
 Student-facing / presentation pages (~40% structure / 60% playful):
 
-- Lucky Wheel, Study Timer, Lucky Star, Rewards, Recognition, Games
+- Lucky Wheel, Duck Race, Points Wheel
+- Study Timer, Chọn ngẫu nhiên
+- Rewards, Recognition
+- Tools page (presentation layout)
 
 Teacher pages: minimal motion (hover lift only).
 Student-facing pages: larger typography, celebration moments allowed (confetti on wheel result), respect `prefers-reduced-motion`.
@@ -2459,9 +2600,11 @@ The Version 1 product is considered functionally complete when the teacher can:
 
 ## Activities
 
-- [ ] Use Lucky Wheel (fair cycle, modal UI)
+- [ ] Use Lucky Wheel (fair cycle, modal UI, scope/modes)
+- [ ] Use Duck Race (scope, prevent-repeat, history)
+- [ ] Use Points Wheel (one student per round, explicit apply, segment config)
 - [ ] Use Study Timer with custom duration and refresh persistence
-- [ ] Use Lucky Star
+- [ ] Use Chọn ngẫu nhiên (fair bag, inline card)
 - [ ] Randomly select students fairly
 - [ ] Play Random Student
 - [ ] Play Quick Answer
@@ -2482,8 +2625,8 @@ The Version 1 product is considered functionally complete when the teacher can:
 ## Presentation
 
 - [ ] Hide private teacher data
-- [ ] Display Lucky Wheel fullscreen-friendly
-- [ ] Display games fullscreen-friendly
+- [ ] Display Lucky Wheel, Duck Race, and Points Wheel fullscreen-friendly
+- [ ] Display tools page in presentation mode
 - [ ] Display recognition fullscreen-friendly
 - [ ] Display student leaderboard clearly
 - [ ] Display team leaderboard clearly in presentation when ranking mode is teams
@@ -2536,11 +2679,12 @@ Implementation should proceed incrementally.
 
 1. Reusable random selection utility
 2. Lucky Wheel (modal, fair bag, randomized spin)
-3. Tools page (Study Timer, Lucky Star, Points Challenge)
-4. Random Student
-5. Quick Answer
-6. Who Is Next
-7. Presentation mode improvements
+3. Tools page — sectioned layout (`Trò chơi` + `Công cụ nhanh` + Points Challenge)
+4. Duck Race (modal)
+5. Points Wheel (modal, configurable values, explicit apply)
+6. Chọn ngẫu nhiên (inline fair picker; replaces Lucky Star)
+7. Random Student / Quick Answer / Who Is Next (as scoped)
+8. Presentation mode improvements
 
 ## Phase 4a — Badges & Classroom Roles
 

@@ -8,6 +8,7 @@ import { databaseService } from '@/src/database/database.service'
 import { isCloudBackupConfigured } from '@/src/database/backup/cloud-backup.service'
 import type { ClassroomDatabase, DatabaseSummary } from '@/src/database/types'
 import { useAuth } from '@/src/store/AuthContext'
+import { useAppData } from '@/src/store/AppDataContext'
 import { ClassroomList } from './classroom-list'
 import { CloudRestoreCard } from './cloud-restore-card'
 
@@ -37,6 +38,7 @@ export function DataSection({
   onCloudBackupEnabledChange,
 }: DataSectionProps) {
   const { entitlement, permissions } = useAuth()
+  const { restoreFromCloudPayload } = useAppData()
   const [databases, setDatabases] = useState<DatabaseSummary[]>([])
   const [cloudConfigured, setCloudConfigured] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
@@ -172,9 +174,7 @@ export function DataSection({
 
       <CloudRestoreCard
         reloadKey={data.metadata.id}
-        importFromCloudPayload={(payload, cloudAssets) =>
-          databaseService.saveCloudRestoredDatabase(payload, { cloudAssets })
-        }
+        importFromCloudPayload={(payload, cloudAssets) => restoreFromCloudPayload(payload, cloudAssets)}
         onRestored={(db) => {
           void loadDatabases()
           onSwitchDatabase(db.metadata.id)

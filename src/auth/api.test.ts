@@ -9,6 +9,7 @@ import {
   postAuthGoogle,
   refreshEntitlement,
   restoreCloudClassroom,
+  restoreCloudClassroomAssets,
 } from "./api";
 
 vi.mock("@/src/database/tauri-fs.service", () => ({
@@ -138,6 +139,33 @@ describe("api fetch wrappers", () => {
     await expect(restoreCloudClassroom("token", "c1")).rejects.toThrow(
       "Không thể tải bản sao lưu trên đám mây (401).",
     );
+  });
+
+  it("restores cloud classroom assets when ok", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ assets: [{ path: "assets/banner.webp", content: "dGVzdA==", encoding: "base64" }] }),
+    } as Response);
+    const assets = await restoreCloudClassroomAssets("token", "c1");
+    expect(assets).toHaveLength(1);
+    expect(assets[0]?.path).toBe("assets/banner.webp");
+  });
+
+  it("throws when cloud classroom assets fail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () => "boom",
+    } as Response);
+    await expect(restoreCloudClassroomAssets("token", "c1")).rejects.toThrow(
+      "Không thể tải ảnh lớp từ đám mây (500).",
+    );
+  });
+
+  it("throws when cloud classroom assets lack worker url", async () => {
+    delete process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
+    await expect(restoreCloudClassroomAssets("token", "c1")).rejects.toThrow(/thiếu URL Worker/);
   });
 
   it("returns validation error without worker url", async () => {

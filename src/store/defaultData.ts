@@ -1,4 +1,5 @@
 import type { AppData } from "../types/models";
+import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "../utils/pointsWheelConfig";
 
 const seedTimestamp = "2026-08-13T00:00:00.000Z";
 
@@ -153,8 +154,12 @@ export const defaultData: AppData = {
   recognitionTitles: [],
   recognitions: [],
   luckyWheelHistory: [],
+  duckRaceHistory: [],
   badgeAwardHistory: [],
   wheelStudentBag: [],
+  duckRaceStudentBag: [],
+  pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((segment) => ({ ...segment })),
+  pointsWheelStudentBag: [],
   appSettings: {
     soundEnabled: true,
     animationsEnabled: true,

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Clock, Pause, Play, RotateCcw } from 'lucide-react'
-import { ClassroomCard, ClassroomButton } from '@/src/components/classroom'
+import { ToolCardShell } from './tool-card-shell'
+import { ClassroomButton } from '@/src/components/classroom'
 
 const PRESETS = [1, 2, 5, 10] as const
 const STORAGE_KEY = 'education-management:study-timer'
@@ -197,17 +198,12 @@ export function StudyTimerTool() {
   }
 
   return (
-    <ClassroomCard className="flex h-full flex-col">
-      <header className="mb-4 flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pastel-yellow">
-          <Clock className="size-5 text-amber-600" />
-        </span>
-        <div>
-          <h2 className="font-display text-lg font-extrabold text-slate-800">Đếm giờ học tập</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Đặt thời gian rồi bắt đầu.</p>
-        </div>
-      </header>
-
+    <ToolCardShell
+      icon={Clock}
+      iconBg="bg-pastel-yellow"
+      title="Đếm giờ học tập"
+      description="Đặt thời gian rồi bắt đầu."
+    >
       <div
         className={`flex min-h-[120px] flex-1 items-center justify-center rounded-2xl py-8 text-center transition ${
           isFinished ? 'bg-rose-50 ring-2 ring-rose-200' : 'bg-pastel-yellow/70'
@@ -286,6 +282,6 @@ export function StudyTimerTool() {
       <ClassroomButton variant="outline" size="lg" className="mt-2 min-h-11 w-full" onClick={handleReset}>
         <RotateCcw className="size-4" /> Đặt lại
       </ClassroomButton>
-    </ClassroomCard>
+    </ToolCardShell>
   )
 }

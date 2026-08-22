@@ -19,6 +19,9 @@ import {
   inspectCloudBackupAuth,
 } from "./cloud-backup.service";
 import { uploadRegistryMerge } from "./cloud-sync.service";
+import { beginCloudRestore, endCloudRestore } from "./cloud-restore-gate";
+import { recordCloudRestoreSyncBaseline } from "./cloud-restore-sync";
+import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import type { ClassroomDatabase } from "../types";
 import { logAppEvent, logCloudTrace } from "@/src/logging/app-log";
 
@@ -288,67 +291,79 @@ async function hydrateClassroomFromCloudInner(
   classroomKey: string,
   waiters: Set<() => boolean>,
 ): Promise<ClassroomDatabase> {
-  const token = await resolveEntitlementToken();
-  if (!token) {
-    logCloudTrace("error", "cloud-restore", "hydrate aborted: no token", {
-      classroomKey,
-      ...(await inspectCloudBackupAuth()),
-    });
-    throw new Error("Cloud backup not authorized");
-  }
-
-  logCloudTrace("info", "cloud-restore", "hydrate start", { classroomKey, isTauri: (await inspectCloudBackupAuth()).isTauri });
-
-  const payload = await restoreCloudClassroom(token, classroomKey);
-  if (!payload) {
-    logCloudTrace("error", "cloud-restore", "GET /restore returned empty", { classroomKey });
-    throw new Error("Không tìm thấy bản sao lưu trên đám mây.");
-  }
-
-  if (allWaitersCancelled(waiters)) {
-    logCloudTrace("warn", "cloud-restore", "hydrate cancelled after JSON", { classroomKey });
-    throw new HydrateCancelledError();
-  }
-
-  const assets = await restoreCloudClassroomAssets(token, classroomKey);
-  logCloudTrace("info", "cloud-restore", "GET /restore assets", {
-    classroomKey,
-    count: assets.length,
-    paths: assets.map((item) => item.path),
-  });
-
-  if (allWaitersCancelled(waiters)) {
-    logCloudTrace("warn", "cloud-restore", "hydrate cancelled after assets", { classroomKey });
-    throw new HydrateCancelledError();
-  }
-
-  let db: ClassroomDatabase;
+  const heldGateIds = new Set<string>([classroomKey]);
+  beginCloudRestore(classroomKey);
   try {
-    db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets: assets });
-  } catch (error) {
-    const record = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
-    const metadata = record?.metadata as Record<string, unknown> | undefined;
-    const nested = record?.payload as Record<string, unknown> | undefined;
-    logCloudTrace("error", "cloud-restore", "hydrate save failed", {
-      classroomKey,
-      message: error instanceof Error ? error.message : String(error),
-      payloadType: typeof payload,
-      payloadKeys: record ? Object.keys(record).slice(0, 20) : [],
-      hasPayloadWrapper: Boolean(nested && typeof nested === "object"),
-      metadataId: typeof metadata?.id === "string" ? metadata.id : null,
-      metadataVersion: typeof metadata?.version === "number" ? metadata.version : null,
-    });
-    throw error;
-  }
-  logCloudTrace("info", "cloud-restore", "hydrate saved locally", {
-    classroomKey,
-    classroomId: db.metadata.id,
-    bannerAssetKey: db.classroomSettings.bannerAssetKey ?? null,
-    teacherAvatarKey: db.classroomSettings.teacher?.avatarAssetKey ?? null,
-  });
+    const token = await resolveEntitlementToken();
+    if (!token) {
+      logCloudTrace("error", "cloud-restore", "hydrate aborted: no token", {
+        classroomKey,
+        ...(await inspectCloudBackupAuth()),
+      });
+      throw new Error("Cloud backup not authorized");
+    }
 
-  await refreshCloudRegistrySummaries();
-  return db;
+    logCloudTrace("info", "cloud-restore", "hydrate start", { classroomKey, isTauri: (await inspectCloudBackupAuth()).isTauri });
+
+    const payload = await restoreCloudClassroom(token, classroomKey);
+    if (!payload) {
+      logCloudTrace("error", "cloud-restore", "GET /restore returned empty", { classroomKey });
+      throw new Error("Không tìm thấy bản sao lưu trên đám mây.");
+    }
+
+    if (allWaitersCancelled(waiters)) {
+      logCloudTrace("warn", "cloud-restore", "hydrate cancelled after JSON", { classroomKey });
+      throw new HydrateCancelledError();
+    }
+
+    const assets = await restoreCloudClassroomAssets(token, classroomKey);
+    logCloudTrace("info", "cloud-restore", "GET /restore assets", {
+      classroomKey,
+      count: assets.length,
+      paths: assets.map((item) => item.path),
+    });
+
+    if (allWaitersCancelled(waiters)) {
+      logCloudTrace("warn", "cloud-restore", "hydrate cancelled after assets", { classroomKey });
+      throw new HydrateCancelledError();
+    }
+
+    let db: ClassroomDatabase;
+    try {
+      db = await databaseService.saveCloudRestoredDatabase(payload, { cloudAssets: assets });
+    } catch (error) {
+      const record = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+      const metadata = record?.metadata as Record<string, unknown> | undefined;
+      const nested = record?.payload as Record<string, unknown> | undefined;
+      logCloudTrace("error", "cloud-restore", "hydrate save failed", {
+        classroomKey,
+        message: error instanceof Error ? error.message : String(error),
+        payloadType: typeof payload,
+        payloadKeys: record ? Object.keys(record).slice(0, 20) : [],
+        hasPayloadWrapper: Boolean(nested && typeof nested === "object"),
+        metadataId: typeof metadata?.id === "string" ? metadata.id : null,
+        metadataVersion: typeof metadata?.version === "number" ? metadata.version : null,
+      });
+      throw error;
+    }
+
+    heldGateIds.add(db.metadata.id);
+    beginCloudRestore(db.metadata.id);
+    await recordCloudRestoreSyncBaseline(db);
+    cloudDirtyTracker.clear(db.metadata.id);
+
+    logCloudTrace("info", "cloud-restore", "hydrate saved locally", {
+      classroomKey,
+      classroomId: db.metadata.id,
+      bannerAssetKey: db.classroomSettings.bannerAssetKey ?? null,
+      teacherAvatarKey: db.classroomSettings.teacher?.avatarAssetKey ?? null,
+    });
+
+    await refreshCloudRegistrySummaries();
+    return db;
+  } finally {
+    for (const id of heldGateIds) endCloudRestore(id);
+  }
 }
 
 export async function hydrateClassroomFromCloud(

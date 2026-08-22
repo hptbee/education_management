@@ -9,6 +9,7 @@ import { uploadCloudSyncBatch } from "./cloud-sync.service";
 import { backupMetadataService } from "./backup-metadata.service";
 import { verifyEntitlementToken } from "@/src/auth/entitlement";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
+import { isCloudRestoreInProgress } from "./cloud-restore-gate";
 
 vi.mock("@/src/auth/secure-storage", () => ({
   loadAuthSession: vi.fn().mockResolvedValue({
@@ -62,6 +63,10 @@ vi.mock("./cloud-sync.service", () => ({
   uploadCloudSyncBatch: vi.fn().mockResolvedValue({ uploadedPaths: ["classroom.json"], skippedPaths: [] }),
 }));
 
+vi.mock("./cloud-restore-gate", () => ({
+  isCloudRestoreInProgress: vi.fn().mockReturnValue(false),
+}));
+
 vi.mock("@/src/auth/api", () => ({
   fetchClassroomsRegistry: vi.fn().mockResolvedValue({ registry: null, source: "missing" }),
 }));
@@ -102,6 +107,7 @@ describe("uploadClassroomBackup", () => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalUrl;
     process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = originalPublicKey;
     vi.clearAllMocks();
+    vi.mocked(isCloudRestoreInProgress).mockReturnValue(false);
   });
 
   it("uploads classroom JSON with entitlement bearer", async () => {
@@ -160,6 +166,7 @@ describe("CloudBackupScheduler", () => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = originalUrl;
     process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = originalPublicKey;
     vi.clearAllMocks();
+    vi.mocked(isCloudRestoreInProgress).mockReturnValue(false);
   });
 
   it("records failure without blocking local usage semantics", async () => {
@@ -231,6 +238,33 @@ describe("CloudBackupScheduler", () => {
     expect(uploadedKeys).toEqual(
       expect.arrayContaining(["2-7_2026-2027", "3-1_2026-2027", "4-2_2026-2027"]),
     );
+  });
+
+  it("skips scheduleAfterLocalSave while cloud restore gate is active", async () => {
+    vi.mocked(isCloudRestoreInProgress).mockReturnValue(true);
+    const scheduler = new CloudBackupScheduler();
+    const states: string[] = [];
+    scheduler.subscribe((state) => states.push(state));
+
+    scheduler.scheduleAfterLocalSave(makeDb(true));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(backupMetadataService.recordCloudBackupPending).not.toHaveBeenCalled();
+    expect(states).not.toContain("pending");
+    scheduler.stop();
+  });
+
+  it("skips checkStartupBackup while cloud restore gate is active", async () => {
+    vi.mocked(isCloudRestoreInProgress).mockReturnValue(true);
+    const markAllSpy = vi.spyOn(cloudDirtyTracker, "markAll");
+    const scheduler = new CloudBackupScheduler();
+
+    await scheduler.checkStartupBackup(makeDb(true));
+
+    expect(markAllSpy).not.toHaveBeenCalled();
+    expect(backupMetadataService.recordCloudBackupPending).not.toHaveBeenCalled();
+    markAllSpy.mockRestore();
+    scheduler.stop();
   });
 
   it("does not enter pending when entitlement lacks cloudBackup permission", async () => {

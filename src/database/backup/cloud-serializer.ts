@@ -1,6 +1,7 @@
 import type { ClassroomDatabase } from "../types";
 import type {
   BadgeAwardHistory,
+  DuckRaceResult,
   LuckyWheelSelection,
   PointHistory,
   RewardHistory,
@@ -92,6 +93,23 @@ function activityFromWheel(entry: LuckyWheelSelection): ActivityLog {
   };
 }
 
+function activityFromDuckRace(entry: DuckRaceResult): ActivityLog {
+  const winnerIds = entry.winnerIds?.length ? entry.winnerIds : [entry.winnerId];
+  return {
+    id: entry.id,
+    type: "duck-race",
+    studentId: winnerIds[0],
+    title: "Đua vịt",
+    createdAt: entry.createdAt,
+    metadata: {
+      source: "duck-race",
+      payload: entry,
+      studentIds: entry.participantIds,
+      winnerIds,
+    },
+  };
+}
+
 function activityFromBadge(entry: BadgeAwardHistory): ActivityLog {
   return {
     id: entry.id,
@@ -110,6 +128,7 @@ export function buildActivityLogsFromDatabase(db: ClassroomDatabase): ActivityLo
   for (const entry of db.rewardHistory ?? []) logs.push(activityFromRewardHistory(entry));
   for (const entry of db.teamScoreHistory ?? []) logs.push(activityFromTeamScore(entry));
   for (const entry of db.luckyWheelHistory ?? []) logs.push(activityFromWheel(entry));
+  for (const entry of db.duckRaceHistory ?? []) logs.push(activityFromDuckRace(entry));
   for (const entry of db.badgeAwardHistory ?? []) logs.push(activityFromBadge(entry));
   return logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
@@ -177,6 +196,9 @@ export function splitClassroomToCloudFiles(
       pointActions: normalized.pointActions,
       recognitionTitles: normalized.recognitionTitles,
       wheelStudentBag: normalized.wheelStudentBag,
+      duckRaceStudentBag: normalized.duckRaceStudentBag,
+      pointsWheelConfig: normalized.pointsWheelConfig,
+      pointsWheelStudentBag: normalized.pointsWheelStudentBag,
     }),
     [DOMAIN_PATHS.activityIndex]: buildActivityIndex(activities, updatedAt),
   };
@@ -311,12 +333,14 @@ function restoreHistoryFromActivities(activities: ActivityLog[]): {
   rewardHistory: RewardHistory[];
   teamScoreHistory: TeamScoreHistory[];
   luckyWheelHistory: LuckyWheelSelection[];
+  duckRaceHistory: DuckRaceResult[];
   badgeAwardHistory: BadgeAwardHistory[];
 } {
   const pointHistory: PointHistory[] = [];
   const rewardHistory: RewardHistory[] = [];
   const teamScoreHistory: TeamScoreHistory[] = [];
   const luckyWheelHistory: LuckyWheelSelection[] = [];
+  const duckRaceHistory: DuckRaceResult[] = [];
   const badgeAwardHistory: BadgeAwardHistory[] = [];
 
   for (const activity of activities) {
@@ -337,6 +361,9 @@ function restoreHistoryFromActivities(activities: ActivityLog[]): {
       case "lucky-wheel":
         luckyWheelHistory.push(payload as LuckyWheelSelection);
         break;
+      case "duck-race":
+        duckRaceHistory.push(payload as DuckRaceResult);
+        break;
       case "badge":
         badgeAwardHistory.push(payload as BadgeAwardHistory);
         break;
@@ -350,6 +377,7 @@ function restoreHistoryFromActivities(activities: ActivityLog[]): {
     rewardHistory,
     teamScoreHistory,
     luckyWheelHistory,
+    duckRaceHistory,
     badgeAwardHistory,
   };
 }
@@ -395,12 +423,18 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Class
         pointActions: ClassroomDatabase["pointActions"];
         recognitionTitles: ClassroomDatabase["recognitionTitles"];
         wheelStudentBag: ClassroomDatabase["wheelStudentBag"];
+        duckRaceStudentBag?: ClassroomDatabase["duckRaceStudentBag"];
+        pointsWheelConfig?: ClassroomDatabase["pointsWheelConfig"];
+        pointsWheelStudentBag?: ClassroomDatabase["pointsWheelStudentBag"];
       }>(files[DOMAIN_PATHS.catalog])
     : {
         badges: [],
         pointActions: [],
         recognitionTitles: [],
         wheelStudentBag: [],
+        duckRaceStudentBag: [],
+        pointsWheelConfig: [],
+        pointsWheelStudentBag: [],
       };
 
   const allActivities: ActivityLog[] = [];
@@ -428,8 +462,12 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Class
     recognitionTitles: catalogFile.recognitionTitles,
     recognitions: recognitionsFile.recognitions,
     luckyWheelHistory: history.luckyWheelHistory,
+    duckRaceHistory: history.duckRaceHistory,
     badgeAwardHistory: history.badgeAwardHistory,
     wheelStudentBag: catalogFile.wheelStudentBag,
+    duckRaceStudentBag: catalogFile.duckRaceStudentBag ?? [],
+    pointsWheelConfig: catalogFile.pointsWheelConfig ?? [],
+    pointsWheelStudentBag: catalogFile.pointsWheelStudentBag ?? [],
     teamScoreHistory: history.teamScoreHistory,
     appSettings: settingsFile.appSettings,
   };

@@ -12,7 +12,7 @@ import {
   handleMe,
 } from "./auth-handlers";
 import { handleBackupPut, handleGetClassroomsRegistry, handleListClassrooms, handleRestore, handleRestoreAssets, handleSyncPut } from "./backup-handlers";
-import { applyCorsHeaders, errorResponse, jsonResponse, resolveCorsHeaders } from "./http";
+import { applyCorsHeaders, errorResponse, jsonResponse, resolveCorsHeaders, ValidationError } from "./http";
 import type { Env } from "./types";
 
 export { sanitizeBackupIdentifier, buildUserClassroomKey, buildLegacyBackupStorageKey as buildBackupStorageKey } from "./paths";
@@ -73,8 +73,14 @@ export default {
 
       return applyCorsHeaders(response, cors);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      return applyCorsHeaders(errorResponse("VALIDATION_ERROR", message, 400), cors);
+      if (error instanceof ValidationError) {
+        return applyCorsHeaders(errorResponse("VALIDATION_ERROR", error.message, 400), cors);
+      }
+      console.error("Unhandled worker error", error);
+      return applyCorsHeaders(
+        errorResponse("INTERNAL_ERROR", "An unexpected error occurred", 500),
+        cors,
+      );
     }
   },
 };

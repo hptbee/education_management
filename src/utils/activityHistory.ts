@@ -14,6 +14,7 @@ export type ActivityKind =
   | 'recognition'
   | 'team-score'
   | 'lucky-wheel'
+  | 'duck-race'
   | 'badge'
 
 export type ActivityFilter = 'all' | ActivityKind
@@ -63,6 +64,7 @@ export function buildClassroomActivity(database: ClassroomDatabase): ActivityEnt
     recognitions,
     teamScoreHistory,
     luckyWheelHistory,
+    duckRaceHistory,
     badgeAwardHistory,
   } = database
 
@@ -168,6 +170,35 @@ export function buildClassroomActivity(database: ClassroomDatabase): ActivityEnt
     }
   })
 
+  const duckRaceEntries: ActivityEntry[] = (duckRaceHistory ?? []).map((entry) => {
+    const winnerIds = entry.winnerIds?.length ? entry.winnerIds : [entry.winnerId]
+    const winnerNames = resolveStudentNames(students, winnerIds)
+    const participantNames = resolveStudentNames(students, entry.participantIds)
+
+    return {
+      id: `duck-race-${entry.id}`,
+      kind: 'duck-race',
+      referenceType: 'duck-race',
+      referenceId: entry.id,
+      createdAt: entry.createdAt,
+      title: 'Đua vịt',
+      subtitle: `Thắng: ${winnerNames[0] ?? 'Học sinh'}`,
+      detail:
+        entry.participantIds.length > 1
+          ? `${entry.participantIds.length} vịt: ${participantNames.join(', ')}`
+          : undefined,
+      studentId: winnerIds[0],
+      studentIds: entry.participantIds,
+      studentName: winnerNames[0],
+      studentNames: participantNames,
+      teamId: studentTeamId(students, winnerIds[0]),
+      teamName: (() => {
+        const tid = studentTeamId(students, winnerIds[0])
+        return tid ? teamNameById(teams, tid) : undefined
+      })(),
+    }
+  })
+
   const badgeEntries: ActivityEntry[] = (badgeAwardHistory ?? []).map((entry) => {
     const studentNames = resolveStudentNames(students, entry.studentIds)
     const isMultiple = entry.studentIds.length > 1
@@ -201,6 +232,7 @@ export function buildClassroomActivity(database: ClassroomDatabase): ActivityEnt
     ...recognitionEntries,
     ...teamEntries,
     ...wheelEntries,
+    ...duckRaceEntries,
     ...badgeEntries,
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
@@ -263,6 +295,7 @@ export const ACTIVITY_KIND_LABELS: Record<ActivityKind, string> = {
   recognition: 'Tuyên dương',
   'team-score': 'Điểm tổ',
   'lucky-wheel': 'Vòng quay',
+  'duck-race': 'Đua vịt',
   badge: 'Huy hiệu',
 }
 
@@ -272,5 +305,6 @@ export const ACTIVITY_KIND_EMOJI: Record<ActivityKind, string> = {
   recognition: '🏆',
   'team-score': '👥',
   'lucky-wheel': '🎡',
+  'duck-race': '🦆',
   badge: '🏅',
 }

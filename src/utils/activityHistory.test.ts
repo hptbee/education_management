@@ -68,6 +68,13 @@ function minimalDb() {
     studentIds: ["s1"],
     createdAt: "2026-01-15T00:00:00.000Z",
   });
+  db.duckRaceHistory.push({
+    id: "dr1",
+    winnerId: "s1",
+    winnerIds: ["s1"],
+    participantIds: ["s1"],
+    createdAt: "2026-01-15T12:00:00.000Z",
+  });
   db.badgeAwardHistory.push({
     id: "ba1",
     badgeId: "b1",
@@ -82,8 +89,13 @@ function minimalDb() {
 describe("buildClassroomActivity", () => {
   it("builds sorted activity entries from database", () => {
     const entries = buildClassroomActivity(minimalDb());
-    expect(entries.length).toBe(6);
+    expect(entries.length).toBe(7);
     expect(entries[0].kind).toBe("badge");
+  });
+
+  it("includes duck race results", () => {
+    const entries = buildClassroomActivity(minimalDb());
+    expect(entries.some((entry) => entry.kind === "duck-race")).toBe(true);
   });
 });
 

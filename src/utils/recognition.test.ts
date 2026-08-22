@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import type { ClassroomDatabase } from "../database/types";
 import type { Badge, Recognition, RecognitionTitle, Student } from "../types/models";
+import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "./pointsWheelConfig";
 import {
   buildRecognizeStudentsUpdate,
   dedupeRecognitionsByStudent,
@@ -60,8 +61,12 @@ function minimalDb(overrides?: Partial<ClassroomDatabase>): ClassroomDatabase {
     badges: [],
     recognitionTitles: [title],
     luckyWheelHistory: [],
+    duckRaceHistory: [],
     badgeAwardHistory: [],
     wheelStudentBag: [],
+    duckRaceStudentBag: [],
+    pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((s) => ({ ...s })),
+    pointsWheelStudentBag: [],
     appSettings: { soundEnabled: true, animationsEnabled: true, cloudBackupEnabled: false },
     ...overrides,
   };

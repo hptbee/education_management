@@ -6,10 +6,42 @@ import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { usePresentationMode } from '@/src/store/PresentationModeContext'
 import { PresentationChrome } from '@/src/components/PresentationChrome'
 import { LuckyWheelTool } from './components/lucky-wheel-tool'
+import { DuckRaceTool } from './components/duck-race-tool'
+import { PointsWheelTool } from './components/points-wheel-tool'
 import { StudyTimerTool } from './components/study-timer-tool'
 import { RandomStudentTool } from './components/random-student-tool'
 import { PointsChallengeStrip } from './components/points-challenge-strip'
+import { ToolsSection } from './components/tool-card-shell'
 import { ClassroomButton, PageHeader } from '@/src/components/classroom'
+
+function ToolsContent() {
+  return (
+    <>
+      <ToolsSection title="Trò chơi" description="Mở hoạt động toàn lớp trên màn hình lớn">
+        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">
+          <Suspense fallback={null}>
+            <LuckyWheelTool />
+          </Suspense>
+          <Suspense fallback={null}>
+            <DuckRaceTool />
+          </Suspense>
+          <Suspense fallback={null}>
+            <PointsWheelTool />
+          </Suspense>
+        </div>
+      </ToolsSection>
+
+      <ToolsSection title="Công cụ nhanh" description="Dùng ngay trong lớp, không cần mở cửa sổ riêng">
+        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
+          <StudyTimerTool />
+          <RandomStudentTool />
+        </div>
+      </ToolsSection>
+
+      <PointsChallengeStrip />
+    </>
+  )
+}
 
 export default function ToolsPage() {
   const { isLoaded } = useActiveClassroom()
@@ -26,12 +58,8 @@ export default function ToolsPage() {
   if (isPresentationMode) {
     return (
       <PresentationChrome title="Thử thách & Công cụ" subtitle="Hoạt động vui nhộn cho cả lớp">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 lg:grid-cols-3">
-          <Suspense fallback={null}>
-            <LuckyWheelTool />
-          </Suspense>
-          <StudyTimerTool />
-          <RandomStudentTool />
+        <div className="mx-auto flex max-w-6xl flex-col gap-8">
+          <ToolsContent />
         </div>
       </PresentationChrome>
     )
@@ -39,12 +67,12 @@ export default function ToolsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-6 p-5">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-8 p-5">
         <div className="flex items-start gap-6">
           <PageHeader
             icon={Sparkles}
             title="Thử thách & Công cụ"
-            subtitle="Vòng quay, đồng hồ học tập và chọn học sinh ngẫu nhiên cho lớp học"
+            subtitle="Hoạt động vui và công cụ nhanh cho giờ học"
             className="flex-1"
             actions={
               <ClassroomButton variant="secondary" onClick={enterPresentationMode}>
@@ -59,15 +87,7 @@ export default function ToolsPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
-          <Suspense fallback={null}>
-            <LuckyWheelTool />
-          </Suspense>
-          <StudyTimerTool />
-          <RandomStudentTool />
-        </div>
-
-        <PointsChallengeStrip />
+        <ToolsContent />
       </div>
     </div>
   )

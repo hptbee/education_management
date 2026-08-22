@@ -3,6 +3,7 @@ import { createEmptyDatabase } from "./database.factory";
 import { DatabaseService } from "./database.service";
 import { MemoryFileStorageAdapter } from "./storage/memory-fs.adapter";
 import { TauriFsClassroomStorage } from "./storage/tauri-fs.storage";
+import { normalizeClassroomDatabase } from "@/src/utils/classroomRoles";
 
 vi.mock("./assets/classroom-asset.service", () => ({
   classroomAssetService: {
@@ -92,6 +93,15 @@ describe("DatabaseService", () => {
     const db = createEmptyDatabase(makeSettings("3A", "2025-2026"));
     const imported = await service.importDatabaseFromJson(db);
     expect(imported.metadata.id).toBe(db.metadata.id);
+  });
+
+  it("normalizes legacy JSON without duckRaceStudentBag to an empty array", async () => {
+    const db = createEmptyDatabase(makeSettings("2/7", "2026-2027"));
+    const legacy = { ...db } as Record<string, unknown>;
+    delete legacy.duckRaceStudentBag;
+
+    const normalized = normalizeClassroomDatabase(legacy as typeof db);
+    expect(normalized.duckRaceStudentBag).toEqual([]);
   });
 
   it("saveCloudRestoredDatabase overwrites an existing classroom", async () => {

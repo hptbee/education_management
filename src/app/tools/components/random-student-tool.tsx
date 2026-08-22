@@ -7,7 +7,8 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { pickWithoutRepeat } from '@/src/utils/randomSelection'
 import { canAnimate } from '@/src/utils/motion'
-import { ClassroomButton, ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { ClassroomButton, EmptyState } from '@/src/components/classroom'
+import { ToolCardShell } from './tool-card-shell'
 
 const PREVIEW_LIMIT = 6
 const SPIN_TICKS = 14
@@ -106,19 +107,12 @@ export function RandomStudentTool() {
       : `Còn ${remainingCount}/${pool.length} học sinh trong vòng`
 
   return (
-    <ClassroomCard className="flex h-full flex-col">
-      <header className="mb-4 flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pastel-lavender">
-          <Shuffle className="size-5 text-brand-purple" />
-        </span>
-        <div>
-          <h2 className="font-display text-lg font-extrabold text-slate-800">Chọn ngẫu nhiên</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            Chọn lần lượt, không trùng trong cùng một vòng.
-          </p>
-        </div>
-      </header>
-
+    <ToolCardShell
+      icon={Shuffle}
+      iconBg="bg-pastel-lavender"
+      title="Chọn ngẫu nhiên"
+      description="Chọn lần lượt, không trùng trong cùng một vòng."
+    >
       {pool.length === 0 ? (
         <EmptyState compact icon={Dices} title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
       ) : (
@@ -206,6 +200,6 @@ export function RandomStudentTool() {
           </ClassroomButton>
         </div>
       )}
-    </ClassroomCard>
+    </ToolCardShell>
   )
 }

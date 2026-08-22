@@ -177,7 +177,7 @@ Cloud backup requires `permissions.cloudBackup` on the entitlement — **premium
 
 ### Opt-in
 
-**Cài đặt → Dữ liệu** → **Tự động sao lưu** is enabled automatically when entitlement includes `cloudBackup` (Premium / Lifetime). Trial and Basic cannot sync.
+**Quản lý lớp → Dữ liệu** (or cloud backup controls where shown) → **Tự động sao lưu** is enabled automatically when entitlement includes `cloudBackup` (Premium / Lifetime). Trial and Basic cannot sync.
 
 On login with `cloudBackup`, the app **pulls `classrooms.json` first** (before any upload), merges stubs into the local index, and lazy-downloads full data when you open a class. Manual **Khôi phục từ đám mây** re-downloads/overwrites a single class.
 
@@ -202,9 +202,9 @@ Legacy `backups/{deviceId}/...` objects are **not** migrated automatically. `PUT
 
 ### Restore
 
-**Cài đặt** classroom selector (when no class is open) → **Khôi phục từ đám mây** — lists cloud classrooms; confirm before import. Same card also appears on the selector when local classes already exist (e.g. after closing the current class).
+**Quản lý lớp** (`/classrooms`) → **Khôi phục từ đám mây** — lists cloud classrooms; confirm before import.
 
-**Cài đặt → Dữ liệu → Khôi phục từ đám mây** — same restore UI when the **Dữ liệu** tab is enabled (`SETTINGS_TABS.showDataTab`; hidden by default).
+**Cài đặt lớp → Dữ liệu → Khôi phục từ đám mây** — same restore UI when the **Dữ liệu** tab is enabled (`SETTINGS_TABS.showDataTab`; hidden by default).
 
 Non-2xx list responses throw a parsed Worker error (empty list only when HTTP 200 returns no classrooms).
 
@@ -403,7 +403,7 @@ Never store entitlements in classroom JSON, IndexedDB, or settings files. Web en
 | Cloud backup skipped | Not signed in, no entitlement, or per-class opt-in disabled |
 | `LICENSE_EXPIRED` on first login | D1 migration not applied, or trial license creation failed |
 | `POST /auth/google` **400** Invalid request body | JSON larger than 64 KB, or malformed JSON |
-| Cloud classroom list looks empty after an error | Older clients treated non-2xx as `[]`; current app throws and **Dữ liệu** shows `cloudError` |
+| Cloud classroom list looks empty after an error | Older clients treated non-2xx as `[]`; current app throws and **Quản lý lớp** / restore UI shows `cloudError` |
 | Login required after a keyring error | `entitlement.sec` is not used as a plaintext fallback after a failed keyring migrate |
 | Browser/Tauri blocked by CORS | Worker `CORS_ALLOWED_ORIGINS` missing that origin, or unset (fail closed). Redeploy `wrangler.toml` `[vars]`. A Cloudflare **secret** with the same name overrides the var — delete the secret if leftover. |
 

@@ -29,7 +29,7 @@ users/{userId}/
     recognitions.json
     rewards.json
     settings.json                 # appSettings only
-    catalog.json                  # badges, pointActions, recognitionTitles, wheelStudentBag
+    catalog.json                  # badges, pointActions, recognitionTitles, wheelStudentBag, duckRaceStudentBag, pointsWheelConfig, pointsWheelStudentBag
     activity/
       index.json
       YYYY-MM-DD.json             # local calendar date partitions

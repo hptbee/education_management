@@ -22,6 +22,7 @@ const FILTER_OPTIONS: { id: ActivityFilter; label: string }[] = [
   { id: 'recognition', label: 'Tuyên dương' },
   { id: 'team-score', label: 'Điểm tổ' },
   { id: 'lucky-wheel', label: 'Vòng quay' },
+  { id: 'duck-race', label: 'Đua vịt' },
   { id: 'badge', label: 'Huy hiệu' },
 ]
 

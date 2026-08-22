@@ -3,6 +3,7 @@ import type { ClassroomDatabase } from "../database/types";
 import { normalizeBadgesOnDatabase } from "./badges";
 import { normalizeGiftsOnDatabase } from "./gifts";
 import { normalizeRecognitionTitlesOnDatabase } from "./recognitionTitles";
+import { normalizePointsWheelConfig } from "./pointsWheelConfig";
 import { createId } from "./id";
 import { isDataImageUrl } from "./images";
 
@@ -133,8 +134,12 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
         teams,
         recognitions: db.recognitions ?? [],
         luckyWheelHistory: db.luckyWheelHistory ?? [],
+        duckRaceHistory: db.duckRaceHistory ?? [],
         badgeAwardHistory: db.badgeAwardHistory ?? [],
         wheelStudentBag: db.wheelStudentBag ?? [],
+        duckRaceStudentBag: db.duckRaceStudentBag ?? [],
+        pointsWheelConfig: normalizePointsWheelConfig(db.pointsWheelConfig),
+        pointsWheelStudentBag: db.pointsWheelStudentBag ?? [],
         appSettings: {
           soundEnabled: db.appSettings?.soundEnabled ?? true,
           animationsEnabled: db.appSettings?.animationsEnabled ?? true,
