@@ -10,7 +10,7 @@ import type { ClassroomSettings } from "../types/models";
 import { isTauri } from "./tauri-fs.service";
 import { assertImportFileSize } from "./importLimits";
 import { getLastClassroomId, setLastClassroomId, clearLastClassroomId } from "../utils/lastClassroom";
-import { isCloudBackupConfigured } from "./backup/cloud-backup.service";
+import { isCloudBackupConfigured } from "./backup/cloud-backup-auth";
 import type { CloudClassroomRegistryEntry } from "./backup/cloud-types";
 import { restoreCloudAssetsLocally, applyAssetKeysFromRestoredPaths } from "./backup/cloud-asset-sync";
 import { logCloudTrace } from "../logging/app-log";

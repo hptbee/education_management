@@ -12,12 +12,11 @@ import {
 } from "./cloud-serializer";
 import type { CloudClassroomsRegistryFile } from "./cloud-types";
 import {
-  cloudBackupScheduler,
   getCloudBackupUrl,
   isCloudBackupConfigured,
   resolveEntitlementToken,
   inspectCloudBackupAuth,
-} from "./cloud-backup.service";
+} from "./cloud-backup-auth";
 import { uploadRegistryMerge } from "./cloud-sync.service";
 import { beginCloudRestore, endCloudRestore } from "./cloud-restore-gate";
 import { recordCloudRestoreSyncBaseline } from "./cloud-restore-sync";
@@ -68,6 +67,7 @@ export function getLastMergedRegistry(): CloudClassroomsRegistryFile | null {
 }
 
 export async function refreshCloudRegistrySummaries(): Promise<void> {
+  const { cloudBackupScheduler } = await import("./cloud-backup.service");
   const summaries = await databaseService.listDatabases();
   cloudBackupScheduler.setRegistrySummaries(
     summaries.map((s) => ({

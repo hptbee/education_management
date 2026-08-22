@@ -18,7 +18,7 @@ import {
   getCloudBackupUrl,
   resolveEntitlementToken,
   isCloudBackupEnabledForDatabase,
-} from "./cloud-backup.service";
+} from "./cloud-backup-auth";
 
 export interface CloudSyncUploadResult {
   uploadedPaths: string[];

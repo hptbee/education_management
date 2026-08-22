@@ -5,6 +5,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "workers/**/*.test.ts"],
+    // Serial file runs avoid worker OOM on heavy cloud-backup module graphs in CI.
+    pool: "forks",
+    fileParallelism: false,
+    maxWorkers: process.env.CI ? 1 : undefined,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

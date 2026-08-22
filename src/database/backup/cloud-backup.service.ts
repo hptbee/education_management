@@ -2,17 +2,35 @@ import type { ClassroomDatabase } from "../types";
 import { makeClassroomFileName } from "../database.utils";
 import { DATABASE_VERSION } from "../database.factory";
 import { backupMetadataService } from "./backup-metadata.service";
-import { loadAuthSession } from "@/src/auth/secure-storage";
-import { verifyEntitlementToken } from "@/src/auth/entitlement";
-import { sanitizeBackupIdentifier } from "../safeIdentifiers";
 import { logAppEvent } from "@/src/logging/app-log";
-import { isTauri } from "../tauri-fs.service";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { uploadCloudSyncBatch } from "./cloud-sync.service";
 import { splitClassroomToCloudFiles } from "./cloud-serializer";
-import { isRegistryPullCompleted, refreshCloudRegistrySummaries } from "./cloud-registry.service";
 import { fetchClassroomsRegistry } from "@/src/auth/api";
 import { isCloudRestoreInProgress } from "./cloud-restore-gate";
+import {
+  buildBackupStorageKey,
+  buildUserClassroomStorageKey,
+  getCloudBackupUrl,
+  inspectCloudBackupAuth,
+  isCloudBackupConfigured,
+  isCloudBackupEnabledForDatabase,
+  isEntitlementConfigured,
+  resolveEntitlementToken,
+  sanitizeBackupIdentifier,
+} from "./cloud-backup-auth";
+
+export {
+  buildBackupStorageKey,
+  buildUserClassroomStorageKey,
+  getCloudBackupUrl,
+  inspectCloudBackupAuth,
+  isCloudBackupConfigured,
+  isCloudBackupEnabledForDatabase,
+  isEntitlementConfigured,
+  resolveEntitlementToken,
+  sanitizeBackupIdentifier,
+};
 
 export interface BackupUploadRequest {
   classroomId: string;
@@ -24,83 +42,12 @@ export interface BackupUploadRequest {
 
 export type CloudBackupState = "disabled" | "idle" | "pending" | "uploading" | "synced" | "failed";
 
-export function getCloudBackupUrl(): string | null {
-  const url = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL?.trim();
-  return url || null;
-}
-
-export function isEntitlementConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY?.trim());
-}
-
-export async function resolveEntitlementToken(): Promise<string | null> {
-  const session = await loadAuthSession();
-  if (!session?.entitlement) return null;
-
-  const verified = await verifyEntitlementToken(session.entitlement);
-  if (!verified?.claims.permissions.cloudBackup) return null;
-
-  return session.entitlement;
-}
-
-export async function inspectCloudBackupAuth(): Promise<{
-  hasUrl: boolean;
-  hasPublicKey: boolean;
-  hasSession: boolean;
-  cloudBackup: boolean | null;
-  plan: string | null;
-  isTauri: boolean;
-}> {
-  const session = await loadAuthSession();
-  const verified = session?.entitlement ? await verifyEntitlementToken(session.entitlement) : null;
-  return {
-    hasUrl: Boolean(getCloudBackupUrl()),
-    hasPublicKey: isEntitlementConfigured(),
-    hasSession: Boolean(session?.entitlement),
-    cloudBackup: verified ? Boolean(verified.claims.permissions.cloudBackup) : null,
-    plan: verified?.claims.plan ?? null,
-    isTauri: isTauri(),
-  };
-}
-
-export async function isCloudBackupConfigured(): Promise<boolean> {
-  const url = getCloudBackupUrl();
-  if (!url || !isEntitlementConfigured()) return false;
-  const token = await resolveEntitlementToken();
-  return Boolean(token);
-}
-
-export function isCloudBackupEnabledForDatabase(db: ClassroomDatabase): boolean {
-  return Boolean(db.appSettings?.cloudBackupEnabled);
-}
-
 function markAllDomainsForClassroom(db: ClassroomDatabase): void {
   const split = splitClassroomToCloudFiles(db);
   const activityDates = split.paths
     .filter((path) => path.startsWith("activity/") && path.endsWith(".json"))
     .map((path) => path.slice("activity/".length, -".json".length));
   cloudDirtyTracker.markAll(db.metadata.id, activityDates);
-}
-
-export { sanitizeBackupIdentifier };
-
-export function buildUserClassroomStorageKey(userId: string, classroomId: string): string {
-  const safeUser = sanitizeBackupIdentifier(userId);
-  const safeClassroom = sanitizeBackupIdentifier(classroomId);
-  if (!safeUser || !safeClassroom) {
-    throw new Error("Invalid backup identifiers");
-  }
-  return `users/${safeUser}/classrooms/${safeClassroom}/database.json`;
-}
-
-/** @deprecated Legacy device-based layout */
-export function buildBackupStorageKey(deviceId: string, classroomId: string): string {
-  const safeDevice = sanitizeBackupIdentifier(deviceId);
-  const safeClassroom = sanitizeBackupIdentifier(classroomId);
-  if (!safeDevice || !safeClassroom) {
-    throw new Error("Invalid backup identifiers");
-  }
-  return `backups/${safeDevice}/${safeClassroom}/latest.json`;
 }
 
 /** @deprecated Monolithic upload — use structured sync via CloudBackupScheduler */
@@ -460,6 +407,7 @@ export class CloudBackupScheduler {
 
     try {
       try {
+        const { refreshCloudRegistrySummaries } = await import("./cloud-registry.service");
         await refreshCloudRegistrySummaries();
       } catch (refreshError) {
         logAppEvent("warn", "cloud-backup", "refreshCloudRegistrySummaries failed", refreshError);
@@ -468,6 +416,7 @@ export class CloudBackupScheduler {
       const syncState = await backupMetadataService.getCloudSyncState(uploadedId);
 
       let remoteRegistry: import("./cloud-types").CloudClassroomsRegistryFile | null = null;
+      const { isRegistryPullCompleted } = await import("./cloud-registry.service");
       let allowRegistryUpload = isRegistryPullCompleted();
       if (allowRegistryUpload) {
         const token = await resolveEntitlementToken();
@@ -503,8 +452,12 @@ export class CloudBackupScheduler {
       const stillDirty = cloudDirtyTracker.hasDirty(uploadedId);
 
       if (hasNewerPending || hasUnflushedLocal || stillDirty) {
-        currentEntry.failureCount = 0;
+        entry.failureCount = 0;
         this.setState("pending", null, uploadedId);
+        // Partial sync: keep dirty flags but drop from the active drain queue to avoid spinning.
+        if (!(hasNewerPending || hasUnflushedLocal)) {
+          this.pendingByClassroom.delete(uploadedId);
+        }
       } else {
         this.pendingByClassroom.delete(uploadedId);
         const retryTimer = this.retryTimers.get(uploadedId);

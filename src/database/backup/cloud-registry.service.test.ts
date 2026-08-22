@@ -15,21 +15,24 @@ vi.mock("@/src/auth/api", () => ({
   restoreCloudClassroomAssets: vi.fn(),
 }));
 
+vi.mock("./cloud-backup-auth", () => ({
+  getCloudBackupUrl: vi.fn(() => "https://backup.example.workers.dev"),
+  isCloudBackupConfigured: vi.fn().mockResolvedValue(true),
+  resolveEntitlementToken: vi.fn().mockResolvedValue("token"),
+  inspectCloudBackupAuth: vi.fn().mockResolvedValue({
+    hasSession: true,
+    isTauri: false,
+    hasUrl: true,
+    hasPublicKey: true,
+    cloudBackup: true,
+  }),
+}));
+
 vi.mock("./cloud-backup.service", () => ({
   cloudBackupScheduler: {
     setRegistrySummaries: vi.fn(),
     setLocalClassroomRegistry: vi.fn(),
   },
-  getCloudBackupUrl: vi.fn(() => "https://backup.example.workers.dev"),
-    isCloudBackupConfigured: vi.fn().mockResolvedValue(true),
-    resolveEntitlementToken: vi.fn().mockResolvedValue("token"),
-    inspectCloudBackupAuth: vi.fn().mockResolvedValue({
-      hasSession: true,
-      isTauri: false,
-      hasUrl: true,
-      hasPublicKey: true,
-      cloudBackup: true,
-    }),
 }));
 
 vi.mock("../database.service", () => ({

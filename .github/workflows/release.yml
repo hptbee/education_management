@@ -50,8 +50,34 @@ jobs:
           echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
           echo "Release ${TAG} (package ${VERSION}, prerelease=${PRERELEASE})"
 
-  build:
+  test:
     needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run tests
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm test
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  build:
+    needs: [prepare, test]
     strategy:
       fail-fast: false
       matrix:
@@ -112,12 +138,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-
-      - name: Run tests
-        run: npm test
-
-      - name: Run Rust tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml
 
       - name: Build Tauri bundle
         run: npm run tauri:build -- ${{ matrix.tauri_args }}
@@ -188,7 +208,7 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    needs: [prepare, build]
+    needs: [prepare, test, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
