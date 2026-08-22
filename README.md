@@ -83,18 +83,38 @@ npm run tauri:build
 
 Desktop installers are built via [GitHub Actions](.github/workflows/release.yml). Full process: [docs/build-and-release.md](./docs/build-and-release.md).
 
-1. Bump version: `npm run version:bump -- 0.1.13` (syncs `package.json`, `tauri.conf.json`, `Cargo.toml`)
-2. Commit and push a version tag:
+### Create a release
 
-```bash
-git tag v0.1.13
-git push origin v0.1.13
-```
+1. Bump version (syncs `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`):
 
-3. GitHub Actions builds **Windows** (NSIS + MSI) and **macOS** (Apple Silicon + Intel DMG) and creates a **draft** release.
-4. Review the draft on GitHub, edit release notes if needed, then publish.
+   ```bash
+   npm run version:bump -- 0.1.19
+   ```
 
-You can also trigger a release manually from the **Actions** tab (`Release` workflow → **Run workflow**).
+2. Commit and push the version change:
+
+   ```bash
+   git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+   git commit -m "chore: release v0.1.19"
+   git push origin main
+   ```
+
+3. Create and push the tag:
+
+   ```bash
+   git tag v0.1.19
+   git push origin v0.1.19
+   ```
+
+4. GitHub Actions builds **Windows** (NSIS `.exe` + MSI) and **macOS** (Apple Silicon + Intel DMG), then publishes a GitHub Release with those assets.
+
+The workflow runs **only** on `v*` tag pushes (not on every `main` commit).
+
+### Prerelease example
+
+Use a tag that includes `alpha`, `beta`, or `rc` (for example `v1.1.0-beta.1`). GitHub marks the release as a prerelease automatically.
+
+You can also trigger a build manually from **Actions → Release → Run workflow**.
 
 Configure repository secrets (`NEXT_PUBLIC_*`) before the first CI build — see [docs/build-and-release.md](./docs/build-and-release.md).
 

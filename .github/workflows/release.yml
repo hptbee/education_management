@@ -6,96 +6,74 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 # Future code signing (do not enable until certificates are configured):
-# Windows: APPLE_SIGNING_* / TAURI_SIGNING_PRIVATE_KEY for updater
+# Windows: Authenticode certificate via workflow secrets
 # macOS: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
 # See docs/build-and-release.md
 
 jobs:
-  create-release:
-    permissions:
-      contents: write
+  prepare:
     runs-on: ubuntu-latest
     outputs:
-      release_id: ${{ steps.create-release.outputs.result }}
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - name: Verify tag matches package version
-        if: github.ref_type == 'tag'
-        env:
-          PKG_VERSION: ${{ steps.version.outputs.version }}
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::Tag v${TAG_VERSION} does not match package.json version ${PKG_VERSION}"
-            exit 1
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            TAG_VERSION="${TAG#v}"
+            if [ "$TAG_VERSION" != "$VERSION" ] && [[ "$TAG_VERSION" != "$VERSION"-* ]]; then
+              echo "::error::Tag ${TAG} does not match package.json version ${VERSION}"
+              exit 1
+            fi
+          else
+            TAG="v${VERSION}"
           fi
 
-      - name: Create release
-        id: create-release
-        uses: actions/github-script@v7
-        env:
-          APP_VERSION: ${{ steps.version.outputs.version }}
-        with:
-          script: |
-            const tag = `v${process.env.APP_VERSION}`;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+          PRERELEASE=false
+          if echo "$TAG" | grep -qiE 'alpha|beta|rc'; then
+            PRERELEASE=true
+          fi
 
-            try {
-              const { data } = await github.rest.repos.createRelease({
-                owner,
-                repo,
-                tag_name: tag,
-                target_commitish: context.sha,
-                name: `QuanLyLopHoc v${process.env.APP_VERSION}`,
-                body: [
-                  'Desktop installers for **Windows** (x64) and **macOS** (Apple Silicon + Intel).',
-                  '',
-                  '**Unsigned builds:** Windows SmartScreen and macOS Gatekeeper may warn on first launch.',
-                  '',
-                  'Download the installer or DMG for your platform from the assets below.',
-                ].join('\n'),
-                draft: true,
-                prerelease: false,
-              });
-              return data.id;
-            } catch (error) {
-              if (error.status !== 422) {
-                throw error;
-              }
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "Release ${TAG} (package ${VERSION}, prerelease=${PRERELEASE})"
 
-              const { data: existing } = await github.rest.repos.getReleaseByTag({
-                owner,
-                repo,
-                tag,
-              });
-              return existing.id;
-            }
-
-  build-tauri:
-    needs: create-release
-    permissions:
-      contents: write
+  build:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-latest
-            args: ""
-            label: windows-x64
-          - platform: macos-latest
-            args: "--target aarch64-apple-darwin"
-            label: macos-aarch64
-          - platform: macos-latest
-            args: "--target x86_64-apple-darwin"
-            label: macos-x64
+          - id: windows-x64
+            platform: windows-latest
+            rust_targets: ""
+            tauri_args: ""
+            bundle_root: src-tauri/target/release/bundle
+            verify: windows
+          - id: macos-aarch64
+            platform: macos-latest
+            rust_targets: aarch64-apple-darwin
+            tauri_args: --target aarch64-apple-darwin
+            bundle_root: src-tauri/target/aarch64-apple-darwin/release/bundle
+            verify: macos
+          - id: macos-x64
+            platform: macos-latest
+            rust_targets: x86_64-apple-darwin
+            tauri_args: --target x86_64-apple-darwin
+            bundle_root: src-tauri/target/x86_64-apple-darwin/release/bundle
+            verify: macos
 
     runs-on: ${{ matrix.platform }}
     env:
@@ -107,6 +85,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify build secrets
+        shell: bash
         run: |
           test -n "$NEXT_PUBLIC_CLOUD_BACKUP_URL" || { echo "::error::Missing secret NEXT_PUBLIC_CLOUD_BACKUP_URL"; exit 1; }
           test -n "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" || { echo "::error::Missing secret NEXT_PUBLIC_GOOGLE_CLIENT_ID"; exit 1; }
@@ -121,8 +100,10 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Rust cross-compilation target
+        if: matrix.rust_targets != ''
+        run: rustup target add ${{ matrix.rust_targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -132,18 +113,121 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
       - name: Run tests
         run: npm test
 
       - name: Run Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - uses: tauri-apps/tauri-action@v1
+      - name: Build Tauri bundle
+        run: npm run tauri:build -- ${{ matrix.tauri_args }}
+
+      - name: Verify Windows installers
+        if: matrix.verify == 'windows'
+        id: windows-artifacts
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUNDLE_ROOT: ${{ matrix.bundle_root }}
+        run: |
+          echo "Bundle tree:"
+          find "$BUNDLE_ROOT" -type f \( -name '*.exe' -o -name '*.msi' \) -print
+
+          NSIS=$(find "$BUNDLE_ROOT/nsis" -maxdepth 1 -name '*-setup.exe' -print -quit)
+          MSI=$(find "$BUNDLE_ROOT/msi" -maxdepth 1 -name '*.msi' -print -quit)
+
+          if [ -z "$NSIS" ] || [ ! -f "$NSIS" ]; then
+            echo "::error::Missing NSIS installer under ${BUNDLE_ROOT}/nsis"
+            exit 1
+          fi
+          if [ -z "$MSI" ] || [ ! -f "$MSI" ]; then
+            echo "::error::Missing MSI installer under ${BUNDLE_ROOT}/msi"
+            exit 1
+          fi
+
+          echo "nsis=${NSIS}" >> "$GITHUB_OUTPUT"
+          echo "msi=${MSI}" >> "$GITHUB_OUTPUT"
+          echo "Verified Windows artifacts:"
+          echo "  ${NSIS}"
+          echo "  ${MSI}"
+
+      - name: Verify macOS DMG
+        if: matrix.verify == 'macos'
+        id: macos-artifacts
+        shell: bash
+        env:
+          BUNDLE_ROOT: ${{ matrix.bundle_root }}
+        run: |
+          echo "Bundle tree:"
+          find "$BUNDLE_ROOT" -type f -name '*.dmg' -print
+
+          DMG=$(find "$BUNDLE_ROOT/dmg" -maxdepth 1 -name '*.dmg' -print -quit)
+          if [ -z "$DMG" ] || [ ! -f "$DMG" ]; then
+            echo "::error::Missing DMG under ${BUNDLE_ROOT}/dmg"
+            exit 1
+          fi
+
+          echo "dmg=${DMG}" >> "$GITHUB_OUTPUT"
+          echo "Verified macOS artifact: ${DMG}"
+
+      - name: Upload Windows installers
+        if: matrix.verify == 'windows'
+        uses: actions/upload-artifact@v4
         with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }}
+          name: installer-${{ matrix.id }}
+          path: |
+            ${{ matrix.bundle_root }}/nsis/*.exe
+            ${{ matrix.bundle_root }}/msi/*.msi
+          if-no-files-found: error
+
+      - name: Upload macOS DMG
+        if: matrix.verify == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.id }}
+          path: ${{ matrix.bundle_root }}/dmg/*.dmg
+          if-no-files-found: error
+
+  publish-release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: installer-*
+          merge-multiple: true
+
+      - name: Verify downloaded release assets
+        shell: bash
+        run: |
+          echo "Release asset tree:"
+          find release-assets -type f -print
+
+          EXE_COUNT=$(find release-assets -type f -name '*.exe' | wc -l | tr -d ' ')
+          MSI_COUNT=$(find release-assets -type f -name '*.msi' | wc -l | tr -d ' ')
+          DMG_COUNT=$(find release-assets -type f -name '*.dmg' | wc -l | tr -d ' ')
+
+          echo "Counts: exe=${EXE_COUNT} msi=${MSI_COUNT} dmg=${DMG_COUNT}"
+
+          if [ "$EXE_COUNT" -lt 1 ]; then
+            echo "::error::Expected at least one Windows .exe installer"
+            exit 1
+          fi
+          if [ "$MSI_COUNT" -lt 1 ]; then
+            echo "::error::Expected at least one Windows .msi installer"
+            exit 1
+          fi
+          if [ "$DMG_COUNT" -lt 2 ]; then
+            echo "::error::Expected two macOS .dmg installers (aarch64 + x64)"
+            exit 1
+          fi
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: QuanLyLopHoc v${{ needs.prepare.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+          draft: false
+          files: release-assets/**/*

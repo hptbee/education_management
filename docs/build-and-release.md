@@ -173,17 +173,46 @@ npx tauri icon path/to/source.png
 
 Workflow: [.github/workflows/release.yml](../.github/workflows/release.yml)
 
-**Triggers:**
+**Trigger:** push a version tag only (`v*`). Normal pushes to `main` do **not** run this workflow.
 
-- Push tag `v*` (e.g. `v0.1.12`)
-- Manual: Actions → Release → Run workflow
+```bash
+npm run version:bump -- 0.1.19
+git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+git commit -m "chore: release v0.1.19"
+git push origin main
+git tag v0.1.19
+git push origin v0.1.19
+```
 
-**Runners:**
+The git tag **must** match `v` + `package.json` version (or `v` + version + prerelease suffix such as `-beta.1`).
 
-- `windows-latest` — NSIS + MSI (x64)
-- `macos-latest` — DMG for aarch64 and x86_64 (separate matrix jobs)
+**What CI does:**
 
-Creates a **draft** GitHub Release. Review notes and publish when ready.
+1. Validates tag ↔ `package.json` version
+2. Builds on `windows-latest` (NSIS `.exe` + MSI) and `macos-latest` (Apple Silicon + Intel DMG)
+3. Verifies installer files exist before upload
+4. Creates a **published** GitHub Release with auto-generated notes
+5. Uploads all installers to that release
+
+**Prerelease tags:** tags containing `alpha`, `beta`, or `rc` (for example `v1.1.0-beta.1`) are marked as GitHub prereleases automatically.
+
+**Manual run:** Actions → **Release** → **Run workflow** (uses `package.json` version and tag `v<version>`).
+
+**Build commands (same as local):**
+
+- Frontend: `npm run build` (via `beforeBuildCommand` in Tauri config)
+- Desktop bundle: `npm run tauri:build` (`tauri build`)
+
+**Expected Windows artifacts** (after `npm run tauri:build` on x64):
+
+| Artifact | Path |
+|----------|------|
+| NSIS installer | `src-tauri/target/release/bundle/nsis/QuanLyLopHoc_<version>_x64-setup.exe` |
+| MSI | `src-tauri/target/release/bundle/msi/QuanLyLopHoc_<version>_x64_en-US.msi` |
+
+**macOS artifacts:** `src-tauri/target/release/bundle/dmg/QuanLyLopHoc_<version>_<arch>.dmg`
+
+Generated binaries are **not** committed to git; CI uploads them as release assets only.
 
 ### Required repository secrets
 
