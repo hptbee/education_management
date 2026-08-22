@@ -1,5 +1,6 @@
 export { ClassroomButton, classroomButtonVariants } from './ClassroomButton'
 export { ClassroomCard } from './ClassroomCard'
+export { ClassroomSelect } from './ClassroomSelect'
 export { PageHeader } from './PageHeader'
 export { EmptyState } from './EmptyState'
 export { IconTouchButton } from './IconTouchButton'

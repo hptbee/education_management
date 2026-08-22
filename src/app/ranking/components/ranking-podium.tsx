@@ -99,10 +99,12 @@ function PodiumCard({
   entry,
   onStudentClick,
   compact,
+  presentation = false,
 }: {
   entry: RankedStudent
   onStudentClick?: (entry: RankedStudent) => void
   compact?: boolean
+  presentation?: boolean
 }) {
   const { data } = useAppData()
   const classroomId = data?.metadata.id
@@ -122,7 +124,12 @@ function PodiumCard({
       )}
     >
       <RankMedal rank={entry.rank} large={isFirst} />
-      <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
+      <p
+        className={cn(
+          'mt-1 font-extrabold uppercase tracking-wide text-slate-500',
+          presentation ? 'text-xs' : 'text-[10px]',
+        )}
+      >
         {style.label}
       </p>
       <StudentAvatar
@@ -131,15 +138,31 @@ function PodiumCard({
         alt=""
         className={cn(
           'mt-3 rounded-full ring-4 ring-white',
-          isFirst ? 'size-16' : 'size-14',
+          presentation
+            ? isFirst
+              ? 'size-20'
+              : 'size-16'
+            : isFirst
+              ? 'size-16'
+              : 'size-14',
         )}
       />
-      <p className="mt-3 line-clamp-2 min-h-[2.5rem] font-display text-sm font-extrabold leading-tight text-slate-800">
+      <p
+        className={cn(
+          'mt-3 line-clamp-2 min-h-[2.5rem] font-display font-extrabold leading-tight text-slate-800',
+          presentation ? (isFirst ? 'text-lg' : 'text-base') : 'text-sm',
+        )}
+      >
         {entry.student.name}
       </p>
       <div className="mt-auto flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1">
         <Star className="size-3.5 fill-star text-star" aria-hidden />
-        <span className="font-display text-sm font-extrabold text-slate-800">
+        <span
+          className={cn(
+            'font-display font-extrabold text-slate-800',
+            presentation ? 'text-base' : 'text-sm',
+          )}
+        >
           {entry.points} điểm
         </span>
       </div>
@@ -170,10 +193,12 @@ function PodiumTier({
   rank,
   entries,
   onStudentClick,
+  presentation = false,
 }: {
   rank: number
   entries: RankedStudent[]
   onStudentClick?: (entry: RankedStudent) => void
+  presentation?: boolean
 }) {
   const style = PODIUM_STYLE[rank] ?? PODIUM_STYLE[3]
   const tied = entries.length > 1
@@ -206,6 +231,7 @@ function PodiumTier({
             entry={entry}
             onStudentClick={onStudentClick}
             compact={tied || !isFirst}
+            presentation={presentation}
           />
         ))}
       </div>
@@ -216,9 +242,11 @@ function PodiumTier({
 export function RankingPodium({
   entries,
   onStudentClick,
+  presentation = false,
 }: {
   entries: RankedStudent[]
   onStudentClick?: (entry: RankedStudent) => void
+  presentation?: boolean
 }) {
   const podiumEntries = getPodiumEntries(entries)
   if (podiumEntries.length === 0) return null
@@ -241,7 +269,7 @@ export function RankingPodium({
               key={entry.student.id}
               className={cn(order.length === 1 ? 'w-full max-w-[13.5rem]' : 'h-full')}
             >
-              <PodiumCard entry={entry} onStudentClick={onStudentClick} />
+              <PodiumCard entry={entry} onStudentClick={onStudentClick} presentation={presentation} />
             </div>
           ))}
         </div>
@@ -259,6 +287,7 @@ export function RankingPodium({
           rank={rank}
           entries={groups.get(rank) ?? []}
           onStudentClick={onStudentClick}
+          presentation={presentation}
         />
       ))}
     </section>

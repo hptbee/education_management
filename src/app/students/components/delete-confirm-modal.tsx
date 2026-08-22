@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react'
 import type { Student } from '@/src/types/models'
-import { useModalFocusTrap } from '@/src/components/classroom'
+import { ClassroomButton, useModalFocusTrap } from '@/src/components/classroom'
 
 interface DeleteConfirmModalProps {
   isOpen: boolean
@@ -42,21 +42,18 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, student }: Dele
         </p>
 
         <div className="mt-6 flex w-full gap-3">
-          <button 
-            onClick={onClose} 
-            className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-          >
+          <ClassroomButton variant="ghost" className="flex-1" onClick={onClose}>
             Hủy bỏ
-          </button>
-          <button 
+          </ClassroomButton>
+          <ClassroomButton
+            className="flex-1 border-0 bg-red-500 text-white hover:bg-red-600"
             onClick={() => {
               onConfirm(student.id)
               onClose()
-            }} 
-            className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            }}
           >
             Đồng ý Xóa
-          </button>
+          </ClassroomButton>
         </div>
       </div>
     </div>

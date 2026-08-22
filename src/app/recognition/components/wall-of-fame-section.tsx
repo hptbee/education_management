@@ -216,11 +216,19 @@ export function WallOfFameSection({
                   </p>
                 ) : null}
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                  <span className="text-[11px] font-semibold text-slate-400">
+                  <span
+                    className={`font-semibold text-slate-400 ${
+                      presentation ? 'text-sm' : 'text-[11px]'
+                    }`}
+                  >
                     📅 {formatRecognitionRelativeDate(rec.createdAt)}
                   </span>
                   {rec.awardedPoints && rec.awardedPoints > 0 ? (
-                    <span className="rounded-full bg-pastel-yellow px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
+                    <span
+                      className={`rounded-full bg-pastel-yellow px-2 py-0.5 font-extrabold text-amber-800 ${
+                        presentation ? 'text-xs' : 'text-[10px]'
+                      }`}
+                    >
                       ⭐ +{rec.awardedPoints}
                     </span>
                   ) : null}

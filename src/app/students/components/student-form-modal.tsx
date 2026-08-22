@@ -298,12 +298,12 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
         </div>
 
         <footer className="flex items-center justify-end gap-3 border-t border-slate-100 p-5">
-          <button onClick={onClose} className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-100">
+          <button type="button" onClick={onClose} className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
             Hủy
           </button>
-          <button form="student-form" type="submit" className="rounded-xl bg-brand-purple px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-purple-dark">
+          <ClassroomButton form="student-form" type="submit">
             {initialData ? 'Lưu thay đổi' : 'Thêm học sinh'}
-          </button>
+          </ClassroomButton>
         </footer>
       </div>
     </div>

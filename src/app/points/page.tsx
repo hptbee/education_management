@@ -9,7 +9,7 @@ import { sortStudents, type StudentSortOption } from '@/src/utils/student'
 import type { Student } from '@/src/types/models'
 import { StudentPointsDialog, type PointsDialogMode } from './components/student-points-dialog'
 import { PointActionsCatalogSection } from './components/point-actions-catalog-section'
-import { PageHeader, ClassroomCard, EmptyState, IconTouchButton } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, IconTouchButton, ClassroomSelect } from '@/src/components/classroom'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 
 const RECENT_HISTORY_LIMIT = 8
@@ -60,7 +60,7 @@ export default function PointsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 pb-10">
+      <div className="classroom-page--management">
         <PageHeader
           icon={Star}
           title="Tích điểm"
@@ -112,11 +112,10 @@ export default function PointsPage() {
               <div className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-sky-100 bg-slate-50 px-3 py-2.5">
                 <ArrowUpDown className="size-3.5 shrink-0 text-slate-400" aria-hidden />
                 <label htmlFor="points-student-sort" className="sr-only">Sắp xếp học sinh</label>
-                <select
+                <ClassroomSelect
                   id="points-student-sort"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as StudentSortOption)}
-                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                 >
                   <option value="role-stt">Vai trò → STT</option>
                   <option value="name-asc">Tên A → Z</option>
@@ -125,7 +124,7 @@ export default function PointsPage() {
                   <option value="points-asc">Điểm thấp → cao</option>
                   <option value="team">Theo tổ</option>
                   <option value="newest">Mới thêm gần đây</option>
-                </select>
+                </ClassroomSelect>
               </div>
             </div>
 

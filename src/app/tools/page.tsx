@@ -71,9 +71,11 @@ export default function ToolsPage() {
         }`}
       >
         <div
-          className={`mx-auto flex flex-col gap-8 ${
-            isPresentationMode ? 'max-w-6xl p-6' : 'max-w-[1200px] p-5'
-          }`}
+          className={
+            isPresentationMode
+              ? 'mx-auto flex max-w-6xl flex-col gap-8 px-6 pb-10'
+              : 'classroom-page--workspace-loose'
+          }
         >
           {!isPresentationMode ? (
             <div className="flex items-start gap-6">

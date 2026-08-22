@@ -24,6 +24,14 @@ Per `docs/PROJECT_SCOPE.md` §12:
 - Page background: `#f7fafd`
 - Cute, playful, gamified classroom — not corporate admin
 
+## Page layout
+
+Use `classroom-page--management` (1100px), `classroom-page--workspace` (1200px), or `classroom-page--dashboard` (1400px) from `globals.css`. Presentation/game routes may use custom fullscreen layouts.
+
+## Icons vs emoji
+
+Lucide for functional UI controls. Emoji allowed for playful classroom identity (team avatars, celebrations, games, user-picked icons). See [ui-design](../skills/ui-design/SKILL.md).
+
 ## State and data
 
 - Classroom data: `useAppData()` / `AppDataProvider` only — no TanStack Query, SWR, Zustand, or Redux for classroom JSON

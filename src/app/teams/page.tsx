@@ -197,7 +197,8 @@ export default function TeamsPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-page">
-      <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6 pb-10 scrollbar-thin">
+      <div className="flex flex-1 flex-col overflow-y-auto scrollbar-thin">
+        <div className="classroom-page--management">
 
         <PageHeader
           icon={Users}
@@ -302,6 +303,7 @@ export default function TeamsPage() {
             />
           </ClassroomCard>
         )}
+        </div>
       </div>
 
       {/* ── MODALS ── */}

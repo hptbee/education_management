@@ -100,7 +100,7 @@ function RecognitionPageContent() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-6 p-5 pb-10">
+      <div className="classroom-page--workspace">
         <PageHeader
           icon={Trophy}
           title="Tuyên dương"

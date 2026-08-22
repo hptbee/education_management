@@ -11,6 +11,7 @@ export function RankingList({
   teams,
   classroomRoles,
   onStudentClick,
+  presentation = false,
   emptyTitle = 'Không tìm thấy học sinh phù hợp',
   emptyDescription = 'Thử thay đổi từ khóa hoặc bỏ bộ lọc.',
 }: {
@@ -18,6 +19,7 @@ export function RankingList({
   teams: Team[]
   classroomRoles: ClassroomRole[]
   onStudentClick?: (entry: RankedStudent) => void
+  presentation?: boolean
   emptyTitle?: string
   emptyDescription?: string
 }) {
@@ -36,6 +38,7 @@ export function RankingList({
             teams={teams}
             classroomRoles={classroomRoles}
             onClick={onStudentClick ? () => onStudentClick(entry) : undefined}
+            presentation={presentation}
           />
         </li>
       ))}

@@ -13,7 +13,7 @@ import {
   type ActivityFilter,
 } from '@/src/utils/activityHistory'
 import { MAX_HISTORY_ENTRIES } from '@/src/utils/historyLimits'
-import { PageHeader, ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, ClassroomSelect } from '@/src/components/classroom'
 
 const FILTER_OPTIONS: { id: ActivityFilter; label: string }[] = [
   { id: 'all', label: 'Tất cả' },
@@ -63,7 +63,7 @@ export default function HistoryPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 pb-10">
+      <div className="classroom-page--management">
         <PageHeader
           icon={History}
           title="Lịch sử hoạt động"
@@ -104,10 +104,11 @@ export default function HistoryPage() {
                 className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm font-semibold outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
             </div>
-            <select
+            <ClassroomSelect
+              variant="field"
               value={studentFilter}
               onChange={(e) => setStudentFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none"
+              aria-label="Lọc theo học sinh"
             >
               <option value="all">Tất cả học sinh</option>
               {students.map((student) => (
@@ -115,11 +116,12 @@ export default function HistoryPage() {
                   {student.name}
                 </option>
               ))}
-            </select>
-            <select
+            </ClassroomSelect>
+            <ClassroomSelect
+              variant="field"
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none"
+              aria-label="Lọc theo tổ"
             >
               <option value="all">Tất cả tổ</option>
               {teams.map((team) => (
@@ -127,7 +129,7 @@ export default function HistoryPage() {
                   {team.name}
                 </option>
               ))}
-            </select>
+            </ClassroomSelect>
           </div>
         </ClassroomCard>
 

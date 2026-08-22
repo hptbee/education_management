@@ -148,7 +148,7 @@ export default function RankingPage() {
             <>
               {filteredStudents.length > 0 ? (
                 <ClassroomCard>
-                  <RankingPodium entries={filteredStudents} />
+                  <RankingPodium entries={filteredStudents} presentation />
                 </ClassroomCard>
               ) : null}
               <ClassroomCard>
@@ -156,6 +156,7 @@ export default function RankingPage() {
                   entries={filteredStudents}
                   teams={teams}
                   classroomRoles={classroomRoles}
+                  presentation
                 />
               </ClassroomCard>
             </>
@@ -167,7 +168,7 @@ export default function RankingPage() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 pb-10">
+      <div className="classroom-page--management">
         <PageHeader
           icon={Crown}
           title={pageTitle}

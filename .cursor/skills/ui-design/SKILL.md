@@ -40,7 +40,25 @@ When using `ui-ux-pro-max` or `redesign-existing-projects`, **ignore** advice to
 ## Copy and empty states
 
 - Teacher-facing plain verbs; empty/error states give a **next action**
-- No emoji as icons — use Lucide
+
+## Icons vs emoji
+
+- **Lucide** for functional application UI: navigation, buttons, menus, edit/delete actions, settings, search, close, and standard controls.
+- **Emoji are allowed** when they are part of the intentional playful classroom identity: team avatars, rewards, celebrations, games, Wall of Fame, decorative feedback, and user-selectable visual content.
+- Do **not** replace intentional playful emoji with Lucide merely to satisfy a generic “no emoji” rule.
+
+## Page layout tiers
+
+Use shared utilities from `globals.css` (`classroom-page--*`):
+
+| Tier | Max width | Routes |
+|------|-----------|--------|
+| Management | 1100px | students, teams, points, ranking, history, settings, classrooms, rewards (manage) |
+| Workspace / tools | 1200px | tools, recognition |
+| Dashboard / overview | 1400px | home dashboard, `AppDataShell` header band |
+| Presentation / games | custom | fullscreen `PresentationChrome`, game dialogs — do not force standard tiers |
+
+Standard horizontal padding: `px-5` on normal scroll pages (included in `classroom-page--*` utilities).
 
 ## ui-ux-pro-max search hints
 

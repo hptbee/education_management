@@ -16,7 +16,7 @@ import { StudentFormModal } from './components/student-form-modal'
 import { StudentDetailsModal } from './components/student-details-modal'
 import { DeleteConfirmModal } from './components/delete-confirm-modal'
 import { ImportModal } from './components/import-modal'
-import { PageHeader, EmptyState, ClassroomButton, ClassroomCard, IconTouchButton } from '@/src/components/classroom'
+import { PageHeader, EmptyState, ClassroomButton, ClassroomCard, IconTouchButton, ClassroomSelect } from '@/src/components/classroom'
 
 // ─── Summary Card ────────────────────────────────────────────────────────────
 function SummaryCard({
@@ -196,7 +196,8 @@ export default function StudentsPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6 pb-10 scrollbar-thin">
+      <div className="flex flex-1 flex-col overflow-y-auto scrollbar-thin">
+        <div className="classroom-page--management">
 
         <PageHeader
           icon={GraduationCap}
@@ -272,10 +273,10 @@ export default function StudentsPage() {
 
             <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
               <ArrowUpDown className="size-3.5 shrink-0 text-slate-400" />
-              <select
+              <ClassroomSelect
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as StudentSortOption)}
-                className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                aria-label="Sắp xếp học sinh"
               >
                 <option value="role-stt">Vai trò → STT</option>
                 <option value="name-asc">Tên A → Z</option>
@@ -284,7 +285,7 @@ export default function StudentsPage() {
                 <option value="points-asc">Điểm thấp → cao</option>
                 <option value="team">Theo tổ</option>
                 <option value="newest">Mới thêm gần đây</option>
-              </select>
+              </ClassroomSelect>
             </div>
 
             <ClassroomButton
@@ -316,41 +317,41 @@ export default function StudentsPage() {
             <div className="flex flex-wrap gap-2">
               <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                 <Filter className="size-3.5 text-slate-400" />
-                <select
+                <ClassroomSelect
                   value={filterGender}
                   onChange={(e) => setFilterGender(e.target.value)}
-                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                  aria-label="Lọc giới tính"
                 >
                   <option value="all">Tất cả giới tính</option>
                   <option value="male">Nam</option>
                   <option value="female">Nữ</option>
-                </select>
+                </ClassroomSelect>
               </div>
 
               {teams.length > 0 ? (
                 <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                   <UserCheck className="size-3.5 text-slate-400" />
-                  <select
+                  <ClassroomSelect
                     value={filterTeam}
                     onChange={(e) => setFilterTeam(e.target.value)}
-                    className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                    aria-label="Lọc tổ"
                   >
                     <option value="all">Tất cả tổ</option>
                     <option value="none">Chưa có tổ</option>
                     {teams.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
-                  </select>
+                  </ClassroomSelect>
                 </div>
               ) : null}
 
               {classroomRoles.length > 0 ? (
                 <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                   <Crown className="size-3.5 text-slate-400" />
-                  <select
+                  <ClassroomSelect
                     value={filterRole}
                     onChange={(e) => setFilterRole(e.target.value)}
-                    className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                    aria-label="Lọc vai trò"
                   >
                     <option value="all">Tất cả vai trò</option>
                     <option value="none">Chưa có vai trò</option>
@@ -359,17 +360,17 @@ export default function StudentsPage() {
                         {role.icon ? `${role.icon} ` : ''}{role.name}
                       </option>
                     ))}
-                  </select>
+                  </ClassroomSelect>
                 </div>
               ) : null}
 
               {badges.length > 0 ? (
                 <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                   <Medal className="size-3.5 text-slate-400" />
-                  <select
+                  <ClassroomSelect
                     value={filterBadge}
                     onChange={(e) => setFilterBadge(e.target.value)}
-                    className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                    aria-label="Lọc huy hiệu"
                   >
                     <option value="all">Tất cả huy hiệu</option>
                     <option value="none">Chưa có huy hiệu</option>
@@ -378,21 +379,21 @@ export default function StudentsPage() {
                         {badge.icon ? `${badge.icon} ` : ''}{badge.name}
                       </option>
                     ))}
-                  </select>
+                  </ClassroomSelect>
                 </div>
               ) : null}
 
               <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                 <Star className="size-3.5 text-amber-500" />
-                <select
+                <ClassroomSelect
                   value={filterPoints}
                   onChange={(e) => setFilterPoints(e.target.value)}
-                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                  aria-label="Lọc điểm"
                 >
                   <option value="all">Tất cả điểm</option>
                   <option value="has">Có điểm</option>
                   <option value="none">Chưa có điểm</option>
-                </select>
+                </ClassroomSelect>
               </div>
             </div>
           ) : null}
@@ -435,6 +436,7 @@ export default function StudentsPage() {
             </div>
           </>
         )}
+        </div>
       </div>
 
       {/* ── MODALS ── */}

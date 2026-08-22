@@ -5,7 +5,7 @@ import type { Team } from '@/src/types/models'
 import type { RankingPeriod } from '@/src/utils/ranking'
 import { RANKING_PERIOD_LABELS } from '@/src/utils/ranking'
 import type { RankingMode } from './ranking-mode-toggle'
-import { IconTouchButton } from '@/src/components/classroom'
+import { IconTouchButton, ClassroomSelect } from '@/src/components/classroom'
 import { cn } from '@/lib/utils'
 
 export interface RankingFilterState {
@@ -51,14 +51,15 @@ function FilterSelect({
       )}
     >
       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
-      <select
+      <ClassroomSelect
         id={id}
+        variant="filter"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full cursor-pointer bg-transparent text-sm font-bold text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        aria-label={label}
       >
         {children}
-      </select>
+      </ClassroomSelect>
     </label>
   )
 }

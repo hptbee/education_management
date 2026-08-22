@@ -15,11 +15,13 @@ export function RankingRow({
   teams,
   classroomRoles,
   onClick,
+  presentation = false,
 }: {
   entry: RankedStudent
   teams: Team[]
   classroomRoles: ClassroomRole[]
   onClick?: () => void
+  presentation?: boolean
 }) {
   const { data } = useAppData()
   const classroomId = data?.metadata.id
@@ -34,8 +36,9 @@ export function RankingRow({
     <>
       <span
         className={cn(
-          'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold',
+          'flex shrink-0 items-center justify-center rounded-full font-extrabold',
           badgeClass,
+          presentation ? 'size-9 text-sm' : 'size-8 text-xs',
         )}
       >
         {medal ?? rank}
@@ -44,11 +47,16 @@ export function RankingRow({
         student={student}
         classroomId={classroomId}
         alt={student.name}
-        className="size-11 shrink-0 rounded-full ring-2 ring-white"
+        className={cn(
+          'shrink-0 rounded-full ring-2 ring-white',
+          presentation ? 'size-12' : 'size-11',
+        )}
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-extrabold text-slate-800">{student.name}</p>
-        <p className="truncate text-[11px] font-bold text-slate-500">
+        <p className={cn('truncate font-extrabold text-slate-800', presentation ? 'text-base' : 'text-sm')}>
+          {student.name}
+        </p>
+        <p className={cn('truncate font-bold text-slate-500', presentation ? 'text-sm' : 'text-[11px]')}>
           {team ? team.name : 'Chưa có tổ'}
         </p>
         {roles.length > 0 ? (
@@ -57,7 +65,9 @@ export function RankingRow({
       </div>
       <div className="flex shrink-0 items-center gap-1 rounded-full bg-white/80 px-2.5 py-1">
         <Star className="size-3.5 fill-star text-star" />
-        <span className="font-display text-sm font-extrabold text-slate-800">{points}</span>
+        <span className={cn('font-display font-extrabold text-slate-800', presentation ? 'text-base' : 'text-sm')}>
+          {points}
+        </span>
       </div>
     </>
   )

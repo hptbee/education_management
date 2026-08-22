@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { PencilLine, Plus, Trash2 } from 'lucide-react'
 import type { PointAction } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { IconTouchButton, useModalFocusTrap, ClassroomButton } from '@/src/components/classroom'
 import { createId } from '@/src/utils/id'
 
 function PointActionFormDialog({
@@ -220,13 +220,15 @@ export function PointActionsCatalogSection() {
               Hành động <strong>{deleteTarget.name}</strong> sẽ bị xóa khỏi danh sách nhanh. Lịch sử điểm cũ vẫn được giữ.
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={cancelDelete} className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">Hủy</button>
-              <button
+              <button type="button" onClick={cancelDelete} className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
+                Hủy
+              </button>
+              <ClassroomButton
+                className="border-0 bg-rose-500 hover:bg-rose-600"
                 onClick={() => { deletePointAction(deleteTarget.id); setDeleteTarget(null) }}
-                className="rounded-xl bg-rose-500 px-5 py-2 text-sm font-bold text-white hover:bg-rose-600"
               >
                 Xóa
-              </button>
+              </ClassroomButton>
             </div>
           </div>
         </div>

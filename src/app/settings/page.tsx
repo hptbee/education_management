@@ -19,7 +19,7 @@ export default function Settings() {
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto flex max-w-[1100px] flex-col gap-6 p-5 pb-10">
+      <div className="classroom-page--management">
         <PageHeader
           icon={SettingsIcon}
           title="Cài đặt"
