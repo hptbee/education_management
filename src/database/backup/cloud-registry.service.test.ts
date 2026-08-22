@@ -18,6 +18,7 @@ vi.mock("@/src/auth/api", () => ({
 vi.mock("./cloud-backup.service", () => ({
   cloudBackupScheduler: {
     setRegistrySummaries: vi.fn(),
+    setLocalClassroomRegistry: vi.fn(),
   },
   getCloudBackupUrl: vi.fn(() => "https://backup.example.workers.dev"),
     isCloudBackupConfigured: vi.fn().mockResolvedValue(true),
@@ -35,6 +36,7 @@ vi.mock("../database.service", () => ({
   databaseService: {
     mergeRegistryStubs: vi.fn().mockResolvedValue(undefined),
     listDatabases: vi.fn().mockResolvedValue([]),
+    loadClassroomSnapshot: vi.fn().mockResolvedValue(null),
     enableCloudBackupOnAllHydratedClassrooms: vi.fn().mockResolvedValue(undefined),
     saveCloudRestoredDatabase: vi.fn(),
   },
@@ -126,6 +128,57 @@ describe("cloud-registry.service", () => {
 
     expect(restoreCloudClassroom).toHaveBeenCalled();
     expect(restoreCloudClassroomAssets).not.toHaveBeenCalled();
+    expect(databaseService.saveCloudRestoredDatabase).not.toHaveBeenCalled();
+  });
+
+  it("force-refreshes the remote registry after a successful first pull", async () => {
+    const secondRegistry: CloudClassroomsRegistryFile = {
+      version: 1,
+      updatedAt: "2026-01-03T00:00:00.000Z",
+      classrooms: [
+        ...sampleRegistry.classrooms,
+        {
+          key: "3-1_2026-2027",
+          name: "3/1",
+          schoolYear: "2026-2027",
+          createdAt: "2026-01-02T00:00:00.000Z",
+          updatedAt: "2026-01-03T00:00:00.000Z",
+          archived: false,
+        },
+      ],
+    };
+    vi.mocked(fetchClassroomsRegistry)
+      .mockResolvedValueOnce({ registry: sampleRegistry, source: "registry" })
+      .mockResolvedValueOnce({ registry: secondRegistry, source: "registry" });
+
+    const first = await ensureRegistryPulled();
+    expect(first.ok).toBe(true);
+    if (first.ok) {
+      expect(first.registry.classrooms).toHaveLength(1);
+    }
+
+    const cached = await ensureRegistryPulled();
+    expect(cached.ok).toBe(true);
+    expect(fetchClassroomsRegistry).toHaveBeenCalledTimes(1);
+
+    const forced = await ensureRegistryPulled(undefined, { force: true });
+    expect(forced.ok).toBe(true);
+    if (forced.ok) {
+      expect(forced.registry.classrooms.map((item) => item.key)).toEqual([
+        "2-7_2026-2027",
+        "3-1_2026-2027",
+      ]);
+    }
+    expect(fetchClassroomsRegistry).toHaveBeenCalledTimes(2);
+    expect(databaseService.mergeRegistryStubs).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not save locally when cloud restore is missing", async () => {
+    vi.mocked(restoreCloudClassroom).mockResolvedValue(null);
+
+    await expect(hydrateClassroomFromCloud("2-7_2026-2027")).rejects.toThrow(
+      "Không tìm thấy bản sao lưu trên đám mây.",
+    );
     expect(databaseService.saveCloudRestoredDatabase).not.toHaveBeenCalled();
   });
 });

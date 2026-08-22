@@ -76,6 +76,14 @@ export async function refreshCloudRegistrySummaries(): Promise<void> {
       archived: s.archived,
     })),
   );
+
+  const hydrated = summaries.filter((item) => item.hydrated !== false);
+  const classrooms: ClassroomDatabase[] = [];
+  for (const summary of hydrated) {
+    const snapshot = await databaseService.loadClassroomSnapshot(summary.id);
+    if (snapshot) classrooms.push(snapshot);
+  }
+  cloudBackupScheduler.setLocalClassroomRegistry(classrooms);
 }
 
 export async function pullClassroomRegistry(fetchImpl?: typeof fetch): Promise<PullRegistryResult> {
@@ -128,12 +136,15 @@ export async function mergeAndRememberRegistry(registry: CloudClassroomsRegistry
   await refreshCloudRegistrySummaries();
 }
 
-export async function ensureRegistryPulled(fetchImpl?: typeof fetch): Promise<PullRegistryResult> {
-  if (registryPullCompleted && lastMergedRegistry) {
+export async function ensureRegistryPulled(
+  fetchImpl?: typeof fetch,
+  options?: { force?: boolean },
+): Promise<PullRegistryResult> {
+  if (!options?.force && registryPullCompleted && lastMergedRegistry) {
     return { ok: true, registry: lastMergedRegistry, source: "registry" };
   }
 
-  if (registryPullCompleted) {
+  if (!options?.force && registryPullCompleted) {
     const summaries = await databaseService.listDatabases();
     const now = new Date().toISOString();
     const registry = buildClassroomsRegistryFromSummaries(
@@ -149,6 +160,18 @@ export async function ensureRegistryPulled(fetchImpl?: typeof fetch): Promise<Pu
     );
     lastMergedRegistry = registry;
     return { ok: true, registry, source: "registry" };
+  }
+
+  if (options?.force) {
+    if (registryPullPromise) {
+      await registryPullPromise;
+    }
+    const result = await pullClassroomRegistry(fetchImpl);
+    if (result.ok) {
+      await mergeAndRememberRegistry(result.registry);
+      registryPullCompleted = true;
+    }
+    return result;
   }
 
   if (!registryPullPromise) {
@@ -172,17 +195,21 @@ export async function ensureRegistryPulled(fetchImpl?: typeof fetch): Promise<Pu
   return registryPullPromise;
 }
 
-export async function pullAndMergeAccountRegistry(fetchImpl?: typeof fetch): Promise<PullRegistryResult> {
+export async function pullAndMergeAccountRegistry(
+  fetchImpl?: typeof fetch,
+  options?: { force?: boolean },
+): Promise<PullRegistryResult> {
   if (!(await isCloudBackupConfigured())) {
     logCloudTrace("warn", "cloud-registry", "merge skipped: not configured", await inspectCloudBackupAuth());
     return { ok: false, reason: "not_configured" };
   }
 
-  const result = await ensureRegistryPulled(fetchImpl);
+  const result = await ensureRegistryPulled(fetchImpl, { force: options?.force !== false });
   logCloudTrace("info", "cloud-registry", "pullAndMergeAccountRegistry", {
     ok: result.ok,
     reason: result.ok ? result.source : result.reason,
     classrooms: result.ok ? result.registry.classrooms.length : 0,
+    force: options?.force !== false,
   });
   if (result.ok) {
     await databaseService.enableCloudBackupOnAllHydratedClassrooms();

@@ -308,7 +308,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!(await isCloudBackupConfigured())) return;
     await ensureRegistryPulled();
     cloudDirtyTracker.markAll(db.metadata.id);
-    await cloudBackupScheduler.triggerUploadNow(db);
+    try {
+      await cloudBackupScheduler.triggerUploadNow(db);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logAppEvent("error", "cloud-backup", "first backup failed", {
+        classroomId: db.metadata.id,
+        message,
+      });
+    }
   }, []);
 
   const applyAccountRegistryDiscovery = useCallback(async () => {
@@ -356,6 +364,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             });
             applyLoadedDatabase(db);
             await cloudBackupScheduler.checkStartupBackup(db);
+          } else {
+            setHydrateErrors((prev) => ({
+              ...prev,
+              [targetId]: "Không thể tải lớp học từ đám mây.",
+            }));
           }
         } catch (error) {
           if (generation !== switchGenerationRef.current) return result;
@@ -648,12 +661,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (!persisted) return;
         const current = dataRef.current;
         if (current?.metadata.id && current.metadata.id !== id) {
-          void cloudBackupScheduler.flushCloudSyncForClassroom(current.metadata.id, current);
+          try {
+            await cloudBackupScheduler.flushCloudSyncForClassroom(current.metadata.id, current);
+          } catch (error) {
+            console.warn("[AppDataProvider] flush before switch failed:", error);
+          }
         }
         const db = await openClassroomById(id, generation);
         if (generation !== switchGenerationRef.current) return;
         if (!db) {
-          setSaveError("Không thể mở lớp học. Dữ liệu có thể bị hỏng hoặc đã bị xóa.");
+          const message = "Không thể mở lớp học. Dữ liệu có thể bị hỏng, chưa sao lưu, hoặc đã bị xóa.";
+          setHydrateErrors((prev) => ({ ...prev, [id]: message }));
+          setSaveError(message);
           return;
         }
         setHydrateErrors((prev) => {
@@ -842,10 +861,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const list = await databaseService.listDatabases();
           const next = list.find((entry) => !entry.archived);
           if (next) {
-            const db = await openClassroomById(next.id);
+            const generation = ++switchGenerationRef.current;
+            const db = await openClassroomById(next.id, generation);
+            if (generation !== switchGenerationRef.current) return;
             applyLoadedDatabase(db);
             if (db) {
               await cloudBackupScheduler.checkStartupBackup(db);
+            } else {
+              setHydrateErrors((prev) => ({
+                ...prev,
+                [next.id]: "Không thể tải lớp học từ đám mây.",
+              }));
             }
           } else {
             applyLoadedDatabase(null);

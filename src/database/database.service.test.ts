@@ -264,6 +264,16 @@ describe("DatabaseService", () => {
     expect(reopenedA?.students.length).toBe(1);
   });
 
+  it("loadClassroomSnapshot does not change the preferred classroom", async () => {
+    const { service } = makeService();
+    const classA = await service.createDatabase(makeSettings("2/7", "2026-2027"));
+    const classB = await service.createDatabase(makeSettings("3/1", "2026-2027"), { activate: false });
+
+    const snapshot = await service.loadClassroomSnapshot(classB.metadata.id);
+    expect(snapshot?.metadata.id).toBe(classB.metadata.id);
+    expect(await service.getPreferredClassroomId()).toBe(classA.metadata.id);
+  });
+
   it("closes database clears active id", async () => {
     const { service } = makeService();
     const db = await service.createDatabase(makeSettings());

@@ -203,6 +203,14 @@ export class DatabaseService {
     return storage.list();
   }
 
+  /** Load classroom JSON without changing the active classroom id. */
+  async loadClassroomSnapshot(id: string): Promise<ClassroomDatabase | null> {
+    const storage = await this.getStorage();
+    const loaded = await storage.load(id);
+    if (!loaded) return null;
+    return normalizeClassroomDatabase(loaded);
+  }
+
   async mergeRegistryStubs(entries: CloudClassroomRegistryEntry[]): Promise<void> {
     const storage = await this.getStorage();
     if (storage.mergeRegistryStubs) {

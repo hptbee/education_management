@@ -303,4 +303,71 @@ describe("CloudBackupScheduler", () => {
     );
     scheduler.stop();
   });
+
+  it("keeps pending Classroom A while B is uploading and drains A after", async () => {
+    let releaseB!: () => void;
+    const bGate = new Promise<void>((resolve) => {
+      releaseB = resolve;
+    });
+
+    vi.mocked(uploadCloudSyncBatch).mockImplementation(async (db) => {
+      if (db.metadata.id === "3-1_2026-2027") {
+        await bGate;
+      }
+      return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
+    });
+
+    const scheduler = new CloudBackupScheduler();
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+
+    scheduler.scheduleAfterLocalSave(classB);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const flushingB = scheduler.flushPending();
+
+    const flushingA = scheduler.flushCloudSyncForClassroom(classA.metadata.id, classA);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    releaseB();
+    await flushingB;
+    await flushingA;
+    await scheduler.flushPending();
+
+    const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
+    expect(uploadedKeys).toEqual(expect.arrayContaining([classA.metadata.id, classB.metadata.id]));
+    scheduler.stop();
+  });
+
+  it("re-drains classrooms queued while an existing drain is in flight", async () => {
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    vi.mocked(uploadCloudSyncBatch)
+      .mockImplementationOnce(async () => {
+        await firstGate;
+        return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
+      })
+      .mockResolvedValue({ uploadedPaths: ["classroom.json"], skippedPaths: [] });
+
+    const scheduler = new CloudBackupScheduler();
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+
+    scheduler.scheduleAfterLocalSave(classA);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const firstDrain = scheduler.flushPending();
+
+    scheduler.scheduleAfterLocalSave(classB);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const waitingDrain = scheduler.flushPending();
+    releaseFirst();
+    await firstDrain;
+    await waitingDrain;
+
+    const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
+    expect(uploadedKeys).toEqual(expect.arrayContaining([classA.metadata.id, classB.metadata.id]));
+    scheduler.stop();
+  });
 });

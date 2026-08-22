@@ -125,12 +125,17 @@ export function SidebarClassContext() {
                     }
                   }}
                 >
-                  <span className="truncate">
+                  <span className="min-w-0 truncate">
                     {item.className} · {item.schoolYear}
                   </span>
-                  {isCurrent ? (
-                    <span className="shrink-0 text-[10px] font-extrabold uppercase text-brand">Đang mở</span>
-                  ) : null}
+                  <span className="flex shrink-0 items-center gap-1">
+                    {item.hydrated === false ? (
+                      <span className="text-[10px] font-extrabold uppercase text-amber-700">Chưa tải về</span>
+                    ) : null}
+                    {isCurrent ? (
+                      <span className="text-[10px] font-extrabold uppercase text-brand">Đang mở</span>
+                    ) : null}
+                  </span>
                 </button>
               )
             })
