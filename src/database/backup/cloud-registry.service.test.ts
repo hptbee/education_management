@@ -37,7 +37,6 @@ vi.mock("../database.service", () => ({
     mergeRegistryStubs: vi.fn().mockResolvedValue(undefined),
     listDatabases: vi.fn().mockResolvedValue([]),
     loadClassroomSnapshot: vi.fn().mockResolvedValue(null),
-    enableCloudBackupOnAllHydratedClassrooms: vi.fn().mockResolvedValue(undefined),
     saveCloudRestoredDatabase: vi.fn(),
   },
 }));

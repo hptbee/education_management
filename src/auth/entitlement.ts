@@ -36,9 +36,6 @@ export async function verifyEntitlementToken(
     if (!claims.userId || !claims.permissions?.appAccess) return null;
     claims.licenseVersion = Number(claims.licenseVersion);
     claims.offlineValidUntil = Number(claims.offlineValidUntil);
-    if (claims.licenseExpiresAt === undefined) {
-      claims.licenseExpiresAt = null;
-    }
     return {
       claims,
       issuedAt: payload.iat ?? 0,
@@ -72,12 +69,17 @@ export function resolveAccessState(input: {
   const plan = input.claims.plan;
   if (plan !== "lifetime") {
     const signedExpiry = input.claims.licenseExpiresAt;
-    if (!signedExpiry) {
+    if (signedExpiry === undefined) {
+      if (input.isOnline) {
+        return "ONLINE_VERIFICATION_REQUIRED";
+      }
+    } else if (!signedExpiry) {
       return "LICENSE_EXPIRED";
-    }
-    const expiryMs = Date.parse(signedExpiry);
-    if (Number.isNaN(expiryMs) || Date.now() >= expiryMs) {
-      return "LICENSE_EXPIRED";
+    } else {
+      const expiryMs = Date.parse(signedExpiry);
+      if (Number.isNaN(expiryMs) || Date.now() >= expiryMs) {
+        return "LICENSE_EXPIRED";
+      }
     }
   }
 

@@ -280,9 +280,6 @@ export class DatabaseService {
     if (db.metadata.cloudStub) {
       delete db.metadata.cloudStub;
     }
-    if (await isCloudBackupConfigured()) {
-      db.appSettings.cloudBackupEnabled = true;
-    }
 
     if (options?.cloudAssets?.length) {
       const written = await restoreCloudAssetsLocally(db.metadata.id, options.cloudAssets);
@@ -312,23 +309,6 @@ export class DatabaseService {
     await storage.save(db);
     await persistActiveClassroomId(db.metadata.id);
     return db;
-  }
-
-  async enableCloudBackupOnAllHydratedClassrooms(): Promise<void> {
-    if (!(await isCloudBackupConfigured())) return;
-
-    const storage = await this.getStorage();
-    const summaries = await storage.list();
-    for (const summary of summaries) {
-      if (!summary.hydrated) continue;
-      const loaded = await storage.load(summary.id);
-      if (!loaded || loaded.appSettings.cloudBackupEnabled) continue;
-      const updated = normalizeClassroomDatabase({
-        ...loaded,
-        appSettings: { ...loaded.appSettings, cloudBackupEnabled: true },
-      });
-      await storage.save(updated);
-    }
   }
 
   async createDatabase(

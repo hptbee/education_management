@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { fetchMe, postAuthGoogle, postAuthLogout, refreshEntitlement } from "@/src/auth/api";
+import { postAuthGoogle, postAuthLogout } from "@/src/auth/api";
 import { mapApiCodeToAccessState, resolveAccessState, verifyEntitlementToken } from "@/src/auth/entitlement";
 import { loginWithGoogleDesktop, loginWithGoogleWeb } from "@/src/auth/google-login";
 import {
@@ -11,6 +11,10 @@ import {
   requestLoginCancel,
 } from "@/src/auth/login-cancel";
 import { clearAuthSession, loadAuthSession, rememberAuthSession, saveAuthSession } from "@/src/auth/secure-storage";
+import {
+  isRevokedAuthDenial,
+  reconcileStoredSessionOnline,
+} from "@/src/store/auth-session-reconcile";
 import type {
   AccessState,
   AuthLicense,
@@ -96,36 +100,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (stored && isOnline()) {
         try {
-          const refreshed = await refreshEntitlement(stored.entitlement);
-          if (refreshed.ok) {
-            const verified = await verifyEntitlementToken(refreshed.entitlement);
-            const next: StoredAuthSession = {
-              entitlement: refreshed.entitlement,
-              user: refreshed.user,
-              license: refreshed.license,
-              lastVerifiedAt: new Date().toISOString(),
-              lastTrustedIat: verified?.issuedAt ?? Math.floor(Date.now() / 1000),
-            };
-            await saveAuthSession(next);
-            cacheAndSetSession(next);
+          const result = await reconcileStoredSessionOnline(stored);
+          if (result.kind === "updated") {
+            await saveAuthSession(result.session);
+            cacheAndSetSession(result.session);
             setServerDenied(null);
-            await recomputeAccess(next, null);
-          } else {
-            const denied = mapApiCodeToAccessState(refreshed.code);
-            if (denied === "AUTH_REQUIRED") {
-              const verified = await verifyEntitlementToken(stored.entitlement);
-              const now = Math.floor(Date.now() / 1000);
-              if (verified && now <= verified.claims.offlineValidUntil) {
-                await recomputeAccess(stored, null);
-              } else {
-                setServerDenied(denied);
-                await recomputeAccess(stored, denied);
-              }
-            } else if (denied) {
-              setServerDenied(denied);
-              await recomputeAccess(stored, denied);
+            await recomputeAccess(result.session, null);
+          } else if (result.kind === "denied") {
+            if (isRevokedAuthDenial(result.access)) {
+              await clearAuthSession();
+              cacheAndSetSession(null);
+              setServerDenied("AUTH_REQUIRED");
+              await recomputeAccess(null, "AUTH_REQUIRED");
             } else {
-              await recomputeAccess(stored, null);
+              setServerDenied(result.access);
+              await recomputeAccess(stored, result.access);
             }
           }
         } catch (error) {
@@ -231,21 +220,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const refreshed = await refreshEntitlement(session.entitlement);
-    if (refreshed.ok) {
-      const verified = await verifyEntitlementToken(refreshed.entitlement);
-      const next: StoredAuthSession = {
-        entitlement: refreshed.entitlement,
-        user: refreshed.user,
-        license: refreshed.license,
-        lastVerifiedAt: new Date().toISOString(),
-        lastTrustedIat: verified?.issuedAt ?? Math.floor(Date.now() / 1000),
-      };
+    const result = await reconcileStoredSessionOnline(session);
+    if (result.kind === "updated") {
       try {
-        await saveAuthSession(next);
-        cacheAndSetSession(next);
+        await saveAuthSession(result.session);
+        cacheAndSetSession(result.session);
         setServerDenied(null);
-        await recomputeAccess(next, null);
+        await recomputeAccess(result.session, null);
       } catch (error) {
         console.warn("[AuthProvider] refreshSession persist failed:", error);
         await recomputeAccess(session, serverDenied);
@@ -253,29 +234,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const me = await fetchMe(session.entitlement);
-    if (!me.ok) {
-      const denied = mapApiCodeToAccessState(me.code);
-      setServerDenied(denied);
-      await recomputeAccess(session, denied);
+    if (result.kind === "denied") {
+      if (isRevokedAuthDenial(result.access)) {
+        await clearAuthSession();
+        cacheAndSetSession(null);
+        setServerDenied("AUTH_REQUIRED");
+        await recomputeAccess(null, "AUTH_REQUIRED");
+      } else {
+        setServerDenied(result.access);
+        await recomputeAccess(session, result.access);
+      }
       return;
     }
 
-    const next: StoredAuthSession = {
-      ...session,
-      user: me.user,
-      license: me.license,
-      lastVerifiedAt: new Date().toISOString(),
-    };
-    try {
-      await saveAuthSession(next);
-      cacheAndSetSession(next);
-      await recomputeAccess(next, serverDenied);
-    } catch (error) {
-      console.warn("[AuthProvider] refreshSession me persist failed:", error);
-      await recomputeAccess(session, serverDenied);
-    }
-  }, [recomputeAccess, serverDenied, session]);
+    await recomputeAccess(session, serverDenied);
+  }, [recomputeAccess, serverDenied, session, cacheAndSetSession]);
 
   const logout = useCallback(async () => {
     const token = session?.entitlement;

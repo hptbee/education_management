@@ -157,6 +157,11 @@ describe("CloudBackupScheduler", () => {
   const originalUrl = process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL;
   const originalPublicKey = process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY;
 
+  async function flushSchedulerMicrotasks(): Promise<void> {
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
     process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAtest\n-----END PUBLIC KEY-----";
@@ -176,7 +181,7 @@ describe("CloudBackupScheduler", () => {
     scheduler.subscribe((state) => states.push(state));
 
     scheduler.scheduleAfterLocalSave(makeDb());
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
     await scheduler.flushPending();
 
     expect(states).toContain("failed");
@@ -203,11 +208,11 @@ describe("CloudBackupScheduler", () => {
     db2.metadata.updatedAt = new Date(Date.now() + 60_000).toISOString();
 
     scheduler.scheduleAfterLocalSave(db1);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
     const firstFlush = scheduler.flushPending();
 
     scheduler.scheduleAfterLocalSave(db2);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
 
     releaseFirstUpload();
     await firstFlush;
@@ -229,7 +234,7 @@ describe("CloudBackupScheduler", () => {
     scheduler.scheduleAfterLocalSave(classA);
     scheduler.scheduleAfterLocalSave(classB);
     scheduler.scheduleAfterLocalSave(classC);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
 
     await scheduler.flushPending();
 
@@ -247,7 +252,7 @@ describe("CloudBackupScheduler", () => {
     scheduler.subscribe((state) => states.push(state));
 
     scheduler.scheduleAfterLocalSave(makeDb(true));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
 
     expect(backupMetadataService.recordCloudBackupPending).not.toHaveBeenCalled();
     expect(states).not.toContain("pending");
@@ -288,7 +293,7 @@ describe("CloudBackupScheduler", () => {
     scheduler.subscribe((state) => states.push(state));
 
     scheduler.scheduleAfterLocalSave(makeDb(true));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
 
     expect(states).not.toContain("pending");
     expect(states).toContain("disabled");
@@ -308,7 +313,7 @@ describe("CloudBackupScheduler", () => {
     const scheduler = new CloudBackupScheduler();
     scheduler.scheduleAfterLocalSave(classA);
     scheduler.scheduleAfterLocalSave(classB);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
     await scheduler.flushPending();
 
     const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
@@ -356,11 +361,11 @@ describe("CloudBackupScheduler", () => {
     const classB = makeDb(true, "3/1", "2026-2027");
 
     scheduler.scheduleAfterLocalSave(classB);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
     const flushingB = scheduler.flushPending();
 
     const flushingA = scheduler.flushCloudSyncForClassroom(classA.metadata.id, classA);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
     releaseB();
     await flushingB;
     await flushingA;
@@ -389,11 +394,11 @@ describe("CloudBackupScheduler", () => {
     const classB = makeDb(true, "3/1", "2026-2027");
 
     scheduler.scheduleAfterLocalSave(classA);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
     const firstDrain = scheduler.flushPending();
 
     scheduler.scheduleAfterLocalSave(classB);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushSchedulerMicrotasks();
 
     const waitingDrain = scheduler.flushPending();
     releaseFirst();

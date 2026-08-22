@@ -33,8 +33,6 @@ import {
   clearLastClassroomId,
   setLastClassroomId,
 } from "../utils/lastClassroom";
-import { backupMetadataService } from "../database/backup/backup-metadata.service";
-import { recordCloudRestoreSyncBaseline } from "../database/backup/cloud-restore-sync";
 import {
   cloudBackupScheduler,
   isCloudBackupConfigured,
@@ -55,14 +53,15 @@ import {
   cloudDirtyTracker,
   inferDirtyFromDatabaseChange,
 } from "../database/backup/cloud-dirty-tracker";
-import { beginCloudRestore, endCloudRestore, isCloudRestoreInProgress } from "../database/backup/cloud-restore-gate";
+import { isCloudRestoreInProgress } from "../database/backup/cloud-restore-gate";
 import { toastError, toastSuccess } from "../utils/toast";
 import { logAppEvent, logCloudTrace } from "../logging/app-log";
 import { useAuth } from "./AuthContext";
+import { useAppDataAutosave, type LocalSaveStatus } from "./app-data-autosave";
+import { restoreClassroomFromCloudPayload } from "./app-data-cloud-restore";
 
 export type { RecognizeStudentsInput };
-
-export type LocalSaveStatus = "saved" | "saving" | "error";
+export type { LocalSaveStatus } from "./app-data-autosave";
 
 interface AppDataContextValue {
   data: ClassroomDatabase | null;
@@ -155,10 +154,6 @@ interface AppDataContextValue {
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
-const SAVE_DEBOUNCE_MS = 400;
-const SAVE_BACKOFF_MS = [1000, 2000, 5000];
-const MAX_AUTO_SAVE_ATTEMPTS = 3;
-
 function pickClassroomIdToOpen(
   activeDatabases: DatabaseSummary[],
   preferredId: string | null,
@@ -192,13 +187,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const dataRef = useRef<ClassroomDatabase | null>(null);
   const switchGenerationRef = useRef(0);
   const initialLoadDoneRef = useRef(false);
-  const lastPersistedRef = useRef<ClassroomDatabase | null>(null);
-  const saveGenerationRef = useRef(0);
-  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSaveRef = useRef<ClassroomDatabase | null>(null);
-  const saveInFlightRef = useRef(false);
-  const saveFailureCountRef = useRef(0);
-  const saveRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const {
+    pendingSaveRef,
+    persistNow,
+    scheduleSave,
+    retrySave,
+    cancelPendingSaveForClassroom,
+    setLastPersisted,
+  } = useAppDataAutosave({
+    dataRef,
+    setLocalSaveStatus,
+    setSaveError,
+  });
 
   const clearSaveError = () => setSaveError(null);
 
@@ -239,13 +240,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const applyLoadedDatabase = useCallback((db: ClassroomDatabase | null) => {
     setDataState(db);
     dataRef.current = db;
-    lastPersistedRef.current = db;
+    setLastPersisted(db);
     if (db) {
       setLastClassroomId(db.metadata.id);
     } else {
       clearLastClassroomId();
     }
-  }, []);
+  }, [setLastPersisted]);
 
   const syncRegistryAfterChange = useCallback(async (options?: { markDeletedKey?: string }) => {
     try {
@@ -488,154 +489,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCloudBackupError(snapshot.state === "failed" ? snapshot.error : null);
   }, [data?.metadata.id]);
 
-  const flushSave = useCallback(async (): Promise<boolean> => {
-    if (saveInFlightRef.current) return false;
-
-    const next = pendingSaveRef.current ?? dataRef.current;
-    if (!next) return true;
-
-    pendingSaveRef.current = null;
-    saveInFlightRef.current = true;
-    const generation = ++saveGenerationRef.current;
-    const payload = next;
-    setLocalSaveStatus("saving");
-
-    try {
-      const saved = await databaseService.saveDatabase(payload);
-      if (generation !== saveGenerationRef.current) return true;
-
-      lastPersistedRef.current = saved;
-      setLocalSaveStatus("saved");
-      setSaveError(null);
-      saveFailureCountRef.current = 0;
-      if (saveRetryTimerRef.current) {
-        clearTimeout(saveRetryTimerRef.current);
-        saveRetryTimerRef.current = null;
-      }
-      try {
-        await backupMetadataService.recordLocalSave(saved.metadata.id, saved.metadata.updatedAt);
-      } catch (error) {
-        console.warn("[AppDataProvider] backup metadata failed:", error);
-      }
-      cloudBackupScheduler.scheduleAfterLocalSave(saved);
-      return true;
-    } catch (error) {
-      if (generation !== saveGenerationRef.current) {
-        console.warn("[AppDataProvider] ignored stale save failure:", error);
-        return true;
-      }
-
-      const message =
-        error instanceof Error ? error.message : "Không thể lưu dữ liệu. Vui lòng thử lại.";
-      console.error("[AppDataProvider] save failed:", error);
-      logAppEvent("error", "app-data.save", message, error);
-      setLocalSaveStatus("error");
-      setSaveError(message);
-      saveFailureCountRef.current += 1;
-      if (!pendingSaveRef.current) {
-        pendingSaveRef.current = payload;
-      }
-      return false;
-    } finally {
-      saveInFlightRef.current = false;
-      if (pendingSaveRef.current) {
-        if (saveFailureCountRef.current === 0) {
-          void flushSave();
-        } else if (saveFailureCountRef.current < MAX_AUTO_SAVE_ATTEMPTS) {
-          const delay = SAVE_BACKOFF_MS[Math.min(saveFailureCountRef.current - 1, SAVE_BACKOFF_MS.length - 1)];
-          if (saveRetryTimerRef.current) clearTimeout(saveRetryTimerRef.current);
-          saveRetryTimerRef.current = setTimeout(() => {
-            saveRetryTimerRef.current = null;
-            void flushSave();
-          }, delay);
-        }
-      }
-    }
-  }, []);
-
-  const persistNow = useCallback(async (): Promise<boolean> => {
-    if (!dataRef.current) return true;
-
-    pendingSaveRef.current = dataRef.current;
-    if (saveDebounceRef.current) {
-      clearTimeout(saveDebounceRef.current);
-      saveDebounceRef.current = null;
-    }
-
-    for (;;) {
-      if (saveInFlightRef.current) {
-        await new Promise((resolve) => setTimeout(resolve, 25));
-        continue;
-      }
-      if (!pendingSaveRef.current && !dataRef.current) return true;
-      pendingSaveRef.current = dataRef.current;
-      const ok = await flushSave();
-      if (!ok) {
-        if (saveInFlightRef.current) {
-          await new Promise((resolve) => setTimeout(resolve, 25));
-          continue;
-        }
-        return false;
-      }
-      if (!pendingSaveRef.current) return true;
-    }
-  }, [flushSave]);
-
-  const scheduleSave = useCallback(() => {
-    pendingSaveRef.current = dataRef.current;
-    setLocalSaveStatus("saving");
-    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
-    saveDebounceRef.current = setTimeout(() => {
-      saveDebounceRef.current = null;
-      void flushSave();
-    }, SAVE_DEBOUNCE_MS);
-  }, [flushSave]);
-
   const retryCloudBackup = useCallback(async () => {
     const current = dataRef.current;
     if (!current?.appSettings.cloudBackupEnabled) return;
     await cloudBackupScheduler.triggerUploadNow(current);
   }, []);
-
-  const retrySave = useCallback(async () => {
-    if (!dataRef.current) return;
-    saveFailureCountRef.current = 0;
-    if (saveRetryTimerRef.current) {
-      clearTimeout(saveRetryTimerRef.current);
-      saveRetryTimerRef.current = null;
-    }
-    pendingSaveRef.current = dataRef.current;
-    if (saveDebounceRef.current) {
-      clearTimeout(saveDebounceRef.current);
-      saveDebounceRef.current = null;
-    }
-    if (saveInFlightRef.current) return;
-    await flushSave();
-  }, [flushSave]);
-
-  useEffect(() => {
-    const flushOnHide = () => {
-      if (document.visibilityState === "hidden") {
-        void persistNow();
-      }
-    };
-    const flushOnUnload = () => {
-      void persistNow();
-    };
-
-    document.addEventListener("visibilitychange", flushOnHide);
-    window.addEventListener("beforeunload", flushOnUnload);
-
-    return () => {
-      document.removeEventListener("visibilitychange", flushOnHide);
-      window.removeEventListener("beforeunload", flushOnUnload);
-      if (saveDebounceRef.current) {
-        clearTimeout(saveDebounceRef.current);
-        saveDebounceRef.current = null;
-      }
-      void persistNow();
-    };
-  }, [persistNow]);
 
   const commitData = useCallback(
     (next: ClassroomDatabase) => {
@@ -805,43 +663,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       restoreFromCloudPayload: async (payload, cloudAssets) => {
         setIsLoading(true);
-        const record = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
-        const nested = record?.payload && typeof record.payload === "object" ? (record.payload as Record<string, unknown>) : null;
-        const meta =
-          (nested?.metadata as { id?: string } | undefined) ??
-          (record?.metadata as { id?: string } | undefined);
-        const gateId = typeof meta?.id === "string" ? meta.id : "restore";
-        const heldGateIds = new Set<string>([gateId]);
-
-        saveGenerationRef.current += 1;
-        if (saveDebounceRef.current) {
-          clearTimeout(saveDebounceRef.current);
-          saveDebounceRef.current = null;
-        }
-        const pending = pendingSaveRef.current;
-        if (pending && pending.metadata.id === gateId) {
-          pendingSaveRef.current = null;
-        }
-
-        beginCloudRestore(gateId);
         try {
-          logCloudTrace("info", "cloud-restore", "manual restoreFromCloudPayload", {
-            assetCount: cloudAssets?.length ?? 0,
-            paths: cloudAssets?.map((item) => item.path) ?? [],
-          });
-          const db = await databaseService.saveCloudRestoredDatabase(payload, {
+          return await restoreClassroomFromCloudPayload({
+            payload,
             cloudAssets,
-            expectedClassroomId: gateId,
+            cancelPendingSaveForClassroom: cancelPendingSaveForClassroom,
+            applyLoadedDatabase,
           });
-          heldGateIds.add(db.metadata.id);
-          beginCloudRestore(db.metadata.id);
-          await recordCloudRestoreSyncBaseline(db);
-          cloudDirtyTracker.clear(db.metadata.id);
-          applyLoadedDatabase(db);
-          await refreshCloudRegistrySummaries();
-          return db;
         } finally {
-          for (const id of heldGateIds) endCloudRestore(id);
           setIsLoading(false);
         }
       },

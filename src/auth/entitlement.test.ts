@@ -130,6 +130,32 @@ describe("resolveAccessState", () => {
       }),
     ).toBe("OFFLINE_GRACE");
   });
+
+  it("requires online verification for legacy tokens missing signed licenseExpiresAt", () => {
+    const { licenseExpiresAt: _removed, ...legacyClaims } = baseClaims;
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: legacyClaims,
+        issuedAt: Math.floor(Date.now() / 1000),
+        lastTrustedIat: Math.floor(Date.now() / 1000),
+        isOnline: true,
+      }),
+    ).toBe("ONLINE_VERIFICATION_REQUIRED");
+  });
+
+  it("allows offline grace for legacy tokens missing signed licenseExpiresAt", () => {
+    const { licenseExpiresAt: _removed, ...legacyClaims } = baseClaims;
+    expect(
+      resolveAccessState({
+        hasSession: true,
+        claims: legacyClaims,
+        issuedAt: Math.floor(Date.now() / 1000),
+        lastTrustedIat: Math.floor(Date.now() / 1000),
+        isOnline: false,
+      }),
+    ).toBe("OFFLINE_GRACE");
+  });
 });
 
 describe("mapApiCodeToAccessState", () => {
