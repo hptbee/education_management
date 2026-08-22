@@ -9,6 +9,12 @@ export default defineConfig({
     pool: "forks",
     fileParallelism: false,
     maxWorkers: process.env.CI ? 1 : undefined,
+    poolOptions: {
+      forks: {
+        singleFork: Boolean(process.env.CI),
+        execArgv: process.env.CI ? ["--max-old-space-size=6144"] : [],
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
