@@ -47,7 +47,7 @@ fn read_config(path: &str) -> anyhow::Result<Config> {
 ## Desktop specifics
 
 - OAuth secrets stay in Worker/env — never hardcode client secrets in Rust.
-- Paths use Tauri FS APIs; classroom JSON identity matches web desktop migration rules in `AGENTS.md`.
+- Paths use Tauri FS APIs; classroom JSON identity matches web/desktop rules in [persistence.mdc](../../rules/persistence.mdc).
 
 ## Skip
 

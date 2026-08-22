@@ -1,27 +1,30 @@
 ---
-description: Testing guidance when introducing or running tests in this repo
+description: When to add tests and how to validate changes in this repo
+globs: "**/*.{test,spec}.{ts,tsx}"
 alwaysApply: false
 ---
 
 # Testing
 
-## Current state
+Vitest is configured (`rtk vitest run`). Prefer RTK for command output.
 
-Vitest is configured (`npm test` / `vitest run`). Prefer RTK for command output.
+## When to add or update tests
 
-## When adding tests (only if user requests)
+Add or update tests when the change affects:
 
-- Colocate with feature: `*.test.ts` / `*.test.tsx` next to source
-- Prioritize: points/thưởng logic, classroom switch persistence, import/export
-- Do not introduce a second test stack silently
+- Business logic or calculations
+- Persistence or storage adapters
+- State transitions
+- Bug regressions (repro test when practical)
+- Existing tested behavior
+
+Do not add superficial tests solely for coverage. Do not introduce a second test stack.
 
 ## Validation
 
-Before finishing UI or data changes:
-
-- `rtk vitest run` — targeted tests first
-- `rtk next build` — only when the change can break the production build
-- Manual check: sidebar, nav highlight, active classroom survives page change
+- `rtk vitest run` — targeted tests first; full suite if unsure
+- `rtk next build` — only when the change can break production (routing, layout, static export, env, Tauri `out/`)
+- Manual when UI or data involved: sidebar, nav, active classroom survives page change
 
 ## TDD
 

@@ -1,5 +1,5 @@
 ---
-description: Create an implementation plan after investigating; wait for confirmation before coding
+description: Create an implementation plan after investigating; wait for confirmation before coding unless user also asked to implement
 ---
 
 Create an implementation plan for:
@@ -11,5 +11,3 @@ Read and follow:
 - `.cursor/skills/planning/SKILL.md`
 
 Do not modify code.
-Return a plan only after understanding the existing implementation.
-WAIT for explicit confirmation before any implementation.

@@ -3,9 +3,14 @@
   "hooks": {
     "preToolUse": [
       {
-        "command": "C:/Users/NCPC/scoop/shims/rtk.exe hook cursor",
+        "command": "node .cursor/hooks/run-rtk-hook.js",
         "matcher": "Shell",
         "description": "RTK shell hook — summarize command output for the agent"
+      },
+      {
+        "command": "node .cursor/hooks/warn-critical-files.js",
+        "matcher": "Write|StrReplace|Delete",
+        "description": "Ask before editing layout, sidebar, database, Worker, or Tauri entry files"
       }
     ],
     "beforeSubmitPrompt": [
@@ -31,6 +36,10 @@
         "command": "node .cursor/hooks/block-no-verify.js",
         "failClosed": false,
         "description": "Block git --no-verify and core.hooksPath= bypass (token-aware matcher)"
+      },
+      {
+        "command": "node .cursor/hooks/warn-dangerous-git.js",
+        "description": "Ask before git reset --hard, clean -fd, or push --force"
       }
     ]
   }

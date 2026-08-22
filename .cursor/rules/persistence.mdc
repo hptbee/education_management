@@ -1,0 +1,53 @@
+---
+description: Local-first persistence — ClassroomDatabase SSOT, storage adapters, Worker backup only
+globs: "src/database/**,src/store/**,src/types/**,src/auth/**,workers/cloud-backup/**"
+alwaysApply: false
+---
+
+# Persistence
+
+This app is **local-first**. Classroom data has no server-side source of truth.
+
+## Worker exception
+
+`workers/cloud-backup` handles **Google sign-in**, **signed entitlements**, **licensing**, and **optional cloud backup** only. R2 is a projection (`PUT /sync`); not the runtime database. OAuth env and licensing: [docs/ACCOUNTS.md](../../docs/ACCOUNTS.md). Layout: [docs/DATA_ARCHITECTURE.md](../../docs/DATA_ARCHITECTURE.md).
+
+Do **not** move classroom CRUD, points, teams, or feature logic to the Worker.
+
+## Do not add (unless explicitly requested)
+
+- Additional REST or GraphQL APIs beyond the existing Worker
+- Password-based auth or custom user accounts
+- Cloud database or real-time sync for classroom JSON (R2 backup is upload + manual restore only)
+- Redis, queues, email services
+
+## Single source of truth
+
+- `ClassroomDatabase` via `DatabaseService` — React: `useAppData()` / `AppDataProvider`
+- Auth session: `useAuth()` / `AuthProvider` — entitlement only
+- Types: `ClassroomDatabase` in `src/database/types.ts` (or `src/types/models.ts`)
+- IndexedDB: `src/database/storage/indexed-db.storage.ts`
+- Tauri: `src/database/storage/tauri-fs.storage.ts` (`classrooms/*.json` + `index.json`)
+- Factory: `src/database/database.factory.ts`
+
+## Storage
+
+- Web: IndexedDB (classroom JSON + `ClassroomAssets` binaries); `localStorage` for entitlement (dev)
+- Desktop: JSON via Tauri FS; image binaries under `classrooms/{id}/assets/**`; OS keychain for entitlement
+- Classroom photos: `ClassroomAssetService` — JSON stores keys only; WebP pipeline in `src/utils/images.ts`; migrate inline data URLs on `openDatabase`
+- `index.json` reconciled against `classrooms/*.json` (orphan files added; `activeClassroomId` kept)
+- IndexedDB → JSON migration: `indexeddb-migration.complete` only after every IDB classroom verified
+- Async writes that must flush immediately (`saveGift` / `deleteGift`): `commitData` then `persistNow` — never persist a captured snapshot that can overwrite later edits
+- Cloud backup: `CloudBackupScheduler` after local save; classroom switch awaits `flushPending()` before `openDatabase`
+- Entitlement: migrate legacy `entitlement.sec` into keyring once; fail closed if keyring write fails
+
+## State rules
+
+- Do not duplicate global state for teacher, classroom, school year, or students
+- Switching pages must NOT reset the active classroom
+- Update classroom data **immutably** — copy, do not mutate in place
+- Never delete local classrooms on auth lock, logout, disable, or license expiry
+
+## YAGNI
+
+- No API response envelopes, AppError HTTP layers, or enterprise patterns

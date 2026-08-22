@@ -9,10 +9,3 @@ $ARGUMENTS
 Read and follow `.cursor/skills/investigate/SKILL.md`.
 
 Do not modify code.
-
-Return:
-- Relevant files
-- Execution flow
-- Existing patterns
-- Dependencies
-- Important findings

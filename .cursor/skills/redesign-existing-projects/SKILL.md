@@ -5,7 +5,7 @@ description: Upgrades existing websites and apps to premium quality. Audits curr
 
 # Redesign Skill
 
-> **This project:** Read `.cursor/skills/classroom-ui/SKILL.md` first. Ignore advice below that conflicts: keep Lucide icons, Sidebar, pastel palette (`#4ba3e8`, `#efa3bc`), and classroom gamified aesthetic.
+> **This project:** Read `.cursor/skills/ui-design/SKILL.md` first. Ignore advice below that conflicts: keep Lucide icons, Sidebar, pastel palette (`#4ba3e8`, `#efa3bc`), and classroom gamified aesthetic.
 
 ## How This Works
 

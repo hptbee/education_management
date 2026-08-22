@@ -1,32 +1,31 @@
 ---
 name: implementation
-description: Implements an approved solution with minimal diff. Use after a plan is confirmed, when building features or applying fixes.
+description: Implements an approved solution with minimal diff. Use after a plan is confirmed or when the user requests direct implementation.
 ---
 
 # Implementation
 
-Reuse investigation context. Do not rediscover the same question.
+Reuse investigation/plan context. Do not rediscover the same question.
 
 ## Before
 
-Read [AGENTS.md](../../../AGENTS.md), [PROJECT_RULES.md](../../../PROJECT_RULES.md), [docs/PROJECT_SCOPE.md](../../../docs/PROJECT_SCOPE.md) when touching shell, routing, or classroom data. Follow the approved plan. Inspect patterns in the files already identified.
+Follow the approved plan or user request. Read [AGENTS.md](../../../AGENTS.md) when touching shell, routing, or classroom data.
 
-Load on-demand skills when relevant:
+Load on-demand when relevant:
+
 - `src-tauri/` → [rust-patterns](../rust-patterns/SKILL.md)
 - Worker / auth / cloud backup → [security-review](../security-review/SKILL.md)
-- TSX composition / hooks → [react-patterns](../react-patterns/SKILL.md)
+- TSX / UI → [frontend.mdc](../../rules/frontend.mdc), [ui-design](../ui-design/SKILL.md)
 
 ## During
 
-- Change only what the task requires.
-- Reuse `src/components/classroom/*`, `AppDataProvider`, `DatabaseService`.
-- Add tests only if the user asked or the plan includes them.
+- Minimal diff; reuse `src/components/classroom/*`, `AppDataProvider`, `DatabaseService`
+- Tests per [testing.mdc](../../rules/testing.mdc) when logic, persistence, state, or regressions are involved
 
 ## After
 
-1. Inspect the diff.
-2. Check sidebar, nav, classroom switch, existing routes.
-3. Run `/verify` or equivalent RTK checks (`rtk vitest run`; `rtk next build` only if needed).
-4. Summarize modified files.
+1. Inspect the diff
+2. Run [verification](../verification/SKILL.md)
+3. Summarize modified files
 
 Do not replace `src/app/layout.tsx`, break Sidebar, or duplicate global classroom state.

@@ -1,5 +1,7 @@
 # PROJECT RULES
 
+> **For AI agents:** Start with [AGENTS.md](AGENTS.md) and [`.cursor/rules/`](.cursor/rules/). This file is the human-readable source of truth for shell, navigation, and SSOT constraints — do not duplicate it wholesale into rules or skills.
+
 ## 1. EXISTING UI AND NAVIGATION MUST BE PRESERVED
 
 The existing application shell is part of the product.

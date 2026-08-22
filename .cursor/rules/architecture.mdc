@@ -7,33 +7,28 @@ alwaysApply: true
 
 ## Application shell (do not break)
 
-Live shell:
-
 - Layout: `src/app/layout.tsx` — `SoundInit` + `DesktopLoggingInit` + `AuthProvider` → `AppDataProvider` → `AccessGate` → `AppShell`
 - Sidebar: `components/sidebar.tsx` (hidden on auth lock screens and presentation mode)
 - Feature pages only fill `{children}` inside the main area
 
+## Data and auth (names only)
+
+- Classroom SSOT: `ClassroomDatabase` via `DatabaseService` (`src/database/database.service.ts`)
+- React: `useAppData()` / `AppDataProvider` (`src/store/AppDataContext.tsx`)
+- Auth/entitlement: `useAuth()` / `AuthProvider` — not classroom data
+- Worker (`workers/cloud-backup`): Google sign-in, entitlements, licensing, optional cloud backup only
+
+Storage details: [persistence.mdc](./persistence.mdc). OAuth/licensing: [docs/ACCOUNTS.md](../../docs/ACCOUNTS.md).
+
 ## Routing
 
-- **Single shell:** Next.js App Router — `src/app/**/page.tsx`
-- Layout: `src/app/layout.tsx`; Sidebar: `components/sidebar.tsx`
-- Tauri desktop loads static export from `out/` (same Next build; `NEXT_PUBLIC_*` from build-time env). Production targets: **Windows x86_64** and **macOS** (aarch64 + x86_64). No Linux desktop releases.
-
-## Before changing shell or navigation
-
-Read:
-
-- `docs/PROJECT_SCOPE.md`
-- `docs/ACCOUNTS.md` (auth, entitlements, cloud backup)
-- `docs/DATA_ARCHITECTURE.md` (local vs R2)
-- `docs/build-and-release.md` (Tauri Windows/macOS packaging)
-- `PROJECT_RULES.md`
-- `AGENTS.md`
+- Single shell: Next.js App Router — `src/app/**/page.tsx`
+- Tauri desktop loads static export from `out/` (`NEXT_PUBLIC_*` at build time). Targets: Windows x86_64, macOS (aarch64 + x86_64). No Linux desktop releases.
 
 ## Next.js 16
 
 - Turbopack is default for `next dev`
-- Read `node_modules/next/dist/docs/` when APIs are ambiguous — this is not standard Next.js 14/15
+- Read `node_modules/next/dist/docs/` when APIs are ambiguous — not standard Next.js 14/15
 - Do not flag `proxy.ts` as a misnamed middleware file on Next.js 16 projects
 
 ## Never
@@ -41,3 +36,8 @@ Read:
 - Replace `src/app/layout.tsx` with a standalone feature page
 - Remove or hide Sidebar navigation items
 - Create a second application layout or entry point
+- Move classroom CRUD to the Worker or add enterprise API layers (see [docs/PROJECT_SCOPE.md](../../docs/PROJECT_SCOPE.md))
+
+## Before changing shell, navigation, or persistence
+
+Read: [PROJECT_RULES.md](../../PROJECT_RULES.md), [docs/PROJECT_SCOPE.md](../../docs/PROJECT_SCOPE.md), [docs/DATA_ARCHITECTURE.md](../../docs/DATA_ARCHITECTURE.md), [docs/ACCOUNTS.md](../../docs/ACCOUNTS.md), [docs/build-and-release.md](../../docs/build-and-release.md).

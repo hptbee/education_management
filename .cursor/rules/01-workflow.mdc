@@ -5,26 +5,18 @@ alwaysApply: true
 
 # Task workflow
 
-Follow `.cursor/rules/00-tool-routing.mdc` for tool choice. Do not restate routing here.
+Follow [00-tool-routing.mdc](./00-tool-routing.mdc) for tool choice.
 
 ## Non-trivial work
 
-Understand the task → **one** primary discovery tool → read only the files it identifies → plan if the change is significant → implement → validate.
+Understand the task → **one** primary discovery tool → read only identified files → plan if significant → implement → validate per [verification skill](../skills/verification/SKILL.md).
 
-Skip planning for typos, one-line fixes, and obvious local edits.
-
-Do not explore the entire repository. Do not re-query the same discovery question with a second MCP.
+Skip planning for typos, one-line fixes, and obvious local edits. Do not explore the entire repository or re-query the same discovery question with a second MCP.
 
 ## Bugs
 
-Do not patch until the failing path is identified. Pick the primary tool from `.cursor/rules/00-tool-routing.mdc`.
-
-Separate confirmed findings from hypotheses. Trace UI → `useAppData` / `DatabaseService` → storage when classroom data is involved.
+Do not patch until the failing path is identified. Separate confirmed findings from hypotheses. Trace UI → `useAppData` / `DatabaseService` → storage when classroom data is involved.
 
 ## After changes
 
-Inspect the diff → `/verify` or smallest relevant tests first (`rtk vitest run`) → lint/typecheck if relevant → `rtk next build` only if the change can break production.
-
-Manual check when UI or data is involved: sidebar, nav, active classroom survives page change.
-
-Investigate only failures related to the change. Request full command output only when the RTK summary is insufficient.
+Inspect the diff → `/verify` or smallest relevant validation. Investigate only failures related to the change.

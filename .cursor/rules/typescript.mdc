@@ -1,0 +1,44 @@
+---
+description: TypeScript coding style and security for this repo
+globs: "**/*.{ts,tsx,js,jsx}"
+alwaysApply: false
+---
+
+# TypeScript
+
+On conflict, [persistence.mdc](./persistence.mdc), [frontend.mdc](./frontend.mdc), and [docs/ACCOUNTS.md](../../docs/ACCOUNTS.md) win.
+
+## Immutability
+
+Update classroom data immutably — copy, do not mutate `ClassroomDatabase` in place.
+
+## Error handling
+
+Use async/await with try/catch; surface actionable messages. Avoid empty `catch` and silent failures.
+
+## Validation
+
+Zod is **optional** — use only where the feature already does. Prefer existing guards in `database/` and `utils/`.
+
+## Console
+
+Avoid new `console.log` in production paths; use existing logging (`logAppEvent` on desktop).
+
+## Secrets
+
+- Never hardcode API keys, tokens, or passwords
+- Worker-only: `GOOGLE_CLIENT_SECRET`, D1/R2 in Wrangler bindings
+- App: `NEXT_PUBLIC_*` is public at build time — never put secrets there. Rebuild Tauri after `.env.local` changes. OAuth details: [docs/ACCOUNTS.md](../../docs/ACCOUNTS.md)
+
+## XSS
+
+Student/teacher names and user text are untrusted. Do not use `dangerouslySetInnerHTML`, `.innerHTML`, `insertAdjacentHTML`, `eval`, `new Function`, or `document.write`.
+
+## Worker touchpoints
+
+When editing `workers/cloud-backup`: JWT ownership for R2 prefix, body size limits, no classroom runtime logic on Worker.
+
+## Skip
+
+- API response envelopes (`{ success, data }`)
+- Mandatory Zod on every input

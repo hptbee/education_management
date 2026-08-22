@@ -1,21 +1,13 @@
 ---
-description: Implement an approved or trivial change with minimal diff
+description: Implement an approved or explicitly requested change with minimal diff
 ---
 
 Implement:
 
 $ARGUMENTS
 
-Read and follow `.cursor/skills/implementation/SKILL.md`.
+Read and follow, in order:
+1. `.cursor/skills/implementation/SKILL.md`
+2. `.cursor/skills/verification/SKILL.md`
 
-Follow applicable workspace rules in `.cursor/rules/`.
-
-Before coding:
-- Inspect relevant existing patterns in the codebase.
-
-After coding:
-- Review changes against `.cursor/skills/code-review/SKILL.md`.
-- Validate affected behavior (sidebar, nav, classroom data).
-- Summarize modified files.
-
-Only proceed if a plan was already approved or the change is trivial and explicitly requested.
+Proceed when the user requested implementation or a plan was already approved.

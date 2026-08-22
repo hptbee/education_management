@@ -5,7 +5,7 @@ description: "UI/UX design intelligence for web, mobile, and desktop. This skill
 
 # UI/UX Pro Max - Design Intelligence
 
-> **This project:** Read `.cursor/skills/classroom-ui/SKILL.md` first — it overrides palette, shell, and icon choices. Do **not** use `--persist` or generate `design-system/MASTER.md` here.
+> **This project:** Read `.cursor/skills/ui-design/SKILL.md` first — it overrides palette, shell, and icon choices. Do **not** use `--persist` or generate `design-system/MASTER.md` here.
 
 ## Search script path (Cursor)
 

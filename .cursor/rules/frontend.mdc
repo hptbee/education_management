@@ -6,47 +6,45 @@ alwaysApply: false
 
 # Frontend
 
+Shell constraints: [architecture.mdc](./architecture.mdc). Design overlay for generic UI skills: [ui-design](../skills/ui-design/SKILL.md).
+
 ## Stack
 
-- React 19 + Next.js App Router
+- React 19 + Next.js App Router (client components for classroom data)
 - Tailwind 4 + shadcn (`@base-ui/react`)
-- Icons: **Lucide** (keep — do not swap icon libraries)
+- Icons: **Lucide** — do not swap libraries
 - Motion: Framer Motion (already in repo)
 
-## Design tokens (do not invent new palettes)
+## Design tokens
 
 Per `docs/PROJECT_SCOPE.md` §12:
 
 - Brand sky: `#4ba3e8` (`--color-brand`)
 - Accent pink: `#efa3bc` (`--color-accent-pink`)
 - Page background: `#f7fafd`
-- Cute, playful, gamified classroom — not corporate admin or Awwwards luxury
+- Cute, playful, gamified classroom — not corporate admin
+
+## State and data
+
+- Classroom data: `useAppData()` / `AppDataProvider` only — no TanStack Query, SWR, Zustand, or Redux for classroom JSON
+- Local `useState` → lift to common ancestor → context when needed
+- Derive values during render; avoid `useEffect` to sync derived state
+- Do not define components inside render (remounts break focus/state)
+- Keep existing `forwardRef`; memo/`useCallback`/`next/dynamic` only with profiler or bundle evidence
 
 ## Reuse before creating
 
-- `src/components/classroom/*` — shared primitives
-- `components/ui/*` — shadcn components
-- Existing page patterns under `src/app/`
-
-## State
-
-- Local `useState` → lift to common ancestor → `AppDataContext` for classroom data
-- Derive values during render; avoid `useEffect` to sync derived state
-
-## Layout
-
-- New pages render inside existing `src/app/layout.tsx` shell
-- Do not create a second Sidebar or AppLayout
+- `src/components/classroom/*`, `components/ui/*`, existing `src/app/` page patterns
 
 ## Security
 
-- No `dangerouslySetInnerHTML` with student names or user-provided text
+- No `dangerouslySetInnerHTML` or DOM HTML sinks with student/teacher names or user text
 - Respect `prefers-reduced-motion` for animations
 
 ## Touch targets
 
-- Classroom actions (+1, spin, pick student): large enough for fast in-class use (44px minimum where practical)
+- Classroom actions (+1, spin, pick student): 44px minimum where practical
 
 ## Dialogs
 
-CRUD/scoring overlays: `useModalFocusTrap` + `role="dialog"` + `aria-modal` + labelled heading (`gift-redeem-dialog.tsx`). Stacked modals: `modalTrapStack` (top trap only). Full-screen overlays that must cover the shell: `createPortal(..., document.body)` (e.g. recognition celebration). Leave Lucky Wheel (and sibling game modals: Duck Race, Points Wheel) without a keyboard trap unless requested.
+CRUD/scoring: `useModalFocusTrap` + `role="dialog"` + `aria-modal` + labelled heading (`gift-redeem-dialog.tsx`). Stacked modals: `modalTrapStack`. Full-screen shell overlays: `createPortal(..., document.body)`. Leave Lucky Wheel and sibling game modals without keyboard trap unless requested.
