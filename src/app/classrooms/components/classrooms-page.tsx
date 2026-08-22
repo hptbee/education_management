@@ -19,6 +19,7 @@ import {
   ClassroomButton,
   ClassroomCard,
   EmptyState,
+  IconTouchButton,
   PageHeader,
   useClassroomDialog,
   useModalFocusTrap,
@@ -100,14 +101,13 @@ function ClassroomCardMenu({
 
   return (
     <div className="relative">
-      <button
-        type="button"
+      <IconTouchButton
         aria-label="Tùy chọn lớp"
-        className="flex size-9 items-center justify-center rounded-xl border border-sky-100 text-slate-500 transition hover:border-brand/30 hover:text-brand"
         onClick={() => setOpen((value) => !value)}
+        className="rounded-xl border border-sky-100 text-slate-500 hover:border-brand/30 hover:text-brand"
       >
         <MoreVertical className="size-4" />
-      </button>
+      </IconTouchButton>
       {open ? (
         <>
           <button

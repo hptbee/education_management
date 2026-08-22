@@ -10,7 +10,7 @@ import {
   RANK_BADGE_CLASS,
   RANK_ROW_CLASS,
 } from '@/src/utils/ranking'
-import { ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { ClassroomCard, EmptyState, ClassroomButton } from '@/src/components/classroom'
 
 export function Leaderboard() {
   const { data } = useAppData()
@@ -41,6 +41,11 @@ export function Leaderboard() {
               icon={Star}
               title="Chưa có dữ liệu xếp hạng"
               description="Tích điểm cho học sinh để bảng xếp hạng hiển thị tại đây."
+              action={
+                <Link href="/students">
+                  <ClassroomButton size="sm">Thêm học sinh</ClassroomButton>
+                </Link>
+              }
             />
           </li>
         ) : (
@@ -85,7 +90,7 @@ export function Leaderboard() {
 
       <Link
         href="/ranking"
-        className="mt-4 flex items-center justify-center gap-1.5 border-t border-sky-100 pt-4 text-sm font-bold text-brand transition hover:text-brand-dark"
+        className="mt-4 flex items-center justify-center gap-1.5 border-t border-sky-100 pt-4 text-sm font-bold text-brand transition hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         Xem bảng xếp hạng đầy đủ
         <ArrowRight className="size-4" />

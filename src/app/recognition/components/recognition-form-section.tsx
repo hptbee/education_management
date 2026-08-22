@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Minus, PartyPopper, Plus, Star, Users } from 'lucide-react'
 import type { ClassroomRole, Recognition, RecognitionTitle, Student, Team } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
@@ -90,6 +91,11 @@ export function RecognitionFormSection({
         icon={Users}
         title="Chưa có học sinh nào trong lớp"
         description="Hãy thêm học sinh trước khi tuyên dương."
+        action={
+          <Link href="/students">
+            <ClassroomButton>Thêm học sinh</ClassroomButton>
+          </Link>
+        }
       />
     )
   }
@@ -133,7 +139,7 @@ export function RecognitionFormSection({
                     key={title.id}
                     type="button"
                     onClick={() => setSelectedTitleId(title.id)}
-                    className={`flex flex-col items-center rounded-2xl border-2 p-3 text-center transition hover:-translate-y-0.5 ${
+                    className={`flex flex-col items-center rounded-2xl border-2 p-3 text-center transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                       isSelected
                         ? 'border-brand bg-pastel-sky shadow-sm'
                         : 'border-sky-100 bg-white hover:border-accent-pink/40 hover:bg-pastel-pink/40'
@@ -157,14 +163,19 @@ export function RecognitionFormSection({
         </div>
 
         <div className="mb-6 border-t border-sky-100 pt-6">
-          <h2 className="font-display text-lg font-black text-slate-800">Bước 3: Lời khen</h2>
+          <h2 id="recognition-message-heading" className="font-display text-lg font-black text-slate-800">Bước 3: Lời khen</h2>
           <p className="text-sm font-semibold text-slate-500">Viết lời khen ấm áp cho học sinh (tuỳ chọn)</p>
+          <label htmlFor="recognition-message" className="sr-only">
+            Lời khen
+          </label>
           <textarea
+            id="recognition-message"
+            aria-labelledby="recognition-message-heading"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
             placeholder="Hôm nay con đã rất chăm chỉ phát biểu và giúp đỡ các bạn trong lớp!"
-            className="classroom-field mt-3 px-4"
+            className="classroom-field mt-3 px-4 focus-visible:ring-2 focus-visible:ring-brand/40"
           />
         </div>
 
@@ -174,7 +185,7 @@ export function RecognitionFormSection({
             <button
               type="button"
               onClick={() => setAwardPoints(false)}
-              className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+              className={`rounded-xl px-4 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                 !awardPoints ? 'bg-brand text-white' : 'bg-white text-slate-600 ring-1 ring-sky-100'
               }`}
             >
@@ -183,7 +194,7 @@ export function RecognitionFormSection({
             <button
               type="button"
               onClick={() => setAwardPoints(true)}
-              className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+              className={`rounded-xl px-4 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                 awardPoints ? 'bg-brand text-white' : 'bg-white text-slate-600 ring-1 ring-sky-100'
               }`}
             >

@@ -59,7 +59,7 @@ export function PickerConfigPanel({
             type="button"
             disabled={isBusy}
             onClick={() => onModeChange(opt.id)}
-            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition ${
+            className={`flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
               session.mode === opt.id
                 ? 'bg-brand-purple text-white shadow-sm'
                 : 'bg-slate-50 text-slate-700 hover:bg-pastel-sky/60'
@@ -103,7 +103,7 @@ export function PickerConfigPanel({
             value={session.teamId ?? ''}
             disabled={isBusy || teams.length === 0}
             onChange={(e) => onTeamChange(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-brand-purple"
+            className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-brand-purple focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             <option value="">Chọn tổ</option>
             {teams.map((team) => (
@@ -136,7 +136,8 @@ export function PickerConfigPanel({
               type="button"
               disabled={isBusy || session.quantity <= 2}
               onClick={() => onQuantityChange(session.quantity - 1)}
-              className="flex size-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+              aria-label="Giảm số lượng"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-40"
             >
               <Minus className="size-4" />
             </button>
@@ -145,7 +146,8 @@ export function PickerConfigPanel({
               type="button"
               disabled={isBusy || session.quantity >= eligibleCount}
               onClick={() => onQuantityChange(session.quantity + 1)}
-              className="flex size-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+              aria-label="Tăng số lượng"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-40"
             >
               <Plus className="size-4" />
             </button>

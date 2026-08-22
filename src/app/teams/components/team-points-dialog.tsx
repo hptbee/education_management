@@ -111,31 +111,39 @@ export function TeamPointsDialog({ team, isOpen, onClose }: TeamPointsDialogProp
 
           {/* Note */}
           <div>
+            <label htmlFor="team-points-note" className="sr-only">
+              Ghi chú (tùy chọn)
+            </label>
             <input
+              id="team-points-note"
               type="text"
               placeholder="Ghi chú (tùy chọn)..."
               value={note}
               onChange={e => setNote(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple/50"
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple/50 focus-visible:ring-2 focus-visible:ring-brand/40"
               onKeyDown={e => e.key === 'Enter' && customAmount && handleCustom()}
             />
           </div>
 
           {/* Custom amount */}
           <div className="flex gap-2">
+            <label htmlFor="team-points-custom" className="sr-only">
+              Số điểm tùy chỉnh
+            </label>
             <input
+              id="team-points-custom"
               type="number"
               min="1"
               placeholder="Số điểm tuỳ chỉnh..."
               value={customAmount}
               onChange={e => setCustomAmount(e.target.value)}
-              className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple/50"
+              className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple/50 focus-visible:ring-2 focus-visible:ring-brand/40"
               onKeyDown={e => e.key === 'Enter' && handleCustom()}
             />
             <button
               onClick={handleCustom}
               disabled={!customAmount || parseInt(customAmount) <= 0}
-              className={`rounded-xl px-4 py-2.5 text-sm font-bold text-white transition disabled:opacity-40 ${mode === 'add' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
+              className={`rounded-xl px-4 py-2.5 text-sm font-bold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-40 ${mode === 'add' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
             >
               OK
             </button>

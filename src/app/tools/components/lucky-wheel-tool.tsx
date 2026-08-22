@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Disc3, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
@@ -55,6 +56,14 @@ export function LuckyWheelTool() {
             icon={Sparkles}
             title="Chưa có học sinh"
             description="Thêm học sinh để bắt đầu quay vòng may mắn."
+            action={
+              <Link
+                href="/students"
+                className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              >
+                Thêm học sinh
+              </Link>
+            }
           />
         ) : (
           <div className="flex min-h-0 flex-1 flex-col items-center rounded-2xl bg-gradient-to-b from-pastel-sky/50 via-white to-pastel-pink/40 px-4 py-5">

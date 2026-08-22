@@ -7,7 +7,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { getTeamMotivationMessage } from '@/src/utils/teams'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 import { getTeamLeadershipRole, TeamLeadershipAvatarOverlay } from './team-leadership-badge'
-import { ClassroomButton } from '@/src/components/classroom'
+import { ClassroomButton, IconTouchButton } from '@/src/components/classroom'
 
 interface TeamCardProps {
   team: Team
@@ -74,31 +74,28 @@ export function TeamCard({
         </div>
         <div className="flex shrink-0 items-center">
           {members.length > 0 ? (
-            <button
-              type="button"
+            <IconTouchButton
+              aria-label="Bỏ hết thành viên"
               onClick={onClearAllMembers}
-              className="flex size-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-amber-600"
-              title="Bỏ hết thành viên"
+              className="rounded-xl text-slate-400 hover:bg-white hover:text-amber-600"
             >
               <UserMinus className="size-4" />
-            </button>
+            </IconTouchButton>
           ) : null}
-          <button
-            type="button"
+          <IconTouchButton
+            aria-label="Sửa nhóm"
             onClick={onEdit}
-            className="flex size-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-brand-dark"
-            title="Sửa nhóm"
+            className="rounded-xl text-slate-400 hover:bg-white hover:text-brand-dark"
           >
             <Edit2 className="size-3.5" />
-          </button>
-          <button
-            type="button"
+          </IconTouchButton>
+          <IconTouchButton
+            aria-label="Xóa nhóm"
             onClick={onDelete}
-            className="flex size-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-rose-500"
-            title="Xóa nhóm"
+            className="rounded-xl text-slate-400 hover:bg-white hover:text-rose-500"
           >
             <Trash2 className="size-4" />
-          </button>
+          </IconTouchButton>
         </div>
       </div>
 

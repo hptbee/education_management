@@ -122,7 +122,7 @@ export function DuckRaceSetup({
                 type="button"
                 disabled={isBusy}
                 onClick={() => onRaceDurationSecChange(sec)}
-                className={`min-h-9 rounded-xl px-2.5 text-xs font-extrabold transition ${
+                className={`min-h-11 rounded-xl px-2.5 text-xs font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                   raceDurationSec === sec
                     ? 'bg-brand text-white shadow-sm'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -139,14 +139,18 @@ export function DuckRaceSetup({
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <label htmlFor="duck-race-student-search" className="sr-only">
+          Tìm học sinh
+        </label>
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
         <input
+          id="duck-race-student-search"
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Tìm học sinh..."
           disabled={isBusy}
-          className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand"
+          className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/40"
         />
       </div>
 

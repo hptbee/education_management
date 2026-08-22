@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Crown, MonitorPlay, Users } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
@@ -204,6 +205,11 @@ export default function RankingPage() {
               icon={Users}
               title="Chưa có học sinh để xếp hạng"
               description="Hãy thêm học sinh vào lớp trước khi xem bảng xếp hạng."
+              action={
+                <Link href="/students">
+                  <ClassroomButton>Thêm học sinh</ClassroomButton>
+                </Link>
+              }
             />
           ) : (
             <>

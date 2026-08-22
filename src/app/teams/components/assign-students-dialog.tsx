@@ -75,12 +75,16 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
 
         <div className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <label htmlFor="assign-students-search" className="sr-only">
+              Tìm học sinh
+            </label>
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
             <input
+              id="assign-students-search"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Tìm học sinh..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm font-semibold outline-none focus:border-brand-purple/50"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm font-semibold outline-none focus:border-brand-purple/50 focus-visible:ring-2 focus-visible:ring-brand/40"
             />
           </div>
         </div>
@@ -98,7 +102,7 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
                   <button
                     key={s.id}
                     onClick={() => toggle(s.id)}
-                    className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition ${
+                    className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                       isSelected ? 'border-brand-purple bg-brand-purple/5' : 'border-transparent bg-slate-50 hover:bg-slate-100'
                     }`}
                   >
@@ -125,13 +129,16 @@ export function AssignStudentsDialog({ isOpen, onClose, onAssign, team, allStude
         </div>
 
         <footer className="flex items-center justify-end gap-3 border-t border-slate-100 p-4">
-          <button onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100">
+          <button
+            onClick={onClose}
+            className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          >
             Hủy
           </button>
           <button
             onClick={handleConfirm}
             disabled={selected.size === 0}
-            className="rounded-xl bg-brand-purple px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-brand-purple-dark"
+            className="rounded-xl bg-brand-purple px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-purple-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50"
           >
             Thêm {selected.size > 0 ? `${selected.size} học sinh` : ''}
           </button>

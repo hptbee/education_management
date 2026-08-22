@@ -48,13 +48,13 @@ export function DeleteTeamDialog({ isOpen, onClose, onConfirm, team, memberCount
         <div className="mt-6 flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 hover:bg-slate-200"
+            className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             Hủy bỏ
           </button>
           <button
             onClick={() => { onConfirm(); onClose() }}
-            className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white hover:bg-red-600"
+            className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             Xóa tổ
           </button>

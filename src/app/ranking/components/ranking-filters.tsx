@@ -55,7 +55,7 @@ function FilterSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full cursor-pointer bg-transparent text-sm font-bold text-slate-800 outline-none"
+        className="w-full cursor-pointer bg-transparent text-sm font-bold text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         {children}
       </select>
@@ -86,8 +86,12 @@ export function RankingFilters({
     <div className="flex flex-col gap-3">
       {mode === 'students' ? (
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <label htmlFor="ranking-student-search" className="sr-only">
+            Tìm học sinh
+          </label>
+          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
           <input
+            id="ranking-student-search"
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -159,7 +163,7 @@ export function RankingFilters({
         <button
           type="button"
           onClick={onClearAll}
-          className="self-start text-xs font-bold text-brand transition hover:text-brand-dark"
+          className="self-start text-xs font-bold text-brand transition hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         >
           Xóa bộ lọc
         </button>

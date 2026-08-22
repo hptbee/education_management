@@ -92,7 +92,7 @@ export function PointsWheelSetup({
                   type="button"
                   disabled={isBusy || segment.value <= POINTS_WHEEL_MIN_VALUE}
                   onClick={() => adjustValue(segment.id, segment.value, -1)}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-40"
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-40"
                   aria-label="Giảm điểm"
                 >
                   <Minus className="size-3.5" />
@@ -112,7 +112,7 @@ export function PointsWheelSetup({
                   type="button"
                   disabled={isBusy || segment.value >= POINTS_WHEEL_MAX_VALUE}
                   onClick={() => adjustValue(segment.id, segment.value, 1)}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-40"
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-40"
                   aria-label="Tăng điểm"
                 >
                   <Plus className="size-3.5" />
@@ -149,14 +149,18 @@ export function PointsWheelSetup({
             Chọn một học sinh
           </p>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <label htmlFor="points-wheel-student-search" className="sr-only">
+              Tìm học sinh
+            </label>
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
             <input
+              id="points-wheel-student-search"
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Tìm học sinh..."
               disabled={isBusy}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand"
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-semibold outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/40"
             />
           </div>
         </div>

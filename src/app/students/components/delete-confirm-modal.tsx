@@ -44,7 +44,7 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, student }: Dele
         <div className="mt-6 flex w-full gap-3">
           <button 
             onClick={onClose} 
-            className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-200"
+            className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             Hủy bỏ
           </button>
@@ -53,7 +53,7 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, student }: Dele
               onConfirm(student.id)
               onClose()
             }} 
-            className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-600"
+            className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             Đồng ý Xóa
           </button>

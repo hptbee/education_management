@@ -86,8 +86,12 @@ export default function PointsPage() {
           <ClassroomCard>
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative min-w-0 flex-1">
-                <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <label htmlFor="points-student-search" className="sr-only">
+                  Tìm học sinh theo tên
+                </label>
+                <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
                 <input
+                  id="points-student-search"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -112,7 +116,7 @@ export default function PointsPage() {
                   id="points-student-sort"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as StudentSortOption)}
-                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
+                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                 >
                   <option value="role-stt">Vai trò → STT</option>
                   <option value="name-asc">Tên A → Z</option>
@@ -126,7 +130,18 @@ export default function PointsPage() {
             </div>
 
             {filteredStudents.length === 0 ? (
-              <p className="py-8 text-center text-sm font-semibold text-slate-400">Không tìm thấy học sinh</p>
+              <div className="py-8 text-center">
+                <p className="text-sm font-semibold text-slate-500">Không tìm thấy học sinh</p>
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="mt-3 text-sm font-bold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                  >
+                    Xóa tìm kiếm
+                  </button>
+                ) : null}
+              </div>
             ) : (
               <div className="flex flex-col gap-2">
                 {filteredStudents.map((student) => {

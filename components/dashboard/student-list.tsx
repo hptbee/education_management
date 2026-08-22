@@ -26,7 +26,7 @@ function StudentCard({
   return (
     <Link
       href="/students"
-      className="motion-safe-hover flex flex-col items-center rounded-2xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
+      className="motion-safe-hover flex flex-col items-center rounded-2xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
     >
       <StudentAvatar
         student={student}
@@ -85,8 +85,12 @@ export function StudentList() {
       </header>
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <label htmlFor="dashboard-student-search" className="sr-only">
+          Tìm học sinh
+        </label>
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
         <input
+          id="dashboard-student-search"
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}

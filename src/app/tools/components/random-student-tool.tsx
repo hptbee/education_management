@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { Dices, RotateCcw, Shuffle } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
@@ -114,7 +115,20 @@ export function RandomStudentTool() {
       description="Chọn lần lượt, không trùng trong cùng một vòng."
     >
       {pool.length === 0 ? (
-        <EmptyState compact icon={Dices} title="Chưa có học sinh" description="Thêm học sinh để bắt đầu." />
+        <EmptyState
+          compact
+          icon={Dices}
+          title="Chưa có học sinh"
+          description="Thêm học sinh để bắt đầu."
+          action={
+            <Link
+              href="/students"
+              className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+              Thêm học sinh
+            </Link>
+          }
+        />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-gradient-to-b from-pastel-lavender/50 via-white to-pastel-peach/40 px-4 py-5">
           <div
