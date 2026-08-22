@@ -12,8 +12,9 @@ description: Reviews pull requests or local diffs for functional bugs, regressio
 3. Data consistency (`ClassroomDatabase` SSOT)
 4. Concurrency issues (if applicable)
 5. Security issues (XSS from student names, secrets in source)
-6. Performance problems
-7. Architecture violations (duplicate shell, bypass AppLayout)
+6. **Silent failures** — empty `catch`, swallowed errors, `console.warn` without user feedback, unjustified fallbacks that mask failures (see claude-code silent-failure-hunter; no Sentry/`errorIds` required)
+7. Performance problems
+8. Architecture violations (duplicate shell, bypass AppLayout)
 
 ## Ignore
 

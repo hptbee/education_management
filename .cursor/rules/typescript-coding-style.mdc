@@ -1,0 +1,50 @@
+---
+description: TypeScript coding style — immutability and error handling for this repo
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript Coding Style
+
+> Origin: ECC. On conflict, [backend.mdc](./backend.mdc) and [frontend.mdc](./frontend.mdc) win.
+
+## Immutability
+
+Update classroom data immutably — copy, do not mutate `ClassroomDatabase` in place:
+
+```typescript
+// Wrong
+student.points += 5;
+
+// Right
+const next = {
+  ...student,
+  points: student.points + 5,
+};
+```
+
+## Error handling
+
+Use async/await with try/catch; surface actionable messages for teachers:
+
+```typescript
+try {
+  await databaseService.saveDatabase(db);
+} catch (error) {
+  console.error("[saveDatabase]", error);
+  throw error;
+}
+```
+
+## Validation
+
+Zod is **optional** — use only where the feature already does. Prefer existing guards in `database/` and `utils/`.
+
+## Console
+
+Avoid new `console.log` in production paths; use existing logging patterns (`logAppEvent` on desktop).
+
+## Skip
+
+- API response envelopes (`{ success, data }`) — banned per backend rules
+- Mandatory Zod on every input

@@ -1,3 +1,7 @@
+---
+description: Design or polish UI within classroom-ui constraints
+---
+
 Design or polish UI for:
 
 $ARGUMENTS

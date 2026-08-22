@@ -11,6 +11,11 @@ Reuse investigation context. Do not rediscover the same question.
 
 Read [AGENTS.md](../../../AGENTS.md), [PROJECT_RULES.md](../../../PROJECT_RULES.md), [docs/PROJECT_SCOPE.md](../../../docs/PROJECT_SCOPE.md) when touching shell, routing, or classroom data. Follow the approved plan. Inspect patterns in the files already identified.
 
+Load on-demand skills when relevant:
+- `src-tauri/` → [rust-patterns](../rust-patterns/SKILL.md)
+- Worker / auth / cloud backup → [security-review](../security-review/SKILL.md)
+- TSX composition / hooks → [react-patterns](../react-patterns/SKILL.md)
+
 ## During
 
 - Change only what the task requires.
@@ -21,7 +26,7 @@ Read [AGENTS.md](../../../AGENTS.md), [PROJECT_RULES.md](../../../PROJECT_RULES.
 
 1. Inspect the diff.
 2. Check sidebar, nav, classroom switch, existing routes.
-3. Smallest RTK checks (`rtk vitest run`; `rtk next build` only if needed).
+3. Run `/verify` or equivalent RTK checks (`rtk vitest run`; `rtk next build` only if needed).
 4. Summarize modified files.
 
 Do not replace `src/app/layout.tsx`, break Sidebar, or duplicate global classroom state.

@@ -4,7 +4,33 @@
     "preToolUse": [
       {
         "command": "C:/Users/NCPC/scoop/shims/rtk.exe hook cursor",
-        "matcher": "Shell"
+        "matcher": "Shell",
+        "description": "RTK shell hook — summarize command output for the agent"
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "node .cursor/hooks/before-submit-prompt.js",
+        "description": "Warn when prompt text may contain API keys or private keys"
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "node .cursor/hooks/before-read-file.js",
+        "description": "Warn when reading .env, .pem, or credential paths"
+      }
+    ],
+    "beforeTabFileRead": [
+      {
+        "command": "node .cursor/hooks/before-read-file.js",
+        "description": "Warn Tab when reading .env, .pem, or credential paths"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node .cursor/hooks/block-no-verify.js",
+        "failClosed": false,
+        "description": "Block git --no-verify and core.hooksPath= bypass (token-aware matcher)"
       }
     ]
   }

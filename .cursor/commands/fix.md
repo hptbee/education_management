@@ -1,3 +1,7 @@
+---
+description: Diagnose and fix a confirmed bug with minimal scope
+---
+
 Fix:
 
 $ARGUMENTS

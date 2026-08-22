@@ -1,3 +1,7 @@
+---
+description: Explore the codebase for architecture and patterns without editing
+---
+
 Explore the relevant codebase for:
 
 $ARGUMENTS

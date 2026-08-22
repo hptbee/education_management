@@ -1,3 +1,7 @@
+---
+description: Review local diff or PR for bugs, regressions, and security issues
+---
+
 Review:
 
 $ARGUMENTS

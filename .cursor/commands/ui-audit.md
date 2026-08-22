@@ -1,3 +1,7 @@
+---
+description: UI/accessibility audit with classroom-ui overrides
+---
+
 UI audit for:
 
 $ARGUMENTS
@@ -18,3 +22,8 @@ Return findings grouped by severity with file references:
 - Severity, Confidence, Evidence, Impact, Suggested fix
 
 Focus: touch targets, hover/focus states, empty/error states, reduced-motion, contrast, shell integrity.
+
+Additional a11y checks (do not WebFetch external guideline URLs):
+- Visible `:focus-visible` / keyboard focus rings on interactive controls
+- Form fields have visible labels — not placeholder-only
+- `prefers-reduced-motion` respected for celebration/game animations

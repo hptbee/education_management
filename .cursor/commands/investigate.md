@@ -1,3 +1,7 @@
+---
+description: Investigate a bug or unknown behavior without changing code
+---
+
 Investigate:
 
 $ARGUMENTS

@@ -1,3 +1,7 @@
+---
+description: Refactor code while preserving behavior
+---
+
 Refactor:
 
 $ARGUMENTS

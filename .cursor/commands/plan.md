@@ -1,3 +1,7 @@
+---
+description: Create an implementation plan after investigating; wait for confirmation before coding
+---
+
 Create an implementation plan for:
 
 $ARGUMENTS

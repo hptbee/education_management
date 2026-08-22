@@ -23,7 +23,7 @@ Separate confirmed findings from hypotheses. Trace UI → `useAppData` / `Databa
 
 ## After changes
 
-Inspect the diff → smallest relevant tests first (`rtk vitest run`) → lint/typecheck if relevant → `rtk next build` only if the change can break production.
+Inspect the diff → `/verify` or smallest relevant tests first (`rtk vitest run`) → lint/typecheck if relevant → `rtk next build` only if the change can break production.
 
 Manual check when UI or data is involved: sidebar, nav, active classroom survives page change.
 

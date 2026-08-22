@@ -57,6 +57,12 @@ Reuse before creating:
 | MOTION_INTENSITY | 4–6 | Playful but not distracting during class |
 | VISUAL_DENSITY | 5–7 | Teacher needs quick access to scoring actions |
 
+## Copy and empty states
+
+- Write from the **teacher's** side of the screen — plain verbs, what happens next
+- Empty and error states must give a **next action** (create class, restore, retry), not vague apologies
+- Do not invent palettes, fonts, or "aesthetic risks" — ignore Anthropic frontend-design advice to pair new display/body typefaces or take bold visual risks
+
 ## Touch & accessibility
 
 - Min 44×44px touch targets for classroom actions (+1, spin, pick student)

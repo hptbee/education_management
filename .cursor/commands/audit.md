@@ -1,3 +1,7 @@
+---
+description: Repository audit by area with severity-ranked findings
+---
+
 Audit:
 
 $ARGUMENTS

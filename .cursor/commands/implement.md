@@ -1,3 +1,7 @@
+---
+description: Implement an approved or trivial change with minimal diff
+---
+
 Implement:
 
 $ARGUMENTS
