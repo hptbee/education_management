@@ -34,11 +34,38 @@ fn strip_windows_verbatim_prefix(path: &Path) -> PathBuf {
     }
 }
 
-fn path_is_under(base: &Path, candidate: &Path) -> bool {
-    if candidate.starts_with(base) {
-        return true;
+fn canonicalize_existing(path: &Path) -> Option<PathBuf> {
+    if path.as_os_str().is_empty() {
+        return None;
     }
-    strip_windows_verbatim_prefix(candidate).starts_with(&strip_windows_verbatim_prefix(base))
+    std::fs::canonicalize(path)
+        .ok()
+        .map(|canonical| strip_windows_verbatim_prefix(&canonical))
+}
+
+fn normalize_path_for_subpath_check(path: &Path) -> PathBuf {
+    if let Some(canonical) = canonicalize_existing(path) {
+        return canonical;
+    }
+
+    for ancestor in path.ancestors() {
+        if ancestor.as_os_str().is_empty() {
+            break;
+        }
+        if let Some(canonical_ancestor) = canonicalize_existing(ancestor) {
+            if let Ok(suffix) = path.strip_prefix(ancestor) {
+                return canonical_ancestor.join(suffix);
+            }
+        }
+    }
+
+    strip_windows_verbatim_prefix(path)
+}
+
+fn path_is_under(base: &Path, candidate: &Path) -> bool {
+    let base_norm = normalize_path_for_subpath_check(base);
+    let candidate_norm = normalize_path_for_subpath_check(candidate);
+    candidate_norm.starts_with(&base_norm)
 }
 
 fn resolve_under_data_path(

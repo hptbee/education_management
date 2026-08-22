@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.21"
+version = "0.1.22"
 description = "Local-first classroom management and gamification for teachers"
 authors = ["HPTBee"]
 license = ""
