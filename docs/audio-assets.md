@@ -1,6 +1,6 @@
 # Default sound effects
 
-Bundled classroom UI sound effects. All files are downloaded from [Mixkit](https://mixkit.co/free-sound-effects/) under the **Mixkit Sound Effects Free License**.
+Bundled classroom UI sound effects. Most files are from [Mixkit](https://mixkit.co/free-sound-effects/) under the **Mixkit Sound Effects Free License**; Duck Race ambient quack is a verified **CC0** natural duck recording (see below).
 
 Playback is wired via `src/utils/sounds.ts` and respects `appSettings.soundEnabled` (default `true`).
 
@@ -8,15 +8,16 @@ Playback is wired via `src/utils/sounds.ts` and respects `appSettings.soundEnabl
 
 ## License summary
 
+Bundled UI cues are from [Mixkit](https://mixkit.co/free-sound-effects/) under the **Mixkit Sound Effects Free License**, except where a row below notes another license.
+
 | Item | Detail |
 |---|---|
-| License | [Mixkit Sound Effects Free License](https://mixkit.co/license/) |
-| Commercial use | Allowed in this application |
-| Attribution | Not required (appreciated by Mixkit) |
+| Mixkit License | [Mixkit Sound Effects Free License](https://mixkit.co/license/) |
+| Duck Race `quack.wav` | [Creative Commons CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) — [DigPro120 / Freesound 558858](https://freesound.org/people/DigPro120/sounds/558858/) |
+| Commercial use | Allowed for these bundled assets |
+| Attribution | Not required for Mixkit or CC0 (appreciated by authors) |
 | Redistribution | Do **not** sell or redistribute these files as a standalone SFX pack |
-| Verification | Each file was taken from an official Mixkit download page (`/free-sound-effects/download/{id}/`) before bundling |
-
-Full license text: open **Sound Effects Free License** on [mixkit.co/license](https://mixkit.co/license/).
+| Verification | Mixkit files from official download pages; Freesound CC0 verified on the sound page before bundling |
 
 ## Format note
 
@@ -26,15 +27,16 @@ Future app paths: `/sounds/click.wav`, etc.
 
 ## Bundled assets
 
-| Filename | Mixkit title | Mixkit ID | Source (download page) | Duration (Mixkit listing) | Intended event(s) |
-|---|---|---:|---|---|---|
-| `click.wav` | Cool interface click tone | 2568 | https://mixkit.co/free-sound-effects/download/2568/ | 0:01 | Generic UI click; Duck Race countdown (3/2/1) |
-| `success.wav` | Instant win | 2021 | https://mixkit.co/free-sound-effects/download/2021/ | 0:01 | Success; Duck Race start; alias: `points-added`, `correct-answer` |
-| `wrong-answer.wav` | Negative tone interface tap | 2569 | https://mixkit.co/free-sound-effects/download/2569/ | 0:01 | Wrong / failed answer (gentle, not a buzzer) |
-| `wheel-tick.wav` | Game click | 1114 | https://mixkit.co/free-sound-effects/download/1114/ | 0:01 | Lucky Wheel and Points Wheel tick during spin |
-| `wheel-result.wav` | Melodic bonus collect | 1938 | https://mixkit.co/free-sound-effects/download/1938/ | 0:02 | Lucky Wheel and Points Wheel result; Duck Race finish |
-| `recognition.wav` | Achievement bell | 600 | https://mixkit.co/free-sound-effects/download/600/ | 0:02 | Recognition ceremony; alias: `badge-awarded` |
-| `applause.wav` | Animated small group applause | 523 | https://mixkit.co/free-sound-effects/download/523/ | 0:04 | Recognition / ceremony; Duck Race winner celebration |
+| Filename | Title | ID / license | Source | Duration | Intended event(s) |
+|---|---|---|---|---|---|
+| `click.wav` | Cool interface click tone | Mixkit 2568 | https://mixkit.co/free-sound-effects/download/2568/ | 0:01 | Generic UI click; Duck Race countdown (3/2/1) |
+| `success.wav` | Instant win | Mixkit 2021 | https://mixkit.co/free-sound-effects/download/2021/ | 0:01 | Success; Duck Race start; alias: `points-added`, `correct-answer` |
+| `wrong-answer.wav` | Negative tone interface tap | Mixkit 2569 | https://mixkit.co/free-sound-effects/download/2569/ | 0:01 | Wrong / failed answer (gentle, not a buzzer) |
+| `wheel-tick.wav` | Game click | Mixkit 1114 | https://mixkit.co/free-sound-effects/download/1114/ | 0:01 | Lucky Wheel and Points Wheel tick during spin |
+| `wheel-result.wav` | Melodic bonus collect | Mixkit 1938 | https://mixkit.co/free-sound-effects/download/1938/ | 0:02 | Lucky Wheel and Points Wheel result; Duck Race finish |
+| `recognition.wav` | Achievement bell | Mixkit 600 | https://mixkit.co/free-sound-effects/download/600/ | 0:02 | Recognition ceremony; alias: `badge-awarded` |
+| `applause.wav` | Animated small group applause | Mixkit 523 | https://mixkit.co/free-sound-effects/download/523/ | 0:04 | Recognition / ceremony; Duck Race winner celebration |
+| `quack.wav` | Duck quacking.mp3 | Freesound 558858 / CC0 | https://freesound.org/people/DigPro120/sounds/558858/ | 0:01.75 | Duck Race ambient quack (volume 0.22) |
 
 Category browse pages used during selection:
 
@@ -43,6 +45,7 @@ Category browse pages used during selection:
 - Click: https://mixkit.co/free-sound-effects/click/
 - Slot machine: https://mixkit.co/free-sound-effects/slot-machine/
 - Applause: https://mixkit.co/free-sound-effects/applause/
+- Duck vocalization (CC0): https://freesound.org/people/DigPro120/sounds/558858/
 
 ## Deferred filenames (aliases only)
 
@@ -57,11 +60,11 @@ These names are **not** separate files in v1. Map them to an bundled asset when 
 
 ## Rejected during curation
 
-Skipped Mixkit titles that were too loud, long, or off-tone for a classroom app: slot-machine alarms/sirens, stadium crowd beds, cartoon/character voices, weapon clicks.
+Skipped titles that were too loud, long, or off-tone for a classroom app: slot-machine alarms/sirens, stadium crowd beds, cartoon/character voices, weapon clicks, Mixkit rubber-duck toy squeaks (not a real quack).
 
 ## Adding more sounds
 
-1. Confirm **Sound Effects Free License** on the Mixkit item page.
-2. Download from the official Mixkit download page only.
-3. Add a row to this file before committing the binary.
-4. Do not use YouTube, TikTok, Freesound (unless license verified), or unverified sources.
+1. Confirm a commercial-friendly license (Mixkit Free License or verified CC0; avoid NC licenses).
+2. Download from the official source only; document the page + license in this file.
+3. Prefer short WAV (≈0.3–2s) that matches the intended classroom tone.
+4. Do not use YouTube, TikTok, or unverified scrapes.

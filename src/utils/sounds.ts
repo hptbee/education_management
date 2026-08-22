@@ -6,6 +6,7 @@ export type SoundId =
   | 'wheel-result'
   | 'recognition'
   | 'applause'
+  | 'quack'
 
 const SOUND_PATHS: Record<SoundId, string> = {
   click: '/sounds/click.wav',
@@ -15,6 +16,7 @@ const SOUND_PATHS: Record<SoundId, string> = {
   'wheel-result': '/sounds/wheel-result.wav',
   recognition: '/sounds/recognition.wav',
   applause: '/sounds/applause.wav',
+  quack: '/sounds/quack.wav',
 }
 
 const SOUND_MIME = 'audio/wav'
@@ -27,6 +29,33 @@ const DEFAULT_VOLUMES: Partial<Record<SoundId, number>> = {
   success: 0.6,
   'wrong-answer': 0.55,
   click: 0.4,
+  quack: 0.22,
+}
+
+/** Randomized gap between Duck Race ambient quack events (ms). */
+export const DUCK_RACE_QUACK_MIN_MS = 800
+export const DUCK_RACE_QUACK_MAX_MS = 2000
+
+/** Short gap between the two quacks in an occasional double-quack (ms). */
+export const DUCK_RACE_DOUBLE_QUACK_GAP_MIN_MS = 150
+export const DUCK_RACE_DOUBLE_QUACK_GAP_MAX_MS = 300
+
+/** Chance each quack event is a sequential "quack quack" pair. */
+export const DUCK_RACE_DOUBLE_QUACK_CHANCE = 0.3
+
+export function nextDuckRaceQuackDelayMs(random = Math.random): number {
+  return DUCK_RACE_QUACK_MIN_MS + random() * (DUCK_RACE_QUACK_MAX_MS - DUCK_RACE_QUACK_MIN_MS)
+}
+
+export function nextDuckRaceDoubleQuackGapMs(random = Math.random): number {
+  return (
+    DUCK_RACE_DOUBLE_QUACK_GAP_MIN_MS +
+    random() * (DUCK_RACE_DOUBLE_QUACK_GAP_MAX_MS - DUCK_RACE_DOUBLE_QUACK_GAP_MIN_MS)
+  )
+}
+
+export function shouldPlayDuckRaceDoubleQuack(random = Math.random): boolean {
+  return random() < DUCK_RACE_DOUBLE_QUACK_CHANCE
 }
 
 export interface PlaySoundOptions {
@@ -146,6 +175,110 @@ export function playDuckRaceFinish(enabled = true): void {
   window.setTimeout(() => {
     playSound('applause', { enabled })
   }, 400)
+}
+
+/**
+ * Occasional ambient quacks while Duck Race is running.
+ * Random 0.8–2s gaps; ~30% double-quack pairs; never overlaps; returns stop/cleanup.
+ */
+export function startDuckRaceQuacks(enabled = true): () => void {
+  if (!enabled || typeof window === 'undefined') {
+    return () => {}
+  }
+
+  let stopped = false
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  let gapTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let activeAudio: HTMLAudioElement | null = null
+  let releaseActivePlay: (() => void) | null = null
+
+  const clearTimer = () => {
+    if (timeoutId != null) {
+      window.clearTimeout(timeoutId)
+      timeoutId = null
+    }
+    if (gapTimeoutId != null) {
+      window.clearTimeout(gapTimeoutId)
+      gapTimeoutId = null
+    }
+  }
+
+  const stop = () => {
+    stopped = true
+    clearTimer()
+    releaseActivePlay?.()
+    releaseActivePlay = null
+    if (activeAudio) {
+      activeAudio.pause()
+      activeAudio.src = ''
+      activeAudio = null
+    }
+  }
+
+  const schedule = () => {
+    if (stopped) return
+    clearTimer()
+    timeoutId = window.setTimeout(() => {
+      timeoutId = null
+      void playEvent()
+    }, nextDuckRaceQuackDelayMs())
+  }
+
+  const waitMs = (ms: number) =>
+    new Promise<void>((resolve) => {
+      gapTimeoutId = window.setTimeout(() => {
+        gapTimeoutId = null
+        resolve()
+      }, ms)
+    })
+
+  const playQuackOnce = async (): Promise<void> => {
+    if (stopped || activeAudio) return
+
+    const url = await loadSoundUrl('quack')
+    if (!url || stopped) return
+
+    await new Promise<void>((resolve) => {
+      const audio = new Audio(url)
+      audio.volume = DEFAULT_VOLUMES.quack ?? 0.22
+      activeAudio = audio
+
+      const onDone = () => {
+        releaseActivePlay = null
+        if (activeAudio === audio) activeAudio = null
+        resolve()
+      }
+
+      releaseActivePlay = onDone
+
+      audio.addEventListener('ended', onDone, { once: true })
+      audio.addEventListener('error', onDone, { once: true })
+
+      void audio.play().catch(onDone)
+    })
+  }
+
+  const playEvent = async () => {
+    if (stopped) return
+    if (activeAudio) {
+      schedule()
+      return
+    }
+
+    await playQuackOnce()
+    if (stopped) return
+
+    if (shouldPlayDuckRaceDoubleQuack()) {
+      await waitMs(nextDuckRaceDoubleQuackGapMs())
+      if (stopped) return
+      await playQuackOnce()
+    }
+
+    if (!stopped) schedule()
+  }
+
+  schedule()
+  return stop
 }
 
 const WHEEL_TICK_INTERVAL_MS = 140

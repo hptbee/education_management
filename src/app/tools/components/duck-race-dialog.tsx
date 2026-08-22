@@ -14,7 +14,7 @@ import {
   type PickerScope,
 } from '@/src/utils/pickerSession'
 import { canAnimate } from '@/src/utils/motion'
-import { playDuckRaceFinish, playDuckRaceStart, playSound } from '@/src/utils/sounds'
+import { playDuckRaceFinish, playDuckRaceStart, playSound, startDuckRaceQuacks } from '@/src/utils/sounds'
 import { toastInfo } from '@/src/utils/toast'
 import {
   assignDuckRaceFieldYs,
@@ -115,6 +115,18 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
   /** Last frozen progress snapshot — re-applied after React re-renders so winner stays at finish. */
   const frozenProgressRef = useRef<Record<string, number> | null>(null)
   const frozenRacersRef = useRef<Student[]>([])
+  const stopQuacksRef = useRef<(() => void) | null>(null)
+
+  const stopQuacks = useCallback(() => {
+    stopQuacksRef.current?.()
+    stopQuacksRef.current = null
+  }, [])
+
+  const startQuacks = useCallback(() => {
+    stopQuacks()
+    if (!soundEnabled) return
+    stopQuacksRef.current = startDuckRaceQuacks(true)
+  }, [soundEnabled, stopQuacks])
 
   const clearAnimation = useCallback(() => {
     if (rafRef.current != null) {
@@ -124,7 +136,8 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
     for (const timer of countdownTimersRef.current) clearTimeout(timer)
     countdownTimersRef.current = []
     setCountdownLabel(null)
-  }, [])
+    stopQuacks()
+  }, [stopQuacks])
 
   const resetDucksToStart = useCallback(() => {
     frozenProgressRef.current = null
@@ -178,6 +191,16 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
 
   useEffect(() => () => clearAnimation(), [clearAnimation])
 
+  // Ambient quacks only while racing with sound on; cleanup on phase/mute/unmount.
+  useEffect(() => {
+    if (phase !== 'racing' || !soundEnabled || !allowMotion) {
+      stopQuacks()
+      return
+    }
+    startQuacks()
+    return () => stopQuacks()
+  }, [allowMotion, phase, soundEnabled, startQuacks, stopQuacks])
+
   const scopedStudents = useMemo(
     () => getScopedStudents(sortedStudents, scopeType, teamId),
     [sortedStudents, scopeType, teamId],
@@ -224,6 +247,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
       if (generation !== raceGenerationRef.current) return
       if (winnerAnnouncedRef.current) return
       winnerAnnouncedRef.current = true
+      stopQuacks()
 
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current)
@@ -266,7 +290,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
         })
       }
     },
-    [allowMotion, applyFieldProgress, preventRepeat, recordDuckRaceResult, setDuckRaceStudentBag, soundEnabled],
+    [allowMotion, applyFieldProgress, preventRepeat, recordDuckRaceResult, setDuckRaceStudentBag, soundEnabled, stopQuacks],
   )
 
   // After winner highlight re-render, re-apply frozen transforms so the duck stays at the finish.
