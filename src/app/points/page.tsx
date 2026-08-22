@@ -1,11 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Minus, Plus, Search, Star, Users, X } from 'lucide-react'
+import { Minus, Plus, Search, Star, Users, X, ArrowUpDown } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
-import { sortStudentsByClassroomRoleThenStt } from '@/src/utils/student'
+import { sortStudents, type StudentSortOption } from '@/src/utils/student'
 import type { Student } from '@/src/types/models'
 import { StudentPointsDialog, type PointsDialogMode } from './components/student-points-dialog'
 import { PointActionsCatalogSection } from './components/point-actions-catalog-section'
@@ -19,6 +19,7 @@ export default function PointsPage() {
   const classroomId = data?.metadata.id
   const { isLoaded } = useActiveClassroom()
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<StudentSortOption>('role-stt')
   const [dialogStudent, setDialogStudent] = useState<Student | null>(null)
   const [dialogMode, setDialogMode] = useState<PointsDialogMode>('add')
 
@@ -27,8 +28,8 @@ export default function PointsPage() {
   const pointHistory = data?.pointHistory ?? []
 
   const sortedStudents = useMemo(
-    () => sortStudentsByClassroomRoleThenStt(students, students),
-    [students],
+    () => sortStudents(students, students, sortBy, teams),
+    [students, sortBy, teams],
   )
 
   const filteredStudents = useMemo(() => {
@@ -83,24 +84,45 @@ export default function PointsPage() {
           />
         ) : (
           <ClassroomCard>
-            <div className="relative mb-4">
-              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm học sinh theo tên..."
-                className="classroom-search-field rounded-2xl py-2.5"
-              />
-              {searchQuery ? (
-                <IconTouchButton
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Xóa tìm kiếm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm học sinh theo tên..."
+                  className="classroom-search-field rounded-2xl py-2.5"
+                />
+                {searchQuery ? (
+                  <IconTouchButton
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Xóa tìm kiếm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                  >
+                    <X className="size-4" />
+                  </IconTouchButton>
+                ) : null}
+              </div>
+
+              <div className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-sky-100 bg-slate-50 px-3 py-2.5">
+                <ArrowUpDown className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                <label htmlFor="points-student-sort" className="sr-only">Sắp xếp học sinh</label>
+                <select
+                  id="points-student-sort"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as StudentSortOption)}
+                  className="bg-transparent text-sm font-semibold text-slate-700 outline-none"
                 >
-                  <X className="size-4" />
-                </IconTouchButton>
-              ) : null}
+                  <option value="role-stt">Vai trò → STT</option>
+                  <option value="name-asc">Tên A → Z</option>
+                  <option value="name-desc">Tên Z → A</option>
+                  <option value="points-desc">Điểm cao → thấp</option>
+                  <option value="points-asc">Điểm thấp → cao</option>
+                  <option value="team">Theo tổ</option>
+                  <option value="newest">Mới thêm gần đây</option>
+                </select>
+              </div>
             </div>
 
             {filteredStudents.length === 0 ? (
