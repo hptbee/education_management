@@ -206,30 +206,43 @@ export async function restoreCloudClassroomAssets(
     throw new Error("Cloud backup chưa được cấu hình (thiếu URL Worker).");
   }
 
-  const response = await fetchImpl(
-    `${baseUrl.replace(/\/$/, "")}/restore/${encodeURIComponent(classroomId)}/assets`,
-    { headers: { Authorization: `Bearer ${entitlement}` } },
-  );
+  const allAssets: Array<{ path: string; content: string; encoding?: string }> = [];
+  let cursor: string | null = null;
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    logCloudTrace("error", "cloud-restore", "GET /restore/assets failed", {
-      classroomId,
-      status: response.status,
-      body: body.slice(0, 300),
+  for (;;) {
+    const url = new URL(`${baseUrl.replace(/\/$/, "")}/restore/${encodeURIComponent(classroomId)}/assets`);
+    if (cursor) {
+      url.searchParams.set("cursor", cursor);
+    }
+
+    const response = await fetchImpl(url.toString(), {
+      headers: { Authorization: `Bearer ${entitlement}` },
     });
-    throw new Error(`Không thể tải ảnh lớp từ đám mây (${response.status}).`);
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      logCloudTrace("error", "cloud-restore", "GET /restore/assets failed", {
+        classroomId,
+        status: response.status,
+        body: body.slice(0, 300),
+      });
+      throw new Error(`Không thể tải ảnh lớp từ đám mây (${response.status}).`);
+    }
+
+    const json = (await response.json().catch(() => ({}))) as {
+      assets?: Array<{ path: string; content: string; encoding?: string }>;
+      nextCursor?: string | null;
+    };
+    allAssets.push(...(json.assets ?? []));
+    cursor = json.nextCursor ?? null;
+    if (!cursor) break;
   }
 
-  const json = (await response.json().catch(() => ({}))) as {
-    assets?: Array<{ path: string; content: string; encoding?: string }>;
-  };
-  const assets = json.assets ?? [];
   logCloudTrace("info", "cloud-restore", "GET /restore/assets ok", {
     classroomId,
-    count: assets.length,
-    paths: assets.map((item) => item.path),
-    encodings: assets.map((item) => item.encoding ?? "missing"),
+    count: allAssets.length,
+    paths: allAssets.map((item) => item.path),
+    encodings: allAssets.map((item) => item.encoding ?? "missing"),
   });
-  return assets;
+  return allAssets;
 }

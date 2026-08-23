@@ -87,6 +87,12 @@ export const MAX_BODY_BYTES = 25 * 1024 * 1024;
 export const MAX_JSON_BODY_BYTES = 64 * 1024;
 export const MAX_SYNC_BATCH_FILES = 64;
 export const MAX_SYNC_FILE_BYTES = 5 * 1024 * 1024;
+/** Max asset files returned per GET /restore/:id/assets page. */
+export const MAX_RESTORE_ASSET_PAGE_COUNT = 32;
+/** Max decoded bytes per restore-assets page (sum of file sizes). */
+export const MAX_RESTORE_ASSET_PAGE_DECODED_BYTES = 8 * 1024 * 1024;
+/** Hard cap on total assets across paginated restore for one classroom. */
+export const MAX_RESTORE_ASSET_TOTAL_COUNT = 512;
 
 async function readBodyWithMaxBytes(request: Request, maxBytes: number): Promise<string> {
   const contentLength = request.headers.get("content-length");

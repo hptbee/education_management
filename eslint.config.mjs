@@ -7,6 +7,7 @@ export default defineConfig([
     '.next/**',
     'out/**',
     'node_modules/**',
+    'coverage/**',
     'src-tauri/target/**',
     'workers/cloud-backup/.wrangler/**',
   ]),

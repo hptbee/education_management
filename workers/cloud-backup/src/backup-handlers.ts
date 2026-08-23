@@ -3,6 +3,9 @@ import { MANIFEST_PATH, mergeCloudFilesToClassroom, mergeClassroomRegistries, ST
 import {
   errorResponse,
   jsonResponse,
+  MAX_RESTORE_ASSET_PAGE_COUNT,
+  MAX_RESTORE_ASSET_PAGE_DECODED_BYTES,
+  MAX_RESTORE_ASSET_TOTAL_COUNT,
   MAX_SYNC_BATCH_FILES,
   MAX_SYNC_FILE_BYTES,
   readBodyWithLimit,
@@ -457,6 +460,35 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+type RestoreAssetsCursorState = {
+  v: 1;
+  prefixIndex: number;
+  listCursor?: string;
+  totalEmitted: number;
+  resumeAfterKey?: string;
+};
+
+function encodeRestoreAssetsCursor(state: RestoreAssetsCursorState): string {
+  return btoa(JSON.stringify(state)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeRestoreAssetsCursor(raw: string): RestoreAssetsCursorState | null {
+  try {
+    const padded = raw.replace(/-/g, "+").replace(/_/g, "/");
+    const padLen = (4 - (padded.length % 4)) % 4;
+    const json = atob(padded + "=".repeat(padLen));
+    const parsed = JSON.parse(json) as RestoreAssetsCursorState;
+    if (parsed.v !== 1) return null;
+    if (!Number.isInteger(parsed.prefixIndex) || parsed.prefixIndex < 0) return null;
+    if (!Number.isInteger(parsed.totalEmitted) || parsed.totalEmitted < 0) return null;
+    if (parsed.listCursor !== undefined && typeof parsed.listCursor !== "string") return null;
+    if (parsed.resumeAfterKey !== undefined && typeof parsed.resumeAfterKey !== "string") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export async function handleRestoreAssets(
   request: Request,
   env: Env,
@@ -469,30 +501,116 @@ export async function handleRestoreAssets(
     return errorResponse("VALIDATION_ERROR", "Invalid classroomId", 400);
   }
 
-  const classroomPrefix = buildClassroomPrefix(auth.user.id, classroomId);
-  const assets: Array<{ path: string; content: string; encoding: "base64" }> = [];
-
-  for (const assetPrefix of [`${classroomPrefix}assets/`, `${classroomPrefix}images/gifts/`]) {
-    let cursor: string | undefined;
-    do {
-      const listed = await env.BACKUP_BUCKET.list({ prefix: assetPrefix, cursor });
-      for (const object of listed.objects) {
-        const relativePath = object.key.slice(classroomPrefix.length);
-        if (!isAllowedCloudAssetPath(relativePath)) continue;
-        const file = await env.BACKUP_BUCKET.get(object.key);
-        if (!file) continue;
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        assets.push({
-          path: relativePath,
-          content: bytesToBase64(bytes),
-          encoding: "base64",
-        });
-      }
-      cursor = listed.truncated ? listed.cursor : undefined;
-    } while (cursor);
+  const url = new URL(request.url);
+  const cursorParam = url.searchParams.get("cursor");
+  const initialState = cursorParam
+    ? decodeRestoreAssetsCursor(cursorParam)
+    : { v: 1 as const, prefixIndex: 0, totalEmitted: 0 };
+  if (!initialState) {
+    return errorResponse("VALIDATION_ERROR", "Invalid cursor", 400);
+  }
+  if (initialState.totalEmitted >= MAX_RESTORE_ASSET_TOTAL_COUNT) {
+    return jsonResponse({ ok: true, assets: [], nextCursor: null });
   }
 
-  return jsonResponse({ ok: true, assets });
+  const classroomPrefix = buildClassroomPrefix(auth.user.id, classroomId);
+  const assetPrefixes = [`${classroomPrefix}assets/`, `${classroomPrefix}images/gifts/`];
+  const assets: Array<{ path: string; content: string; encoding: "base64" }> = [];
+  let pageDecodedBytes = 0;
+  let prefixIndex = initialState.prefixIndex;
+  let listCursor: string | undefined = initialState.listCursor;
+  let totalEmitted = initialState.totalEmitted;
+  let resumeAfterKey: string | undefined = initialState.resumeAfterKey;
+
+  while (prefixIndex < assetPrefixes.length) {
+    if (totalEmitted >= MAX_RESTORE_ASSET_TOTAL_COUNT) {
+      break;
+    }
+    if (assets.length >= MAX_RESTORE_ASSET_PAGE_COUNT || pageDecodedBytes >= MAX_RESTORE_ASSET_PAGE_DECODED_BYTES) {
+      return jsonResponse({
+        ok: true,
+        assets,
+        nextCursor: encodeRestoreAssetsCursor({
+          v: 1,
+          prefixIndex,
+          listCursor,
+          totalEmitted,
+          resumeAfterKey,
+        }),
+      });
+    }
+
+    const assetPrefix = assetPrefixes[prefixIndex]!;
+    const listed = await env.BACKUP_BUCKET.list({ prefix: assetPrefix, cursor: listCursor });
+
+    for (const object of listed.objects) {
+      if (resumeAfterKey && object.key <= resumeAfterKey) {
+        continue;
+      }
+
+      if (totalEmitted >= MAX_RESTORE_ASSET_TOTAL_COUNT) {
+        break;
+      }
+      if (assets.length >= MAX_RESTORE_ASSET_PAGE_COUNT) {
+        return jsonResponse({
+          ok: true,
+          assets,
+          nextCursor: encodeRestoreAssetsCursor({
+            v: 1,
+            prefixIndex,
+            listCursor,
+            totalEmitted,
+            resumeAfterKey: object.key,
+          }),
+        });
+      }
+
+      const relativePath = object.key.slice(classroomPrefix.length);
+      if (!isAllowedCloudAssetPath(relativePath)) continue;
+      const file = await env.BACKUP_BUCKET.get(object.key);
+      if (!file) continue;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length > MAX_SYNC_FILE_BYTES) continue;
+      if (pageDecodedBytes + bytes.length > MAX_RESTORE_ASSET_PAGE_DECODED_BYTES) {
+        return jsonResponse({
+          ok: true,
+          assets,
+          nextCursor: encodeRestoreAssetsCursor({
+            v: 1,
+            prefixIndex,
+            listCursor,
+            totalEmitted,
+            resumeAfterKey: object.key,
+          }),
+        });
+      }
+
+      assets.push({
+        path: relativePath,
+        content: bytesToBase64(bytes),
+        encoding: "base64",
+      });
+      pageDecodedBytes += bytes.length;
+      totalEmitted += 1;
+      resumeAfterKey = undefined;
+    }
+
+    if (totalEmitted >= MAX_RESTORE_ASSET_TOTAL_COUNT) {
+      break;
+    }
+
+    if (listed.truncated && listed.cursor) {
+      listCursor = listed.cursor;
+      resumeAfterKey = undefined;
+      continue;
+    }
+
+    prefixIndex += 1;
+    listCursor = undefined;
+    resumeAfterKey = undefined;
+  }
+
+  return jsonResponse({ ok: true, assets, nextCursor: null });
 }
 
 export async function handleRestore(request: Request, env: Env, classroomId: string): Promise<Response> {

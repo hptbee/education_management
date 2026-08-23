@@ -22,12 +22,13 @@ export function HomeBannerSection({
   const { data, updateClassroomSettings, markDirtyAsset, persistNow } = useAppData()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const classroomId = data?.metadata.id
+  const bannerKey = data?.classroomSettings.bannerAssetKey
+  const customImage = useAssetUrl(classroomId, bannerKey)
 
   if (!data) return null
 
-  const classroomId = data.metadata.id
-  const bannerKey = data.classroomSettings.bannerAssetKey
-  const customImage = useAssetUrl(classroomId, bannerKey)
+  const resolvedClassroomId = data.metadata.id
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -39,7 +40,7 @@ export function HomeBannerSection({
     try {
       const bytes = await processImageFile(file, 'banner')
       const key = bannerAssetKey()
-      await classroomAssetService.saveAsset(classroomId, key, bytes)
+      await classroomAssetService.saveAsset(resolvedClassroomId, key, bytes)
       updateClassroomSettings({
         ...data.classroomSettings,
         bannerAssetKey: key,
@@ -67,7 +68,7 @@ export function HomeBannerSection({
       })
       await persistNow()
       if (key) {
-        await classroomAssetService.deleteAsset(classroomId, key)
+        await classroomAssetService.deleteAsset(resolvedClassroomId, key)
         markDirtyAsset(key)
       }
       onSaved()

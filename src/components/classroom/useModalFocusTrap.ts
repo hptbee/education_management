@@ -17,8 +17,10 @@ export function useModalFocusTrap(
   const onCancelRef = useRef(onCancel)
   const initialFocusSelectorRef = useRef(options?.initialFocusSelector)
 
-  onCancelRef.current = onCancel
-  initialFocusSelectorRef.current = options?.initialFocusSelector
+  useEffect(() => {
+    onCancelRef.current = onCancel
+    initialFocusSelectorRef.current = options?.initialFocusSelector
+  })
 
   useEffect(() => {
     if (!open) return
