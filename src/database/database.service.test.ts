@@ -104,6 +104,16 @@ describe("DatabaseService", () => {
     expect(normalized.duckRaceStudentBag).toEqual([]);
   });
 
+  it("imports legacy JSON without duckRaceHistory", async () => {
+    const { service } = makeService();
+    const db = createEmptyDatabase(makeSettings("2/7", "2026-2027"));
+    const legacy = { ...db } as Record<string, unknown>;
+    delete legacy.duckRaceHistory;
+
+    const imported = await service.importDatabaseFromJson(legacy);
+    expect(imported.duckRaceHistory).toEqual([]);
+  });
+
   it("saveCloudRestoredDatabase overwrites an existing classroom", async () => {
     const { service } = makeService();
     const original = await service.createDatabase(makeSettings("2/7", "2026-2027"));

@@ -82,11 +82,15 @@ function assertImportShape(data: unknown): asserts data is ClassroomDatabase {
     "teamScoreHistory",
     "badgeAwardHistory",
     "luckyWheelHistory",
-    "duckRaceHistory",
   ] as const;
 
   for (const field of historyArrays) {
     assertEntityArray(record, field, true);
+  }
+
+  const duckRaceHistory = record.duckRaceHistory;
+  if (duckRaceHistory !== undefined && duckRaceHistory !== null) {
+    assertEntityArray(record, "duckRaceHistory", true);
   }
 
   const wheelBag = record.wheelStudentBag;
