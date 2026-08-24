@@ -127,6 +127,14 @@
   --sidebar-accent-foreground: #2478b8;
   --sidebar-border: #d5e6f2;
   --sidebar-ring: #7ec4f0;
+
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-smooth: 250ms;
+  --motion-emphasis: 350ms;
+  --motion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-exit: ease-in;
+  --motion-ease-interactive: ease-out;
 }
 
 .dark {
@@ -226,9 +234,60 @@
     z-index: 1;
   }
 
+  .motion-safe-hover {
+    transition:
+      transform var(--motion-normal) var(--motion-ease-interactive),
+      box-shadow var(--motion-normal) var(--motion-ease-interactive),
+      border-color var(--motion-fast) var(--motion-ease-interactive),
+      background-color var(--motion-fast) var(--motion-ease-interactive);
+  }
+
+  .motion-safe-hover:hover {
+    transform: translateY(-2px);
+  }
+
+  .ui-press {
+    transition: transform var(--motion-fast) var(--motion-ease-interactive);
+  }
+
+  .ui-press:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .ui-card-lift {
+    transition:
+      transform var(--motion-normal) var(--motion-ease-interactive),
+      box-shadow var(--motion-normal) var(--motion-ease-interactive),
+      border-color var(--motion-fast) var(--motion-ease-interactive),
+      background-color var(--motion-fast) var(--motion-ease-interactive);
+  }
+
+  .ui-card-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .ui-card-lift:active:not(:disabled) {
+    transform: scale(0.99) translateY(-1px);
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .motion-safe-hover:hover {
+    .motion-safe-hover,
+    .ui-press,
+    .ui-card-lift {
+      transition: none;
+    }
+
+    .motion-safe-hover:hover,
+    .ui-card-lift:active:not(:disabled) {
       transform: none !important;
+    }
+
+    .ui-press:active:not(:disabled) {
+      transform: none !important;
+    }
+
+    .motion-stagger-item {
+      animation: none !important;
     }
 
     .animate-spin {

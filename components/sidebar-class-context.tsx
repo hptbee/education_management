@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronDown, Plus, School } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { useClassroomList } from '@/src/hooks/useClassroomList'
@@ -10,6 +11,8 @@ import { TeacherAvatar } from '@/src/components/TeacherAvatar'
 import { formatClassLabel } from '@/src/utils/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import { cn } from '@/lib/utils'
+import { useMotionEnabled } from '@/src/hooks/useMotionEnabled'
+import { motionTransition, popoverVariants, reducedMotionTransition } from '@/src/utils/motion'
 
 function formatSchoolYear(schoolYear?: string) {
   const year = schoolYear?.trim()
@@ -34,6 +37,8 @@ export function SidebarClassContext() {
   const isClassrooms = pathname === '/classrooms' || pathname.startsWith('/classrooms/')
 
   const activeClassrooms = useMemo(() => classrooms.filter((item) => !item.archived), [classrooms])
+  const motionEnabled = useMotionEnabled()
+  const popoverTransition = motionEnabled ? motionTransition('fast') : reducedMotionTransition()
 
   useEffect(() => {
     if (!open) return
@@ -95,9 +100,15 @@ export function SidebarClassContext() {
         />
       </button>
 
+      <AnimatePresence>
       {open ? (
-        <div
+        <motion.div
           role="menu"
+          initial={motionEnabled ? 'initial' : false}
+          animate="animate"
+          exit="exit"
+          variants={popoverVariants}
+          transition={popoverTransition}
           className="absolute left-3 right-3 top-full z-50 mt-1 rounded-2xl border border-sky-100 bg-white p-1 shadow-lg"
         >
           <p className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
@@ -163,8 +174,9 @@ export function SidebarClassContext() {
             <School className="size-4" />
             Quản lý lớp
           </Link>
-        </div>
+        </motion.div>
       ) : null}
+      </AnimatePresence>
     </div>
   )
 }

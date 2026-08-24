@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { LayoutGroup, motion } from 'framer-motion'
 import { SidebarClassContext } from './sidebar-class-context'
 import { SidebarPersistenceStatus } from './sidebar-persistence-status'
 import { IconTouchButton } from '@/src/components/classroom'
@@ -85,7 +86,7 @@ function SidebarNavLink({
       aria-current={active ? 'page' : undefined}
       title={title ?? label}
       className={cn(
-        'relative flex min-h-10 items-center rounded-2xl text-sm font-bold transition',
+        'relative flex min-h-10 items-center rounded-2xl text-sm font-bold transition-colors transition-shadow duration-[var(--motion-smooth)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
         collapsed
           ? 'mx-auto min-h-10 min-w-10 justify-center px-0 py-2'
@@ -96,7 +97,12 @@ function SidebarNavLink({
       )}
     >
       {active && !collapsed ? (
-        <span className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand" aria-hidden />
+        <motion.span
+          layoutId="sidebar-nav-indicator"
+          className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-brand"
+          aria-hidden
+          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+        />
       ) : null}
       <Icon className={cn('size-5 shrink-0', active ? 'text-brand' : 'text-slate-400')} />
       <span className={cn(collapsed ? 'sr-only' : 'truncate')}>{label}</span>
@@ -133,7 +139,7 @@ export function Sidebar({
     <aside
       className={cn(
         'flex h-full shrink-0 flex-col border-r border-sky-100 bg-surface-soft',
-        'fixed inset-y-0 left-0 z-50 transition-[transform,width] duration-200 md:relative',
+        'fixed inset-y-0 left-0 z-50 transition-[transform,width] duration-[var(--motion-smooth)] ease-[var(--motion-ease-interactive)] md:relative',
         mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0',
         !mobileOpen && collapsed ? 'md:w-16' : 'w-64',
       )}
@@ -142,6 +148,7 @@ export function Sidebar({
         {iconRail ? <div className="hidden h-[108px] shrink-0 md:block" /> : <SidebarClassContext />}
         {sidebarToggleButton}
 
+        <LayoutGroup id="sidebar-nav">
         <nav
           aria-label="Điều hướng lớp học"
           className={cn(
@@ -168,6 +175,7 @@ export function Sidebar({
             </div>
           ))}
         </nav>
+        </LayoutGroup>
 
         <div
           className={cn(

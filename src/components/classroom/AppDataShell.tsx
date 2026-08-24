@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAppData } from '@/src/store/AppDataContext'
 import { ClassroomButton } from './ClassroomButton'
 import { ClassroomSkeleton } from './ClassroomSkeleton'
+import { PageTransition } from './PageTransition'
 
 const NO_CLASS_ROUTES = ['/settings', '/classrooms'] as const
 
@@ -54,7 +55,7 @@ export function AppDataShell({ children }: { children: ReactNode }) {
     return (
       <>
         <InitErrorBanner onRetry={retryInit} />
-        {children}
+        <PageTransition>{children}</PageTransition>
       </>
     )
   }
@@ -87,5 +88,5 @@ export function AppDataShell({ children }: { children: ReactNode }) {
     )
   }
 
-  return <>{children}</>
+  return <PageTransition>{children}</PageTransition>
 }
