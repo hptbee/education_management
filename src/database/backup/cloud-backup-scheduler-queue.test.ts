@@ -242,4 +242,85 @@ describe("CloudBackupScheduler queue", () => {
     const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
     expect(uploadedKeys).toEqual(expect.arrayContaining([classA.metadata.id, classB.metadata.id]));
   });
+
+  it("keeps B and C pending while A is syncing and drains all three independently", async () => {
+    let releaseA!: () => void;
+    const aGate = new Promise<void>((resolve) => {
+      releaseA = resolve;
+    });
+
+    vi.mocked(uploadCloudSyncBatch).mockImplementation(async (db) => {
+      if (db.metadata.id === "2-7_2026-2027") {
+        await aGate;
+      }
+      return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
+    });
+
+    const scheduler = new CloudBackupScheduler();
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+    const classC = makeDb(true, "4/2", "2026-2027");
+
+    scheduler.scheduleAfterLocalSave(classA);
+    scheduler.scheduleAfterLocalSave(classB);
+    scheduler.scheduleAfterLocalSave(classC);
+    await flushSchedulerMicrotasks();
+    await flushSchedulerMicrotasks();
+    await flushSchedulerMicrotasks();
+
+    expect(scheduler.getStateForClassroom(classA.metadata.id).state).toBe("pending");
+    expect(scheduler.getStateForClassroom(classB.metadata.id).state).toBe("pending");
+    expect(scheduler.getStateForClassroom(classC.metadata.id).state).toBe("pending");
+
+    const drain = scheduler.flushPending();
+    await flushSchedulerMicrotasks();
+    expect(scheduler.getStateForClassroom(classB.metadata.id).state).toBe("pending");
+    expect(scheduler.getStateForClassroom(classC.metadata.id).state).toBe("pending");
+
+    releaseA();
+    await drain;
+    scheduler.stop();
+
+    const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
+    expect(uploadedKeys).toEqual(
+      expect.arrayContaining([classA.metadata.id, classB.metadata.id, classC.metadata.id]),
+    );
+    expect(new Set(uploadedKeys).size).toBe(3);
+  });
+
+  it("retries only the failed classroom after a quota error", async () => {
+    vi.useFakeTimers();
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+    vi.mocked(uploadCloudSyncBatch).mockImplementation(async (db) => {
+      if (db.metadata.id === classA.metadata.id) {
+        throw new Error("quota");
+      }
+      return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
+    });
+
+    const scheduler = new CloudBackupScheduler();
+    scheduler.scheduleAfterLocalSave(classA);
+    scheduler.scheduleAfterLocalSave(classB);
+    await flushSchedulerMicrotasks();
+    await scheduler.flushPending();
+
+    expect(scheduler.getStateForClassroom(classA.metadata.id).state).toBe("failed");
+    expect(scheduler.getStateForClassroom(classB.metadata.id).state).toBe("synced");
+
+    vi.mocked(uploadCloudSyncBatch).mockResolvedValue({
+      uploadedPaths: ["classroom.json"],
+      skippedPaths: [],
+    });
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    await flushSchedulerMicrotasks();
+    await scheduler.flushPending();
+    scheduler.stop();
+    vi.useRealTimers();
+
+    const uploadedKeys = vi.mocked(uploadCloudSyncBatch).mock.calls.map((call) => call[0].metadata.id);
+    expect(uploadedKeys.filter((id) => id === classA.metadata.id).length).toBeGreaterThanOrEqual(2);
+    expect(uploadedKeys).toContain(classB.metadata.id);
+  });
 });
