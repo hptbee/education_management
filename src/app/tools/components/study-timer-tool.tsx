@@ -268,19 +268,21 @@ export function StudyTimerTool() {
         onClick={isRunning ? handlePause : handleStart}
         disabled={secondsLeft <= 0 && !isRunning}
       >
-        {isRunning ? (
-          <>
-            <Pause className="size-4" /> Tạm dừng
-          </>
-        ) : (
-          <>
-            <Play className="size-4" /> Bắt đầu
-          </>
-        )}
+        <span className="inline-flex items-center gap-2">
+          {isRunning ? (
+            <Pause className="size-4" aria-hidden />
+          ) : (
+            <Play className="size-4" aria-hidden />
+          )}
+          {isRunning ? 'Tạm dừng' : 'Bắt đầu'}
+        </span>
       </ClassroomButton>
 
       <ClassroomButton variant="outline" size="lg" className="mt-2 min-h-11 w-full" onClick={handleReset}>
-        <RotateCcw className="size-4" /> Đặt lại
+        <span className="inline-flex items-center gap-2">
+          <RotateCcw className="size-4" aria-hidden />
+          Đặt lại
+        </span>
       </ClassroomButton>
     </ToolCardShell>
   )
