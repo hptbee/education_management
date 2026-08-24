@@ -30,6 +30,7 @@ export function SidebarClassContext() {
   const teacherName = teacher?.name?.trim() || 'Giáo viên'
   const classLabel = classroom ? formatClassLabel(classroom.className) : 'Chưa chọn lớp'
   const schoolYearLabel = classroom ? formatSchoolYear(classroom.schoolYear) : ''
+  const switcherLabel = [teacherName, classLabel, schoolYearLabel].filter(Boolean).join('. ')
   const isClassrooms = pathname === '/classrooms' || pathname.startsWith('/classrooms/')
 
   const activeClassrooms = useMemo(() => classrooms.filter((item) => !item.archived), [classrooms])
@@ -57,15 +58,16 @@ export function SidebarClassContext() {
   }
 
   return (
-    <div ref={containerRef} className="relative shrink-0 px-3 pt-4 pb-2">
+    <div ref={containerRef} className="relative shrink-0 px-3 pt-3 pb-2">
       <button
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label={`${switcherLabel}. Chuyển lớp học`}
         disabled={switching}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'flex w-full items-center gap-2.5 rounded-2xl border px-2.5 py-2.5 text-left shadow-sm transition',
+          'flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left shadow-sm transition',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
           open || isClassrooms
             ? 'border-brand/25 bg-white'
@@ -76,23 +78,21 @@ export function SidebarClassContext() {
           assetKey={teacher?.avatarAssetKey}
           classroomId={database?.metadata.id}
           name={teacherName}
-          className="size-16 shrink-0 rounded-2xl text-3xl shadow-sm"
+          className="size-[72px] shrink-0 rounded-2xl text-4xl shadow-sm"
         />
         <div className="min-w-0 flex-1">
-          <p className="font-display truncate text-sm font-extrabold leading-tight text-slate-800" title={teacherName}>
+          <p className="truncate font-display text-sm font-extrabold leading-snug text-slate-800" title={teacherName}>
             {teacherName}
           </p>
-          <p className="mt-0.5 truncate text-[11px] font-bold text-slate-600" title={classLabel}>
-            {classLabel}
-          </p>
+          <p className="mt-0.5 text-xs font-bold leading-snug text-slate-600">{classLabel}</p>
           {schoolYearLabel ? (
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-400" title={schoolYearLabel}>
-              {schoolYearLabel}
-            </p>
+            <p className="mt-0.5 text-[11px] font-semibold leading-snug text-slate-500">{schoolYearLabel}</p>
           ) : null}
         </div>
-        <ChevronDown className={cn('size-4 shrink-0 text-slate-300 transition', open && 'rotate-180')} aria-hidden />
-        <span className="sr-only">Chuyển lớp học</span>
+        <ChevronDown
+          className={cn('size-4 shrink-0 text-slate-400 transition', open && 'rotate-180 text-brand')}
+          aria-hidden
+        />
       </button>
 
       {open ? (

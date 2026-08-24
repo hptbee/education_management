@@ -6,10 +6,19 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { AppDataShell } from "@/src/components/classroom";
 import { usePresentationMode } from "@/src/store/PresentationModeContext";
+import { NavSidebarProvider } from "@/src/store/NavSidebarContext";
 import { isPresentationPath } from "@/src/utils/presentationPaths";
 import { IconTouchButton } from "@/src/components/classroom";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <NavSidebarProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </NavSidebarProvider>
+  );
+}
+
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isPresentationMode, exitPresentationMode } = usePresentationMode();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
