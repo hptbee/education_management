@@ -6,6 +6,7 @@ import {
   migrateLegacyGiftImages,
 } from "./gifts";
 import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "./pointsWheelConfig";
+import { normalizeSeatingChartConfig } from "./seatingChart";
 import type { Gift, Student } from "../types/models";
 import type { ClassroomDatabase } from "../database/types";
 
@@ -56,6 +57,7 @@ function minimalDb(rewards: ClassroomDatabase["rewards"], students: Student[] = 
     duckRaceStudentBag: [],
     pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((s) => ({ ...s })),
     pointsWheelStudentBag: [],
+    seatingChartConfig: normalizeSeatingChartConfig(undefined),
     appSettings: { soundEnabled: true, animationsEnabled: true, cloudBackupEnabled: false },
   };
 }

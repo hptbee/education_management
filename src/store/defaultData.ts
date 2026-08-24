@@ -1,5 +1,6 @@
 import type { AppData } from "../types/models";
 import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "../utils/pointsWheelConfig";
+import { normalizeSeatingChartConfig } from "../utils/seatingChart";
 
 const seedTimestamp = "2026-08-13T00:00:00.000Z";
 
@@ -160,6 +161,7 @@ export const defaultData: AppData = {
   duckRaceStudentBag: [],
   pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((segment) => ({ ...segment })),
   pointsWheelStudentBag: [],
+  seatingChartConfig: normalizeSeatingChartConfig(undefined),
   appSettings: {
     soundEnabled: true,
     animationsEnabled: true,

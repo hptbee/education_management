@@ -13,6 +13,7 @@ import type {
   RecognitionTitle,
   Reward,
   RewardHistory,
+  SeatingChartConfig,
   Student,
   Team,
   TeamScoreHistory,
@@ -49,6 +50,7 @@ export interface ClassroomDatabase {
   duckRaceStudentBag: string[];
   pointsWheelConfig: PointsWheelSegment[];
   pointsWheelStudentBag: string[];
+  seatingChartConfig: SeatingChartConfig;
   teamScoreHistory: TeamScoreHistory[];
   appSettings: AppSettings;
 }

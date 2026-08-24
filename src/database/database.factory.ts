@@ -5,6 +5,7 @@ import { createDefaultBadges } from "../utils/badges";
 import { createDefaultClassroomRoles } from "../utils/classroomRoles";
 import { createDefaultRecognitionTitles } from "../utils/recognitionTitles";
 import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "../utils/pointsWheelConfig";
+import { normalizeSeatingChartConfig } from "../utils/seatingChart";
 import type { ClassroomDatabase } from "./types";
 import type { ClassroomSettings } from "../types/models";
 
@@ -49,6 +50,7 @@ export function createEmptyDatabase(
     duckRaceStudentBag: [],
     pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((segment) => ({ ...segment })),
     pointsWheelStudentBag: [],
+    seatingChartConfig: normalizeSeatingChartConfig(undefined),
     teamScoreHistory: [],
     appSettings: {
       soundEnabled: true,

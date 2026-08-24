@@ -11,6 +11,7 @@ import type {
   Recognition,
   RecognitionTitle,
   Gift,
+  SeatingChartConfig,
   Student,
   TeacherProfile,
   Team,
@@ -27,6 +28,7 @@ import type { ClassroomDatabase, DatabaseSummary } from "../database/types";
 import { databaseService } from "../database/database.service";
 import { buildRecognizeStudentsUpdate, ensureBadgeForTitle, type RecognizeStudentsInput } from "../utils/recognition";
 import { capHistory } from "../utils/historyLimits";
+import { removeStudentFromAllSeats } from "../utils/seatingChart";
 import { classroomAssetService } from "../database/assets/classroom-asset.service";
 import { normalizeGift, buildRedeemGiftUpdate } from "../utils/gifts";
 import {
@@ -137,6 +139,7 @@ interface AppDataContextValue {
   setDuckRaceStudentBag: (bag: string[]) => void;
   setPointsWheelStudentBag: (bag: string[]) => void;
   setPointsWheelConfig: (config: PointsWheelSegment[]) => void;
+  setSeatingChartConfig: (config: SeatingChartConfig) => void;
   recordLuckyWheelSelection: (studentIds: string[]) => void;
   recordDuckRaceResult: (input: {
     winnerId: string;
@@ -1061,6 +1064,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             wheelStudentBag: prev.wheelStudentBag.filter((id) => id !== studentId),
             duckRaceStudentBag: (prev.duckRaceStudentBag ?? []).filter((id) => id !== studentId),
             pointsWheelStudentBag: (prev.pointsWheelStudentBag ?? []).filter((id) => id !== studentId),
+            seatingChartConfig: prev.seatingChartConfig
+              ? removeStudentFromAllSeats(prev.seatingChartConfig, studentId)
+              : prev.seatingChartConfig,
           };
         });
 
@@ -1377,6 +1383,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setDuckRaceStudentBag: (bag) => setData((current) => ({ ...current, duckRaceStudentBag: bag })),
       setPointsWheelStudentBag: (bag) => setData((current) => ({ ...current, pointsWheelStudentBag: bag })),
       setPointsWheelConfig: (config) => setData((current) => ({ ...current, pointsWheelConfig: config })),
+      setSeatingChartConfig: (config) => setData((current) => ({ ...current, seatingChartConfig: config })),
       recordLuckyWheelSelection: (studentIds) => {
         const uniqueIds = [...new Set(studentIds)].filter(Boolean);
         if (uniqueIds.length === 0) return;

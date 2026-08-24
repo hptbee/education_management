@@ -38,8 +38,13 @@ export interface WorkerClassroomDatabase {
   recognitionTitles: unknown[];
   recognitions: unknown[];
   luckyWheelHistory: unknown[];
+  duckRaceHistory: unknown[];
   badgeAwardHistory: unknown[];
   wheelStudentBag: unknown[];
+  duckRaceStudentBag: unknown[];
+  pointsWheelConfig: unknown[];
+  pointsWheelStudentBag: unknown[];
+  seatingChartConfig: unknown;
   teamScoreHistory: unknown[];
   appSettings: {
     soundEnabled: boolean;
@@ -153,12 +158,20 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Worke
         pointActions: unknown[];
         recognitionTitles: unknown[];
         wheelStudentBag: unknown[];
+        duckRaceStudentBag?: unknown[];
+        pointsWheelConfig?: unknown[];
+        pointsWheelStudentBag?: unknown[];
+        seatingChartConfig?: unknown;
       }>(files[DOMAIN_PATHS.catalog])
     : {
         badges: [],
         pointActions: [],
         recognitionTitles: [],
         wheelStudentBag: [],
+        duckRaceStudentBag: [],
+        pointsWheelConfig: [],
+        pointsWheelStudentBag: [],
+        seatingChartConfig: undefined,
       };
 
   const allActivities: WorkerActivityLog[] = [];
@@ -186,8 +199,13 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Worke
     recognitionTitles: catalogFile.recognitionTitles,
     recognitions: recognitionsFile.recognitions,
     luckyWheelHistory: history.luckyWheelHistory,
+    duckRaceHistory: [],
     badgeAwardHistory: history.badgeAwardHistory,
     wheelStudentBag: catalogFile.wheelStudentBag,
+    duckRaceStudentBag: catalogFile.duckRaceStudentBag ?? [],
+    pointsWheelConfig: catalogFile.pointsWheelConfig ?? [],
+    pointsWheelStudentBag: catalogFile.pointsWheelStudentBag ?? [],
+    seatingChartConfig: catalogFile.seatingChartConfig,
     teamScoreHistory: history.teamScoreHistory,
     appSettings: settingsFile.appSettings,
   };

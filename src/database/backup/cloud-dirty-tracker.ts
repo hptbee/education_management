@@ -159,6 +159,7 @@ export function inferDirtyFromDatabaseChange(
     duckRaceStudentBag: unknown[];
     pointsWheelConfig: unknown[];
     pointsWheelStudentBag: unknown[];
+    seatingChartConfig: unknown;
     pointHistory: unknown[];
     rewardHistory: unknown[];
     teamScoreHistory: unknown[];
@@ -217,7 +218,9 @@ export function inferDirtyFromDatabaseChange(
     arrayChanged((prev as typeof next).wheelStudentBag, next.wheelStudentBag) ||
     arrayChanged((prev as typeof next).duckRaceStudentBag, next.duckRaceStudentBag) ||
     arrayChanged((prev as typeof next).pointsWheelConfig, next.pointsWheelConfig) ||
-    arrayChanged((prev as typeof next).pointsWheelStudentBag, next.pointsWheelStudentBag);
+    arrayChanged((prev as typeof next).pointsWheelStudentBag, next.pointsWheelStudentBag) ||
+    settingsFingerprint((prev as typeof next).seatingChartConfig) !==
+      settingsFingerprint(next.seatingChartConfig);
 
   if (catalogChanged) {
     patch.catalog = true;

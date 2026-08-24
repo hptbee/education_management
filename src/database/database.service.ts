@@ -220,6 +220,7 @@ export class DatabaseService {
         newDb.duckRaceStudentBag = parsed.duckRaceStudentBag || [];
         newDb.pointsWheelConfig = parsed.pointsWheelConfig;
         newDb.pointsWheelStudentBag = parsed.pointsWheelStudentBag || [];
+        newDb.seatingChartConfig = parsed.seatingChartConfig;
         newDb.teamScoreHistory = parsed.teamScoreHistory || [];
         newDb.appSettings = parsed.appSettings || newDb.appSettings;
 

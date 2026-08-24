@@ -9,6 +9,7 @@ import type {
 } from "../../types/models";
 import { DATABASE_VERSION } from "../database.factory";
 import { normalizeClassroomDatabase } from "../../utils/classroomRoles";
+import { normalizeSeatingChartConfig } from "../../utils/seatingChart";
 import { toLocalDateKey } from "./local-date";
 import {
   CLOUD_ACTIVITY_FILE_VERSION,
@@ -199,6 +200,7 @@ export function splitClassroomToCloudFiles(
       duckRaceStudentBag: normalized.duckRaceStudentBag,
       pointsWheelConfig: normalized.pointsWheelConfig,
       pointsWheelStudentBag: normalized.pointsWheelStudentBag,
+      seatingChartConfig: normalized.seatingChartConfig,
     }),
     [DOMAIN_PATHS.activityIndex]: buildActivityIndex(activities, updatedAt),
   };
@@ -426,6 +428,7 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Class
         duckRaceStudentBag?: ClassroomDatabase["duckRaceStudentBag"];
         pointsWheelConfig?: ClassroomDatabase["pointsWheelConfig"];
         pointsWheelStudentBag?: ClassroomDatabase["pointsWheelStudentBag"];
+        seatingChartConfig?: ClassroomDatabase["seatingChartConfig"];
       }>(files[DOMAIN_PATHS.catalog])
     : {
         badges: [],
@@ -435,6 +438,7 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Class
         duckRaceStudentBag: [],
         pointsWheelConfig: [],
         pointsWheelStudentBag: [],
+        seatingChartConfig: undefined,
       };
 
   const allActivities: ActivityLog[] = [];
@@ -468,6 +472,7 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Class
     duckRaceStudentBag: catalogFile.duckRaceStudentBag ?? [],
     pointsWheelConfig: catalogFile.pointsWheelConfig ?? [],
     pointsWheelStudentBag: catalogFile.pointsWheelStudentBag ?? [],
+    seatingChartConfig: normalizeSeatingChartConfig(catalogFile.seatingChartConfig),
     teamScoreHistory: history.teamScoreHistory,
     appSettings: settingsFile.appSettings,
   };

@@ -1443,6 +1443,16 @@ Open from card CTA; deep links via query `?tool=` (`lucky-wheel`, `duck-race`, `
 - Requires at least one student
 - Replaces the earlier “Lucky Star” star-grid concept
 
+### Sơ đồ lớp
+
+- Dedicated route `/seating-chart` (sidebar **Sơ đồ lớp**, tools card under **Công cụ nhanh**)
+- Visual classroom layout: board, desk groups with aisles, empty seats shown explicitly
+- Configure groups (dãy), rows, columns per group, aisle gap, desk type (individual / pair / group), board position
+- Assign students via click (select student → click seat) or HTML5 drag-and-drop
+- Auto-arrange in roster order; random arrange with confirm dialog
+- Zoom, pan, fit-to-screen for large classes; presentation mode hides config/roster
+- Persisted per classroom as `seatingChartConfig` (catalog cloud sync); no activity history events
+
 ### Points Challenge Strip
 
 - Shows top students by points
@@ -1517,6 +1527,44 @@ Optional: spin again (same student) or pick another student
 
 - Do not reuse Lucky Wheel’s `wheelStudentBag` or student-name segments
 - Do not auto-apply points on spin land
+
+---
+
+# FR-010a-3 — Classroom Seating Chart (Sơ đồ lớp)
+
+## Goal
+
+Visual seating planner for the active classroom: configure desk layout, assign students to seats, and present the arrangement on a projector.
+
+## Route & entry
+
+- Page: `/seating-chart`
+- Sidebar: **Sơ đồ lớp** (Hoạt động)
+- Tools card under **Công cụ nhanh** on `/tools`
+
+## Layout
+
+- Groups (dãy) with visible aisle gaps between desk blocks
+- Rows and columns per group; empty seats always rendered
+- Desk types: individual (1), pair (2), group (4 students per desk)
+- Board strip with position: front (default), back, left, right
+
+## Assignment
+
+- Click: select unassigned student → click seat (or seat with free capacity)
+- Drag-and-drop: student ↔ seat ↔ unassigned list
+- Seat popover: change or remove assigned student(s)
+- Auto-arrange fills seats in roster order; random arrange requires confirm
+
+## Persistence
+
+- `seatingChartConfig` on classroom database (catalog cloud domain)
+- Layout changes preserve valid assignments; overflow students become unassigned
+- Student delete removes seat assignments; no activity history for seat moves
+
+## Presentation
+
+- `/seating-chart` in presentation allowlist; hides config panel and roster
 
 ---
 

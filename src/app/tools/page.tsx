@@ -10,6 +10,7 @@ import { DuckRaceTool } from './components/duck-race-tool'
 import { PointsWheelTool } from './components/points-wheel-tool'
 import { StudyTimerTool } from './components/study-timer-tool'
 import { RandomStudentTool } from './components/random-student-tool'
+import { SeatingChartTool } from './components/seating-chart-tool'
 import { PointsChallengeStrip } from './components/points-challenge-strip'
 import { ToolsSection } from './components/tool-card-shell'
 import { ClassroomButton, PageHeader } from '@/src/components/classroom'
@@ -32,9 +33,10 @@ function ToolsContent() {
       </ToolsSection>
 
       <ToolsSection title="Công cụ nhanh" description="Dùng ngay trong lớp, không cần mở cửa sổ riêng">
-        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
+        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
           <StudyTimerTool />
           <RandomStudentTool />
+          <SeatingChartTool />
         </div>
       </ToolsSection>
 

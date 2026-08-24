@@ -4,6 +4,7 @@ import { normalizeBadgesOnDatabase } from "./badges";
 import { normalizeGiftsOnDatabase } from "./gifts";
 import { normalizeRecognitionTitlesOnDatabase } from "./recognitionTitles";
 import { normalizePointsWheelConfig } from "./pointsWheelConfig";
+import { DEFAULT_SEATING_CHART_CONFIG, normalizeSeatingChartConfig } from "./seatingChart";
 import { createId } from "./id";
 import { isDataImageUrl } from "./images";
 
@@ -140,6 +141,10 @@ export function normalizeClassroomDatabase(db: ClassroomDatabase): ClassroomData
         duckRaceStudentBag: db.duckRaceStudentBag ?? [],
         pointsWheelConfig: normalizePointsWheelConfig(db.pointsWheelConfig),
         pointsWheelStudentBag: db.pointsWheelStudentBag ?? [],
+        seatingChartConfig: normalizeSeatingChartConfig(
+          db.seatingChartConfig ?? DEFAULT_SEATING_CHART_CONFIG,
+          new Set(students.map((student) => student.id)),
+        ),
         appSettings: {
           soundEnabled: db.appSettings?.soundEnabled ?? true,
           animationsEnabled: db.appSettings?.animationsEnabled ?? true,

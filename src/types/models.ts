@@ -207,6 +207,25 @@ export interface PointsWheelSegment {
   weight?: number;
 }
 
+export type DeskType = "individual" | "pair" | "group";
+export type BoardPosition = "front" | "back" | "left" | "right";
+
+export interface SeatAssignment {
+  seatId: string;
+  studentIds: string[];
+}
+
+export interface SeatingChartConfig {
+  version: 1;
+  groups: number;
+  rows: number;
+  columnsPerGroup: number;
+  groupGap: number;
+  deskType: DeskType;
+  boardPosition: BoardPosition;
+  seats: SeatAssignment[];
+}
+
 export interface AppData {
   classroomSettings: ClassroomSettings;
   classroomRoles: ClassroomRole[];
@@ -230,5 +249,7 @@ export interface AppData {
   pointsWheelConfig: PointsWheelSegment[];
   /** Prevent-repeat pool for Vòng quay điểm — separate from Lucky Wheel. */
   pointsWheelStudentBag: string[];
+  /** Classroom seating chart layout and assignments. */
+  seatingChartConfig: SeatingChartConfig;
   appSettings: AppSettings;
 }

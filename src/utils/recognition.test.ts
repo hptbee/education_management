@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import type { ClassroomDatabase } from "../database/types";
 import type { Badge, Recognition, RecognitionTitle, Student } from "../types/models";
 import { DEFAULT_POINTS_WHEEL_SEGMENTS } from "./pointsWheelConfig";
+import { normalizeSeatingChartConfig } from "./seatingChart";
 import {
   buildRecognizeStudentsUpdate,
   dedupeRecognitionsByStudent,
@@ -67,6 +68,7 @@ function minimalDb(overrides?: Partial<ClassroomDatabase>): ClassroomDatabase {
     duckRaceStudentBag: [],
     pointsWheelConfig: DEFAULT_POINTS_WHEEL_SEGMENTS.map((s) => ({ ...s })),
     pointsWheelStudentBag: [],
+    seatingChartConfig: normalizeSeatingChartConfig(undefined),
     appSettings: { soundEnabled: true, animationsEnabled: true, cloudBackupEnabled: false },
     ...overrides,
   };
