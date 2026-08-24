@@ -4,6 +4,7 @@ import { DatabaseService } from "./database.service";
 import { MemoryFileStorageAdapter } from "./storage/memory-fs.adapter";
 import { TauriFsClassroomStorage } from "./storage/tauri-fs.storage";
 import { normalizeClassroomDatabase } from "@/src/utils/classroomRoles";
+import { CLASSROOM_A, CLASSROOM_B } from "./test-fixtures/multi-classroom";
 
 vi.mock("./assets/classroom-asset.service", () => ({
   classroomAssetService: {
@@ -145,6 +146,15 @@ describe("DatabaseService", () => {
     const restored = await service.saveCloudRestoredDatabase(cloud);
     expect(restored.students.some((s) => s.id === "cloud-only")).toBe(true);
     expect(restored.students.some((s) => s.id === "local-only")).toBe(false);
+  });
+
+  it("rejects cloud restore when payload id does not match expected classroom key", async () => {
+    const { service } = makeService();
+    await expect(
+      service.saveCloudRestoredDatabase(CLASSROOM_B.db, {
+        expectedClassroomId: CLASSROOM_A.db.metadata.id,
+      }),
+    ).rejects.toThrow(/không khớp/i);
   });
 
   it("rejects unsafe metadata id on import", async () => {
