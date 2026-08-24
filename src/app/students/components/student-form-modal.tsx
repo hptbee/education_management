@@ -9,7 +9,7 @@ import { processImageFile } from '@/src/utils/images'
 import { classroomAssetService } from '@/src/database/assets/classroom-asset.service'
 import { studentAvatarAssetKey } from '@/src/database/assets/classroom-asset-paths'
 import { useAppData } from '@/src/store/AppDataContext'
-import { useClassroomDialog, ClassroomButton, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { useClassroomDialog, ClassroomButton, IconTouchButton, ClassroomDialogFrame } from '@/src/components/classroom'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -54,10 +54,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
       }
     }
   }, [isOpen, initialData])
-
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -122,15 +118,13 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
     : formData
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="student-form-title"
-        tabIndex={-1}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="student-form-title"
+      panelClassName="max-w-2xl"
+    >
+      <div className="flex max-h-[90vh] w-full flex-col rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 id="student-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa học sinh' : 'Thêm học sinh mới'}
@@ -306,6 +300,6 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
           </ClassroomButton>
         </footer>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import type { PointAction, PointHistorySource, Student } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { IconTouchButton, ClassroomDialogFrame, usePointBurst } from '@/src/components/classroom'
 import { createId } from '@/src/utils/id'
 import { playSound } from '@/src/utils/sounds'
 
@@ -19,6 +19,7 @@ interface StudentPointsDialogProps {
 
 export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentPointsDialogProps) {
   const { data, applyPoints } = useAppData()
+  const { spawnPointBurst } = usePointBurst()
   const [reason, setReason] = useState('')
   const [pointValue, setPointValue] = useState(1)
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null)
@@ -40,9 +41,7 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
     }
   }, [isOpen, student?.id, mode])
 
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen || !student) return null
+  if (!student) return null
 
   const isAdd = mode === 'add'
   const title = isAdd ? `Cộng điểm: ${student.name}` : `Trừ điểm: ${student.name}`
@@ -101,6 +100,7 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
     }
 
     applyPoints(student.id, action, undefined, source)
+    spawnPointBurst({ studentId: student.id, delta: action.points })
     playSound(isAdd ? 'success' : 'wrong-answer', {
       enabled: data?.appSettings.soundEnabled ?? true,
     })
@@ -109,15 +109,13 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="student-points-title"
-        tabIndex={-1}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="student-points-title"
+      panelClassName="max-w-lg"
+    >
+      <div className="flex max-h-[90vh] w-full flex-col rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 id="student-points-title" className="font-display text-lg font-extrabold text-slate-800">{title}</h2>
           <IconTouchButton
@@ -204,6 +202,6 @@ export function StudentPointsDialog({ student, mode, isOpen, onClose }: StudentP
           </button>
         </form>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }

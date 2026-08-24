@@ -8,7 +8,7 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { getStudentClassroomRoles } from '@/src/utils/classroomRoles'
 import { getStudentBadges } from '@/src/utils/badges'
-import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { IconTouchButton, ClassroomDialogFrame } from '@/src/components/classroom'
 import { ClassroomRoleBadges } from '@/src/components/ClassroomRoleBadges'
 import { BadgeToggleGrid } from '@/src/app/recognition/components/badge-toggle-grid'
 import {
@@ -28,23 +28,19 @@ interface StudentDetailsModalProps {
 export function StudentDetailsModal({ isOpen, onClose, student, onEdit, onDelete }: StudentDetailsModalProps) {
   const { data, toggleStudentBadge } = useAppData()
   const classroomId = data?.metadata.id
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
+  const badges = data?.badges ?? []
 
   const liveStudent = useMemo(() => {
     if (!student) return null
     return data?.students.find((s) => s.id === student.id) ?? student
   }, [data?.students, student])
 
-  if (!isOpen || !student || !liveStudent) return null
-
-  const badges = data?.badges ?? []
-
-  const teamName = liveStudent.teamId
+  const teamName = liveStudent?.teamId
     ? data?.teams.find((t) => t.id === liveStudent.teamId)?.name ?? 'Chưa có nhóm'
     : 'Chưa có nhóm'
-  const assignedRoles = getStudentClassroomRoles(liveStudent, data?.classroomRoles ?? [])
-  const awardedBadges = getStudentBadges(liveStudent, badges)
-  const recentActivity = data
+  const assignedRoles = liveStudent ? getStudentClassroomRoles(liveStudent, data?.classroomRoles ?? []) : []
+  const awardedBadges = liveStudent ? getStudentBadges(liveStudent, data?.badges ?? []) : []
+  const recentActivity = liveStudent && data
     ? buildClassroomActivity(data)
         .filter(
           (entry) =>
@@ -55,21 +51,20 @@ export function StudentDetailsModal({ isOpen, onClose, student, onEdit, onDelete
     : []
 
   let genderDisplay = ''
-  if (liveStudent.gender === 'female') genderDisplay = 'Nữ'
-  else if (liveStudent.gender === 'male') genderDisplay = 'Nam'
-  else if (liveStudent.gender === 'other') genderDisplay = 'Khác'
+  if (liveStudent?.gender === 'female') genderDisplay = 'Nữ'
+  else if (liveStudent?.gender === 'male') genderDisplay = 'Nam'
+  else if (liveStudent?.gender === 'other') genderDisplay = 'Khác'
   else genderDisplay = 'Chưa rõ'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="student-details-title"
-        tabIndex={-1}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen && Boolean(student && liveStudent)}
+      onClose={onClose}
+      ariaLabelledBy="student-details-title"
+      panelClassName="max-w-2xl"
+    >
+      {student && liveStudent ? (
+        <div className="flex max-h-[90vh] w-full flex-col rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 id="student-details-title" className="font-display text-xl font-extrabold text-slate-800">
             Hồ sơ học sinh
@@ -251,7 +246,8 @@ export function StudentDetailsModal({ isOpen, onClose, student, onEdit, onDelete
 
           </div>
         </div>
-      </div>
-    </div>
+        </div>
+      ) : null}
+    </ClassroomDialogFrame>
   )
 }

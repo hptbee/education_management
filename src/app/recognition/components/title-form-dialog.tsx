@@ -5,7 +5,7 @@ import type { RecognitionTitle } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
 import { EmojiIconPicker } from '@/src/components/EmojiIconPicker'
 import { RECOGNITION_EMOJI_OPTIONS } from '@/src/utils/recognition'
-import { ClassroomButton, useModalFocusTrap } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomDialogFrame } from '@/src/components/classroom'
 
 export function TitleFormDialog({
   isOpen,
@@ -32,20 +32,14 @@ export function TitleFormDialog({
     }
   }, [isOpen, initialData])
 
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="title-form-title"
-        tabIndex={-1}
-        className="w-full max-w-md rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="title-form-title"
+      panelClassName="max-w-md"
+    >
+      <div className="w-full rounded-3xl bg-white shadow-2xl">
         <header className="border-b border-slate-100 p-5">
           <h2 id="title-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa danh hiệu' : 'Thêm danh hiệu mới'}
@@ -112,6 +106,6 @@ export function TitleFormDialog({
           </div>
         </form>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }

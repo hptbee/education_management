@@ -314,7 +314,7 @@ export function PointsWheelDialog({ isOpen, onClose, students }: PointsWheelDial
   const showWheel = phase === 'ready' || phase === 'spinning' || phase === 'result'
 
   return (
-    <GameDialogPortal>
+    <GameDialogPortal open={isOpen}>
       <div
         className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
         onClick={() => void requestClose()}

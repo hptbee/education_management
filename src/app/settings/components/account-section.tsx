@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from 'react'
 import type { LicensePlan } from '@/src/auth/types'
 import { Avatar } from '@/src/components/Avatar'
-import { ClassroomButton, ClassroomCard, useClassroomDialog, useModalFocusTrap } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomCard, ClassroomDialogFrame, useClassroomDialog } from '@/src/components/classroom'
 import { databaseService } from '@/src/database/database.service'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useAuth } from '@/src/store/AuthContext'
@@ -47,24 +47,19 @@ function PlanBenefitsDialog({
   currentPlan: LicensePlan | string | undefined
   onClose: () => void
 }) {
-  const dialogRef = useModalFocusTrap(open, onClose)
-
-  if (!open) return null
-
   const currentPresentation = getPlanPresentation(currentPlan)
   const comparisonPlans = getPublicComparisonPlans()
   const isLifetimeUser = currentPlan === 'lifetime'
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="plan-benefits-title"
-        tabIndex={-1}
-        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={open}
+      onClose={onClose}
+      ariaLabelledBy="plan-benefits-title"
+      panelClassName="max-w-md"
+      zIndexClassName="z-[100]"
+    >
+      <div className="w-full rounded-3xl bg-white p-6 shadow-2xl">
         <h2 id="plan-benefits-title" className="font-display text-xl font-extrabold text-slate-800">
           Quyền lợi theo gói
         </h2>
@@ -116,7 +111,7 @@ function PlanBenefitsDialog({
           </ClassroomButton>
         </div>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }
 

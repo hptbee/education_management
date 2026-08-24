@@ -5,7 +5,7 @@ export function ClassroomCard({ className, ...props }: HTMLAttributes<HTMLDivEle
   return (
     <div
       className={cn(
-        'motion-safe-hover rounded-3xl border border-sky-100 bg-white p-5 shadow-sm',
+        'ui-card-lift rounded-3xl border border-sky-100 bg-white p-5 shadow-sm',
         className,
       )}
       {...props}

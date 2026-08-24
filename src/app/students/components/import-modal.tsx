@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { X, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
-import { useClassroomDialog, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { useClassroomDialog, IconTouchButton, ClassroomDialogFrame } from '@/src/components/classroom'
 import {
   downloadStudentExcelTemplate,
   mapStudentExcelRows,
@@ -33,10 +33,6 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
   const [step, setStep] = useState<1 | 2>(1)
   const [previewData, setPreviewData] = useState<PreviewRow[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen) return null
-
   const handleDownloadTemplate = () => {
     void downloadStudentExcelTemplate()
   }
@@ -88,15 +84,13 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
   const invalidCount = previewData.filter((r) => r.status === 'invalid').length
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="import-students-title"
-        tabIndex={-1}
-        className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="import-students-title"
+      panelClassName="max-w-4xl"
+    >
+      <div className="flex max-h-[90vh] w-full flex-col rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 id="import-students-title" className="font-display text-xl font-extrabold text-slate-800">
             Nhập danh sách từ Excel
@@ -177,6 +171,6 @@ export function ImportModal({ isOpen, onClose, onImport, existingStudents }: Imp
           </footer>
         )}
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }

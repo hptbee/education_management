@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { PencilLine, Plus, Trash2 } from 'lucide-react'
 import type { PointAction } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { IconTouchButton, useModalFocusTrap, ClassroomButton } from '@/src/components/classroom'
+import { IconTouchButton, ClassroomButton, ClassroomDialogFrame } from '@/src/components/classroom'
 import { createId } from '@/src/utils/id'
 
 function PointActionFormDialog({
@@ -32,20 +32,14 @@ function PointActionFormDialog({
     }
   }, [isOpen, initialData])
 
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="point-action-form-title"
-        tabIndex={-1}
-        className="w-full max-w-md rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="point-action-form-title"
+      panelClassName="max-w-md"
+    >
+      <div className="w-full rounded-3xl bg-white shadow-2xl">
         <header className="border-b border-slate-100 p-5">
           <h2 id="point-action-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa hành động điểm' : 'Thêm hành động điểm'}
@@ -130,7 +124,7 @@ function PointActionFormDialog({
           </div>
         </form>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }
 
@@ -140,7 +134,6 @@ export function PointActionsCatalogSection() {
   const [editingAction, setEditingAction] = useState<PointAction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PointAction | null>(null)
   const cancelDelete = useCallback(() => setDeleteTarget(null), [])
-  const deleteDialogRef = useModalFocusTrap(deleteTarget !== null, cancelDelete)
 
   const pointActions = data?.pointActions ?? []
   const rewards = pointActions.filter((action) => action.type === 'reward')
@@ -205,16 +198,14 @@ export function PointActionsCatalogSection() {
         />
       ) : null}
 
-      {deleteTarget ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div
-            ref={deleteDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-point-action-title"
-            tabIndex={-1}
-            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
-          >
+      <ClassroomDialogFrame
+        open={deleteTarget !== null}
+        onClose={cancelDelete}
+        ariaLabelledBy="delete-point-action-title"
+        panelClassName="max-w-md"
+      >
+        {deleteTarget ? (
+          <div className="w-full rounded-3xl bg-white p-6 shadow-2xl">
             <h3 id="delete-point-action-title" className="text-lg font-black text-rose-600">Xóa hành động điểm?</h3>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               Hành động <strong>{deleteTarget.name}</strong> sẽ bị xóa khỏi danh sách nhanh. Lịch sử điểm cũ vẫn được giữ.
@@ -231,8 +222,8 @@ export function PointActionsCatalogSection() {
               </ClassroomButton>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </ClassroomDialogFrame>
     </section>
   )
 }

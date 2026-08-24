@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import type { Gift } from "@/src/types/models";
-import { ClassroomButton, useModalFocusTrap } from "@/src/components/classroom";
+import { ClassroomButton, ClassroomDialogFrame } from "@/src/components/classroom";
 import { classroomAssetService, GIFT_IMAGE } from "@/src/database/assets/classroom-asset.service";
 import { useGiftImageUrl } from "@/src/hooks/useGiftImageUrl";
 import { createId } from "@/src/utils/id";
@@ -35,7 +35,6 @@ export function GiftFormDialog({
   const nameRef = useRef<HTMLInputElement>(null);
 
   const existingImageUrl = useGiftImageUrl(classroomId, !pendingFile ? imagePath : undefined);
-  const dialogRef = useModalFocusTrap(isOpen, onClose);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -53,15 +52,6 @@ export function GiftFormDialog({
   }, [isOpen, initialData]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving) onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, saving, onClose]);
-
-  useEffect(() => {
     if (!pendingFile) {
       setPreviewUrl(null);
       return;
@@ -71,21 +61,20 @@ export function GiftFormDialog({
     return () => URL.revokeObjectURL(url);
   }, [pendingFile]);
 
-  if (!isOpen) return null;
-
   const displayImage = previewUrl ?? existingImageUrl;
   const maxMb = GIFT_IMAGE.maxFileBytes / (1024 * 1024);
+  const handleClose = () => {
+    if (!saving) onClose();
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="gift-form-title"
-        tabIndex={-1}
-        className="w-full max-w-lg rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen}
+      onClose={handleClose}
+      ariaLabelledBy="gift-form-title"
+      panelClassName="max-w-lg"
+    >
+      <div className="w-full rounded-3xl bg-white shadow-2xl">
         <header className="border-b border-sky-50 p-5">
           <h2 id="gift-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? "Chỉnh sửa quà" : "Thêm quà mới"}
@@ -242,7 +231,7 @@ export function GiftFormDialog({
           ) : null}
 
           <div className="flex justify-end gap-2">
-            <ClassroomButton type="button" variant="ghost" onClick={onClose} disabled={saving}>
+            <ClassroomButton type="button" variant="ghost" onClick={handleClose} disabled={saving}>
               Hủy
             </ClassroomButton>
             <ClassroomButton type="submit" disabled={saving || !name.trim()}>
@@ -251,6 +240,6 @@ export function GiftFormDialog({
           </div>
         </form>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   );
 }

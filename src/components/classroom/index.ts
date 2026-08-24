@@ -1,3 +1,6 @@
+export { ClassroomDialogFrame } from './ClassroomDialogFrame'
+export { PageTransition } from './PageTransition'
+export { PointBurstProvider, usePointBurst } from './PointBurstProvider'
 export { ClassroomButton, classroomButtonVariants } from './ClassroomButton'
 export { ClassroomCard } from './ClassroomCard'
 export { ClassroomSelect } from './ClassroomSelect'

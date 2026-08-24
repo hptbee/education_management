@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
 import { ClassroomButton } from './ClassroomButton'
-import { useModalFocusTrap } from './useModalFocusTrap'
+import { ClassroomDialogFrame } from './ClassroomDialogFrame'
 
 type DialogVariant = 'info' | 'warning' | 'error'
 
@@ -138,71 +138,65 @@ export function ClassroomDialogProvider({ children }: { children: ReactNode }) {
   const confirmVariant = variantStyles(confirmState.variant)
   const AlertIcon = alertVariant.icon
   const ConfirmIcon = confirmVariant.icon
-  const alertDialogRef = useModalFocusTrap(alertState.open, closeAlert)
-  const confirmDialogRef = useModalFocusTrap(confirmState.open, cancelConfirm)
 
   return (
     <ClassroomDialogContext.Provider value={value}>
       {children}
 
-      {alertState.open ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div
-            ref={alertDialogRef}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="classroom-alert-title"
-            tabIndex={-1}
-            className="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl"
-          >
-            <div className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${alertVariant.iconWrap}`}>
-              <AlertIcon className="size-8" />
-            </div>
-            <h2 id="classroom-alert-title" className="font-display text-xl font-extrabold text-slate-800">
-              {alertState.title}
-            </h2>
-            <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">{alertState.message}</p>
-            <div className="mt-6">
-              <ClassroomButton className="w-full" onClick={closeAlert}>
-                Đã hiểu
-              </ClassroomButton>
-            </div>
+      <ClassroomDialogFrame
+        open={alertState.open}
+        onClose={closeAlert}
+        role="alertdialog"
+        ariaLabelledBy="classroom-alert-title"
+        zIndexClassName="z-[100]"
+        panelClassName="max-w-md"
+      >
+        <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
+          <div className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${alertVariant.iconWrap}`}>
+            <AlertIcon className="size-8" />
+          </div>
+          <h2 id="classroom-alert-title" className="font-display text-xl font-extrabold text-slate-800">
+            {alertState.title}
+          </h2>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">{alertState.message}</p>
+          <div className="mt-6">
+            <ClassroomButton className="w-full" onClick={closeAlert}>
+              Đã hiểu
+            </ClassroomButton>
           </div>
         </div>
-      ) : null}
+      </ClassroomDialogFrame>
 
-      {confirmState.open ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div
-            ref={confirmDialogRef}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="classroom-confirm-title"
-            tabIndex={-1}
-            className="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl"
-          >
-            <div className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${confirmVariant.iconWrap}`}>
-              <ConfirmIcon className="size-8" />
-            </div>
-            <h2 id="classroom-confirm-title" className="font-display text-xl font-extrabold text-slate-800">
-              {confirmState.title}
-            </h2>
-            <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">{confirmState.message}</p>
-            <div className="mt-6 flex gap-3">
-              <ClassroomButton variant="outline" className="flex-1" onClick={() => closeConfirm(false)}>
-                {confirmState.cancelLabel}
-              </ClassroomButton>
-              <ClassroomButton
-                variant={confirmVariant.confirm}
-                className="flex-1"
-                onClick={() => closeConfirm(true)}
-              >
-                {confirmState.confirmLabel}
-              </ClassroomButton>
-            </div>
+      <ClassroomDialogFrame
+        open={confirmState.open}
+        onClose={cancelConfirm}
+        role="alertdialog"
+        ariaLabelledBy="classroom-confirm-title"
+        zIndexClassName="z-[100]"
+        panelClassName="max-w-md"
+      >
+        <div className="rounded-3xl bg-white p-6 text-center shadow-2xl">
+          <div className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${confirmVariant.iconWrap}`}>
+            <ConfirmIcon className="size-8" />
+          </div>
+          <h2 id="classroom-confirm-title" className="font-display text-xl font-extrabold text-slate-800">
+            {confirmState.title}
+          </h2>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">{confirmState.message}</p>
+          <div className="mt-6 flex gap-3">
+            <ClassroomButton variant="outline" className="flex-1" onClick={() => closeConfirm(false)}>
+              {confirmState.cancelLabel}
+            </ClassroomButton>
+            <ClassroomButton
+              variant={confirmVariant.confirm}
+              className="flex-1"
+              onClick={() => closeConfirm(true)}
+            >
+              {confirmState.confirmLabel}
+            </ClassroomButton>
           </div>
         </div>
-      ) : null}
+      </ClassroomDialogFrame>
     </ClassroomDialogContext.Provider>
   )
 }

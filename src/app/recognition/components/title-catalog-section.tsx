@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { PencilLine, Plus, Trash2 } from 'lucide-react'
 import type { RecognitionTitle } from '@/src/types/models'
 import { useAppData } from '@/src/store/AppDataContext'
-import { ClassroomButton, IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { ClassroomButton, IconTouchButton, ClassroomDialogFrame } from '@/src/components/classroom'
 import { TitleFormDialog } from './title-form-dialog'
 
 export function TitleCatalogSection() {
@@ -13,7 +13,6 @@ export function TitleCatalogSection() {
   const [editingTitle, setEditingTitle] = useState<RecognitionTitle | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<RecognitionTitle | null>(null)
   const cancelDelete = useCallback(() => setDeleteTarget(null), [])
-  const deleteDialogRef = useModalFocusTrap(deleteTarget !== null, cancelDelete)
 
   const titles = data?.recognitionTitles ?? []
   const recognitions = data?.recognitions ?? []
@@ -103,16 +102,14 @@ export function TitleCatalogSection() {
         />
       ) : null}
 
-      {deleteTarget ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div
-            ref={deleteDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-title-title"
-            tabIndex={-1}
-            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
-          >
+      <ClassroomDialogFrame
+        open={deleteTarget !== null}
+        onClose={cancelDelete}
+        ariaLabelledBy="delete-title-title"
+        panelClassName="max-w-md"
+      >
+        {deleteTarget ? (
+          <div className="w-full rounded-3xl bg-white p-6 shadow-2xl">
             <h3 id="delete-title-title" className="text-lg font-black text-rose-600">
               {recognitions.some((r) => r.titleId === deleteTarget.id)
                 ? 'Tắt danh hiệu?'
@@ -145,8 +142,8 @@ export function TitleCatalogSection() {
               </button>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </ClassroomDialogFrame>
     </section>
   )
 }

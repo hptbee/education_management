@@ -151,7 +151,8 @@ export default function PointsPage() {
                   return (
                     <div
                       key={student.id}
-                      className="flex flex-wrap items-center gap-3 rounded-2xl border border-sky-100 bg-white px-3 py-2.5"
+                      data-student-id={student.id}
+                      className="ui-card-lift flex flex-wrap items-center gap-3 rounded-2xl border border-sky-100 bg-white px-3 py-2.5 transition hover:border-brand/20 hover:shadow-sm"
                     >
                       <StudentAvatar
                         student={student}

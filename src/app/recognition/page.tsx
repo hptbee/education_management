@@ -123,7 +123,7 @@ function RecognitionPageContent() {
               aria-selected={activeTab === tab.id}
               aria-controls={`recognition-panel-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex min-h-11 items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-extrabold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+              className={`flex min-h-11 items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-extrabold transition-all duration-[var(--motion-normal)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                 activeTab === tab.id
                   ? 'bg-brand text-white shadow-lg shadow-sky-200'
                   : 'bg-white/80 text-slate-500 ring-1 ring-sky-100 hover:bg-brand-soft hover:text-brand-dark'

@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 import { AppDataProvider } from '@/src/store/AppDataContext'
 import { AuthProvider } from '@/src/store/AuthContext'
 import { PresentationModeProvider } from '@/src/store/PresentationModeContext'
-import { ClassroomDialogProvider, ClassroomToaster } from '@/src/components/classroom'
+import { ClassroomDialogProvider, ClassroomToaster, PointBurstProvider } from '@/src/components/classroom'
 import { AppShell } from '@/src/components/AppShell'
 import { AccessGate } from '@/src/components/access-gate'
 import { ClassroomDocumentTitle } from '@/src/components/ClassroomDocumentTitle'
@@ -49,10 +49,12 @@ export default function RootLayout({
             <PresentationModeProvider>
               <ClassroomDialogProvider>
                 <ClassroomToaster />
-                <AccessGate>
-                  <ClassroomDocumentTitle />
-                  <AppShell>{children}</AppShell>
-                </AccessGate>
+                <PointBurstProvider>
+                  <AccessGate>
+                    <ClassroomDocumentTitle />
+                    <AppShell>{children}</AppShell>
+                  </AccessGate>
+                </PointBurstProvider>
               </ClassroomDialogProvider>
             </PresentationModeProvider>
           </AppDataProvider>

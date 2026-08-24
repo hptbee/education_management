@@ -41,7 +41,8 @@ export function StudentCard({ student, teams, classroomRoles, badges, onView, on
 
   return (
     <div
-      className="group relative flex flex-col items-center rounded-3xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-md focus-within:ring-2 focus-within:ring-brand/30"
+      data-student-id={student.id}
+      className="group ui-card-lift relative flex flex-col items-center rounded-3xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-md focus-within:ring-2 focus-within:ring-brand/30"
     >
       <div className="absolute right-1 top-1 z-10 flex gap-0.5 sm:right-2 sm:top-2">
         <IconTouchButton
@@ -70,7 +71,7 @@ export function StudentCard({ student, teams, classroomRoles, badges, onView, on
             student={student}
             classroomId={classroomId}
             alt=""
-            className={`size-[4.5rem] rounded-full border-2 border-white ring-4 shadow-sm ${gender.ring}`}
+            className={`size-[4.5rem] rounded-full border-2 border-white ring-4 shadow-sm transition-transform duration-[var(--motion-normal)] group-hover:scale-[1.03] ${gender.ring}`}
           />
           {student.gender && student.gender !== 'unknown' && (
             <span className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full border-2 border-white bg-white text-sm shadow-sm">

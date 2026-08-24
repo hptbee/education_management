@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react'
 import type { Student } from '@/src/types/models'
-import { ClassroomButton, useModalFocusTrap } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomDialogFrame } from '@/src/components/classroom'
 
 interface DeleteConfirmModalProps {
   isOpen: boolean
@@ -12,20 +12,16 @@ interface DeleteConfirmModalProps {
 }
 
 export function DeleteConfirmModal({ isOpen, onClose, onConfirm, student }: DeleteConfirmModalProps) {
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen || !student) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-student-title"
-        tabIndex={-1}
-        className="flex w-full max-w-md flex-col rounded-3xl bg-white p-6 shadow-2xl text-center items-center"
-      >
+    <ClassroomDialogFrame
+      open={isOpen && Boolean(student)}
+      onClose={onClose}
+      role="alertdialog"
+      ariaLabelledBy="delete-student-title"
+      panelClassName="max-w-md"
+    >
+      {student ? (
+      <div className="flex w-full flex-col items-center rounded-3xl bg-white p-6 text-center shadow-2xl">
         <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-red-100 text-red-500">
           <AlertTriangle className="size-8" />
         </div>
@@ -56,6 +52,7 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, student }: Dele
           </ClassroomButton>
         </div>
       </div>
-    </div>
+      ) : null}
+    </ClassroomDialogFrame>
   )
 }

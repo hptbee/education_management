@@ -1,7 +1,7 @@
 'use client'
 
 import { Shuffle, AlertCircle } from 'lucide-react'
-import { useModalFocusTrap } from '@/src/components/classroom'
+import { ClassroomDialogFrame } from '@/src/components/classroom'
 
 interface RandomizeDialogProps {
   isOpen: boolean
@@ -12,20 +12,14 @@ interface RandomizeDialogProps {
 }
 
 export function RandomizeDialog({ isOpen, onClose, onConfirm, unassignedCount, teamCount }: RandomizeDialogProps) {
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="randomize-title"
-        tabIndex={-1}
-        className="w-full max-w-md rounded-3xl bg-white p-6 text-left shadow-2xl"
-      >
+    <ClassroomDialogFrame
+      open={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="randomize-title"
+      panelClassName="max-w-md"
+    >
+      <div className="w-full rounded-3xl bg-white p-6 text-left shadow-2xl">
         <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-brand-purple/10 text-brand-purple">
           <Shuffle className="size-6" />
         </div>
@@ -62,6 +56,6 @@ export function RandomizeDialog({ isOpen, onClose, onConfirm, unassignedCount, t
           </button>
         </div>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }

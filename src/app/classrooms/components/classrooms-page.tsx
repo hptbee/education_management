@@ -18,11 +18,11 @@ import { Field, Input } from '@/src/components/ui'
 import {
   ClassroomButton,
   ClassroomCard,
+  ClassroomDialogFrame,
   EmptyState,
   IconTouchButton,
   PageHeader,
   useClassroomDialog,
-  useModalFocusTrap,
 } from '@/src/components/classroom'
 import { useClassroomList } from '@/src/hooks/useClassroomList'
 import type { DatabaseSummary } from '@/src/database/types'
@@ -51,32 +51,21 @@ function ModalShell({
   onClose: () => void
   children: React.ReactNode
 }) {
-  const trapRef = useModalFocusTrap(open, onClose)
-
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/40"
-        aria-label="Đóng"
-        onClick={onClose}
-      />
-      <div
-        ref={trapRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="classroom-modal-title"
-        tabIndex={-1}
-        className="relative z-10 w-full max-w-md rounded-3xl border border-sky-100 bg-white p-6 shadow-xl"
-      >
+    <ClassroomDialogFrame
+      open={open}
+      onClose={onClose}
+      ariaLabelledBy="classroom-modal-title"
+      panelClassName="max-w-md"
+      zIndexClassName="z-[120]"
+    >
+      <div className="w-full rounded-3xl border border-sky-100 bg-white p-6 shadow-xl">
         <h2 id="classroom-modal-title" className="font-display text-xl font-extrabold text-slate-800">
           {title}
         </h2>
         <div className="mt-5">{children}</div>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }
 

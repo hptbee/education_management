@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { Team } from '@/src/types/models'
 import { createId } from '@/src/utils/id'
-import { IconTouchButton, useModalFocusTrap } from '@/src/components/classroom'
+import { IconTouchButton, ClassroomDialogFrame } from '@/src/components/classroom'
 import { EmojiIconPicker } from '@/src/components/EmojiIconPicker'
 import { TEAM_EMOJI_OPTIONS } from '@/src/utils/emojiIcons'
 
@@ -37,10 +37,6 @@ export function TeamFormDialog({ isOpen, onClose, onSave, initialData }: TeamFor
     }
   }, [isOpen, initialData])
 
-  const dialogRef = useModalFocusTrap(isOpen, onClose)
-
-  if (!isOpen) return null
-
   const handlePreset = (preset: { icon: string; name: string }) => {
     setIcon(preset.icon)
     if (!name) setName(preset.name)
@@ -64,15 +60,8 @@ export function TeamFormDialog({ isOpen, onClose, onSave, initialData }: TeamFor
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="team-form-title"
-        tabIndex={-1}
-        className="w-full max-w-md rounded-3xl bg-white shadow-2xl"
-      >
+    <ClassroomDialogFrame open={isOpen} onClose={onClose} ariaLabelledBy="team-form-title" panelClassName="max-w-md">
+      <div className="w-full rounded-3xl bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-100 p-5">
           <h2 id="team-form-title" className="font-display text-xl font-extrabold text-slate-800">
             {initialData ? 'Chỉnh sửa tổ' : 'Tạo tổ mới'}
@@ -130,6 +119,6 @@ export function TeamFormDialog({ isOpen, onClose, onSave, initialData }: TeamFor
           </button>
         </footer>
       </div>
-    </div>
+    </ClassroomDialogFrame>
   )
 }

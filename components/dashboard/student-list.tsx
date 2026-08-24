@@ -26,13 +26,14 @@ function StudentCard({
   return (
     <Link
       href="/students"
-      className="motion-safe-hover flex flex-col items-center rounded-2xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+      data-student-id={student.id}
+      className="group motion-safe-hover ui-card-lift flex flex-col items-center rounded-2xl border border-sky-100 bg-white px-3 pb-3 pt-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
     >
       <StudentAvatar
         student={student}
         classroomId={classroomId}
         alt={student.name}
-        className={`size-14 rounded-full ring-2 ring-offset-2 ${
+        className={`size-14 rounded-full ring-2 ring-offset-2 transition-transform duration-[var(--motion-normal)] group-hover:scale-[1.03] ${
           student.gender === 'female' ? 'ring-pink-200' : 'ring-sky-200'
         }`}
       />
