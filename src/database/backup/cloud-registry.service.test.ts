@@ -4,9 +4,17 @@ import {
   hydrateClassroomFromCloud,
   HydrateCancelledError,
   mergeAndRememberRegistry,
+  pushClassroomRegistryMerge,
   resetRegistryPullStateForTests,
 } from "./cloud-registry.service";
 import type { CloudClassroomsRegistryFile } from "./cloud-types";
+import {
+  CLASSROOM_A,
+  CLASSROOM_B,
+  CLASSROOM_C,
+  registryEntryFromFixture,
+  registrySummaryFromFixture,
+} from "../test-fixtures/multi-classroom";
 
 vi.mock("@/src/auth/api", () => ({
   fetchClassroomsRegistry: vi.fn(),
@@ -48,10 +56,15 @@ vi.mock("./cloud-restore-sync", () => ({
   recordCloudRestoreSyncBaseline: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("./cloud-sync.service", () => ({
+  uploadRegistryMerge: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { fetchClassroomsRegistry, restoreCloudClassroom, restoreCloudClassroomAssets } from "@/src/auth/api";
 import { databaseService } from "../database.service";
 import { createEmptyDatabase } from "../database.factory";
 import { recordCloudRestoreSyncBaseline } from "./cloud-restore-sync";
+import { uploadRegistryMerge } from "./cloud-sync.service";
 
 const sampleRegistry: CloudClassroomsRegistryFile = {
   version: 1,
@@ -231,5 +244,84 @@ describe("cloud-registry.service", () => {
       "Không tìm thấy bản sao lưu trên đám mây.",
     );
     expect(databaseService.saveCloudRestoredDatabase).not.toHaveBeenCalled();
+  });
+
+  it("does not save when restored payload id does not match requested classroom key", async () => {
+    const payload = CLASSROOM_B.db;
+    vi.mocked(restoreCloudClassroom).mockResolvedValue(payload);
+    vi.mocked(restoreCloudClassroomAssets).mockResolvedValue([]);
+    vi.mocked(databaseService.saveCloudRestoredDatabase).mockImplementation(async (data, options) => {
+      const db = data as typeof payload;
+      if (options?.expectedClassroomId && db.metadata.id !== options.expectedClassroomId) {
+        throw new Error(
+          `ID lớp không khớp: mong đợi "${options.expectedClassroomId}", nhận "${db.metadata.id}".`,
+        );
+      }
+      return db;
+    });
+
+    await expect(hydrateClassroomFromCloud(CLASSROOM_A.db.metadata.id)).rejects.toThrow(/không khớp/i);
+    expect(databaseService.saveCloudRestoredDatabase).toHaveBeenCalledWith(
+      payload,
+      expect.objectContaining({ expectedClassroomId: CLASSROOM_A.db.metadata.id }),
+    );
+  });
+
+  it("pushClassroomRegistryMerge never uploads empty registry over populated remote", async () => {
+    const remoteRegistry: CloudClassroomsRegistryFile = {
+      version: 1,
+      updatedAt: "2026-01-02T00:00:00.000Z",
+      classrooms: [
+        registryEntryFromFixture(CLASSROOM_A),
+        registryEntryFromFixture(CLASSROOM_B),
+        registryEntryFromFixture(CLASSROOM_C),
+      ],
+    };
+
+    vi.mocked(fetchClassroomsRegistry).mockResolvedValue({
+      registry: remoteRegistry,
+      source: "registry",
+    });
+    await ensureRegistryPulled();
+
+    await pushClassroomRegistryMerge([]);
+
+    expect(uploadRegistryMerge).toHaveBeenCalledTimes(1);
+    const uploaded = vi.mocked(uploadRegistryMerge).mock.calls[0]?.[0];
+    expect(uploaded?.classrooms.map((entry) => entry.key).sort()).toEqual(
+      [
+        CLASSROOM_A.db.metadata.id,
+        CLASSROOM_B.db.metadata.id,
+        CLASSROOM_C.db.metadata.id,
+      ].sort(),
+    );
+  });
+
+  it("pushClassroomRegistryMerge unions local D with remote A/B/C", async () => {
+    const remoteRegistry: CloudClassroomsRegistryFile = {
+      version: 1,
+      updatedAt: "2026-01-02T00:00:00.000Z",
+      classrooms: [
+        registryEntryFromFixture(CLASSROOM_A),
+        registryEntryFromFixture(CLASSROOM_B),
+        registryEntryFromFixture(CLASSROOM_C),
+      ],
+    };
+    vi.mocked(fetchClassroomsRegistry).mockResolvedValue({
+      registry: remoteRegistry,
+      source: "registry",
+    });
+    await ensureRegistryPulled();
+
+    await pushClassroomRegistryMerge([registrySummaryFromFixture(CLASSROOM_A)]);
+
+    const uploaded = vi.mocked(uploadRegistryMerge).mock.calls.at(-1)?.[0];
+    expect(uploaded?.classrooms.map((entry) => entry.key).sort()).toEqual(
+      [
+        CLASSROOM_A.db.metadata.id,
+        CLASSROOM_B.db.metadata.id,
+        CLASSROOM_C.db.metadata.id,
+      ].sort(),
+    );
   });
 });

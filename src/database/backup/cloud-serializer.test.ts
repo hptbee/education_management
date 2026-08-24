@@ -252,4 +252,52 @@ describe("mergeClassroomRegistries", () => {
     );
     expect(merged.classrooms).toEqual([]);
   });
+
+  it("keeps remote A/B/C when local registry is empty", () => {
+    const remote = {
+      version: 1 as const,
+      updatedAt: "2026-01-01",
+      classrooms: [entryA, entryB, { ...entryA, key: "c", name: "Lớp C" }],
+    };
+    const merged = mergeClassroomRegistries(
+      { version: 1, updatedAt: "2026-01-01", classrooms: [] },
+      remote,
+    );
+    expect(merged.classrooms.map((c) => c.key).sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("merges local A with remote A/B/C into A/B/C", () => {
+    const local = {
+      version: 1 as const,
+      updatedAt: "2026-01-01",
+      classrooms: [entryA],
+    };
+    const remote = {
+      version: 1 as const,
+      updatedAt: "2026-01-01",
+      classrooms: [entryA, entryB, { ...entryA, key: "c", name: "Lớp C" }],
+    };
+    const merged = mergeClassroomRegistries(local, remote);
+    expect(merged.classrooms.map((c) => c.key).sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("merges local-only D with remote A/B/C into A/B/C/D", () => {
+    const entryD = {
+      key: "d",
+      name: "Lớp D",
+      schoolYear: "2026-2027",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-04T00:00:00.000Z",
+      archived: false,
+    };
+    const merged = mergeClassroomRegistries(
+      { version: 1, updatedAt: "2026-01-01", classrooms: [entryD] },
+      {
+        version: 1,
+        updatedAt: "2026-01-01",
+        classrooms: [entryA, entryB, { ...entryA, key: "c", name: "Lớp C" }],
+      },
+    );
+    expect(merged.classrooms.map((c) => c.key).sort()).toEqual(["a", "b", "c", "d"]);
+  });
 });
