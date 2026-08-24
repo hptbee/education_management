@@ -173,7 +173,7 @@ Page title: **Thử thách & Công cụ**. Two sections plus a points strip:
 
 **Points Challenge** — top-students strip with shortcut to the points page
 
-Presentation mode hides the sidebar and enlarges the tools layout for classroom display.
+**Application shell:** shared sidebar (`components/sidebar.tsx`) + main content via `AppShell`. Sidebar shows active classroom context (teacher avatar, class, full school year), collapsible icon rail on desktop, and local/cloud save status in the footer. Presentation mode hides the sidebar and enlarges the tools layout for classroom display.
 
 ### Other
 - **Tuyên dương** (`/recognition`) — ceremony, badge roster, title catalog (1:1 badge per title), Wall of Fame; `/badges` redirects here

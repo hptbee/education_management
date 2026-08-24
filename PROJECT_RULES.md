@@ -50,10 +50,15 @@ All feature pages must render inside the application shell.
 Expected structure:
 
 App
-└── AppLayout
-    ├── Sidebar
-    ├── Header
+└── AppLayout (`AppShell`)
+    ├── Sidebar (`components/sidebar.tsx`)
+    │   ├── Class switcher (`SidebarClassContext`)
+    │   ├── Section nav (Trang chủ, Lớp học, …)
+    │   └── Footer (save status, Quản lý lớp, Cài đặt)
+    ├── Header (mobile menu bar)
     └── Page Content
+
+Collapse state: `NavSidebarProvider` in `AppShell` → `useNavSidebar()` in `Sidebar`.
 
 Feature pages must only replace:
 

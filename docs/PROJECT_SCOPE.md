@@ -749,7 +749,7 @@ Allow the teacher to update classroom identity after initial setup.
 
 ## Editable Fields
 
-- Class name (display label on sidebar and dashboard)
+- Class name (display label on sidebar class switcher and dashboard)
 - Class avatar
 - Teacher name
 - Teacher avatar
@@ -1833,37 +1833,34 @@ Prioritize:
 
 Keep navigation simple.
 
-Suggested structure:
+Implemented sidebar (`components/sidebar.tsx`) — flat sections, no nested routes in the menu:
 
 ```text
-Dashboard
+Trang chủ (`/`)
 
-Classroom
-├── Students
-├── Teams
-├── Quản lý lớp (`/classrooms`) — list, create, import, cloud restore
-└── Cài đặt lớp (`/classrooms/manage`)
-    ├── Hồ sơ — identity & banner
-    ├── Vai trò — role catalog
-    ├── Dữ liệu — backup, switch class, rename DB
-    └── Nguy hiểm — delete class (hidden unless `showDangerTab` is enabled)
+Lớp học
+├── Học sinh (`/students`)
+└── Tổ / Nhóm (`/teams`)
 
-Account
-└── Settings (`/settings`) — Google account & license only
+Điểm & quà
+├── Tích điểm (`/points`)
+├── Bảng xếp hạng (`/ranking`)
+└── Quà tặng (`/rewards`)
 
-Activities
-├── Tools (`/tools`) — Lucky Wheel, Đua vịt, Vòng quay điểm, Study Timer, Chọn ngẫu nhiên, Points Challenge
-├── Games (legacy → `/tools`)
-└── Recognition
+Hoạt động
+├── Công cụ (`/tools`) — Lucky Wheel, Đua vịt, Vòng quay điểm, Study Timer, Chọn ngẫu nhiên, Points Challenge
+├── Tuyên dương (`/recognition`)
+└── Lịch sử (`/history`)
 
-Gamification
-├── Points
-├── Rewards
-├── Badges
-└── Leaderboard
+Footer (always visible when expanded)
+├── Local / cloud save status (`SidebarPersistenceStatus`)
+├── Quản lý lớp (`/classrooms`)
+└── Cài đặt (`/settings`) — account & license only
 ```
 
-The final sidebar may flatten or reorganize these items if doing so improves fast classroom use.
+**Classroom switcher** (`SidebarClassContext` at top of sidebar): teacher avatar, name, class label, and full school year (`Năm học …` on its own line). Opens a menu to switch active class, add class, or open **Quản lý lớp**.
+
+**Collapsible sidebar (desktop):** edge-mounted toggle on the sidebar border; collapsed state shows icon-only rail (`NavSidebarContext` + `AppShell`). Mobile uses the drawer overlay; collapse toggle is desktop-only.
 
 Avoid deep nested navigation.
 
@@ -2211,14 +2208,37 @@ Primary layout:
 
 # 12.3 Sidebar
 
+Implementation: `components/sidebar.tsx`, `components/sidebar-class-context.tsx`, `components/sidebar-persistence-status.tsx`; collapse state in `src/store/NavSidebarContext.tsx` (provided by `AppShell`).
+
 Use:
 
-- Purple/blue identity direction
-- Large navigation items
+- Pastel sky / soft white identity (see §12.8 — brand sky `#4ba3e8`, not corporate purple admin)
+- Large navigation items with Lucide icons
 - Friendly icons
-- Large click targets
-- Rounded active item
+- Large click targets (`min-h-10` links, 44px icon buttons)
+- Rounded active item with left accent bar and white background
 - Clear selected state
+
+**Profile / class switcher (top):**
+
+- 72×72px teacher avatar (`TeacherAvatar`, explicit `size-[72px]`)
+- Teacher name (truncate with `title` when long)
+- Class label on its own line (e.g. `Lớp 2/7`)
+- Full school year on its own line (e.g. `Năm học 2026-2027` — do not truncate)
+- Chevron opens classroom switcher menu (active classes, **Thêm lớp mới**, **Quản lý lớp**)
+
+**Collapse control (desktop `md+`):**
+
+- Circular toggle mounted on the sidebar's right edge, vertically centered on the profile card
+- Expanded: full labels; collapsed: icon-only rail (~64px width)
+- Does not compete with profile text width (not placed beside the switcher card)
+
+**Footer block:**
+
+- Plan badge and local/cloud save lines (link to **Cài đặt → Tài khoản**)
+- **Quản lý lớp** and **Cài đặt** nav links
+
+Presentation mode hides the sidebar entirely (see tools / recognition fullscreen flows).
 
 # 12.4 Cards
 
