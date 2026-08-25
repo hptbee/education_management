@@ -11,6 +11,7 @@ import {
   EmptyState,
   ClassroomButton,
   ClassroomCard,
+  AnimatedEntrance,
 } from "@/src/components/classroom";
 import type { Gift } from "@/src/types/models";
 import { GiftCard } from "./gift-card";
@@ -95,20 +96,21 @@ export function GiftCabinetPage() {
 
   const renderGrid = (items: Gift[]) => (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((gift) => (
-        <GiftCard
-          key={gift.id}
-          gift={gift}
-          classroomId={classroomId}
-          onEdit={() => {
-            setEditingGift(gift);
-            setFormOpen(true);
-          }}
-          onToggleActive={() => void handleToggleActive(gift)}
-          onRedeem={() => setRedeemGiftTarget(gift)}
-          redeemDisabled={students.length === 0}
-          onDelete={() => void handleDelete(gift)}
-        />
+      {items.map((gift, index) => (
+        <AnimatedEntrance key={gift.id} variant="random" staggerIndex={index}>
+          <GiftCard
+            gift={gift}
+            classroomId={classroomId}
+            onEdit={() => {
+              setEditingGift(gift);
+              setFormOpen(true);
+            }}
+            onToggleActive={() => void handleToggleActive(gift)}
+            onRedeem={() => setRedeemGiftTarget(gift)}
+            redeemDisabled={students.length === 0}
+            onDelete={() => void handleDelete(gift)}
+          />
+        </AnimatedEntrance>
       ))}
     </div>
   );

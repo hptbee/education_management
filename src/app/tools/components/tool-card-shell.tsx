@@ -2,7 +2,7 @@
 
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { ClassroomCard } from '@/src/components/classroom'
+import { ClassroomCard, AnimatedEntrance } from '@/src/components/classroom'
 import { cn } from '@/lib/utils'
 
 interface ToolCardShellProps {
@@ -12,6 +12,7 @@ interface ToolCardShellProps {
   description: string
   children: ReactNode
   className?: string
+  entranceIndex?: number
 }
 
 export function ToolCardShell({
@@ -21,9 +22,11 @@ export function ToolCardShell({
   description,
   children,
   className,
+  entranceIndex = 0,
 }: ToolCardShellProps) {
   return (
-    <ClassroomCard className={cn('flex h-full min-h-[320px] flex-col', className)}>
+    <AnimatedEntrance variant="random" staggerIndex={entranceIndex}>
+      <ClassroomCard className={cn('flex h-full min-h-[320px] flex-col', className)}>
       <header className="mb-4 flex items-start gap-3">
         <span
           className={cn(
@@ -39,7 +42,8 @@ export function ToolCardShell({
         </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-    </ClassroomCard>
+      </ClassroomCard>
+    </AnimatedEntrance>
   )
 }
 

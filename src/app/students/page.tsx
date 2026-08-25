@@ -16,7 +16,7 @@ import { StudentFormModal } from './components/student-form-modal'
 import { StudentDetailsModal } from './components/student-details-modal'
 import { DeleteConfirmModal } from './components/delete-confirm-modal'
 import { ImportModal } from './components/import-modal'
-import { PageHeader, EmptyState, ClassroomButton, ClassroomCard, IconTouchButton, ClassroomSelect } from '@/src/components/classroom'
+import { PageHeader, EmptyState, ClassroomButton, ClassroomCard, IconTouchButton, ClassroomSelect, AnimatedEntrance } from '@/src/components/classroom'
 
 // ─── Summary Card ────────────────────────────────────────────────────────────
 function SummaryCard({
@@ -219,33 +219,41 @@ export default function StudentsPage() {
         />
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <SummaryCard
-            emoji="👩‍🏫"
-            label="Tổng số"
-            value={students.length}
-            sub="học sinh"
-            color="bg-pastel-sky"
-          />
-          <SummaryCard
-            emoji="👦"
-            label="Nam"
-            value={totalMale}
-            sub="học sinh"
-            color="bg-brand-soft"
-          />
-          <SummaryCard
-            emoji="👧"
-            label="Nữ"
-            value={totalFemale}
-            sub="học sinh"
-            color="bg-pastel-pink"
-          />
-          <SummaryCard
-            emoji="🏆"
-            label="Đã chia tổ"
-            value={`${totalAssigned}/${students.length}`}
-            color="bg-pastel-yellow"
-          />
+          <AnimatedEntrance variant="random" staggerIndex={0}>
+            <SummaryCard
+              emoji="👩‍🏫"
+              label="Tổng số"
+              value={students.length}
+              sub="học sinh"
+              color="bg-pastel-sky"
+            />
+          </AnimatedEntrance>
+          <AnimatedEntrance variant="random" staggerIndex={1}>
+            <SummaryCard
+              emoji="👦"
+              label="Nam"
+              value={totalMale}
+              sub="học sinh"
+              color="bg-brand-soft"
+            />
+          </AnimatedEntrance>
+          <AnimatedEntrance variant="random" staggerIndex={2}>
+            <SummaryCard
+              emoji="👧"
+              label="Nữ"
+              value={totalFemale}
+              sub="học sinh"
+              color="bg-pastel-pink"
+            />
+          </AnimatedEntrance>
+          <AnimatedEntrance variant="random" staggerIndex={3}>
+            <SummaryCard
+              emoji="🏆"
+              label="Đã chia tổ"
+              value={`${totalAssigned}/${students.length}`}
+              color="bg-pastel-yellow"
+            />
+          </AnimatedEntrance>
         </div>
 
         <ClassroomCard className="space-y-3">
@@ -421,17 +429,18 @@ export default function StudentsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {filteredStudents.map(student => (
-                <StudentCard
-                  key={student.id}
-                  student={student}
-                  teams={teams}
-                  classroomRoles={classroomRoles}
-                  badges={badges}
-                  onView={handleOpenDetails}
-                  onEdit={handleOpenEdit}
-                  onDelete={handleOpenDelete}
-                />
+              {filteredStudents.map((student, index) => (
+                <AnimatedEntrance key={student.id} variant="random" staggerIndex={index}>
+                  <StudentCard
+                    student={student}
+                    teams={teams}
+                    classroomRoles={classroomRoles}
+                    badges={badges}
+                    onView={handleOpenDetails}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleOpenDelete}
+                  />
+                </AnimatedEntrance>
               ))}
             </div>
           </>

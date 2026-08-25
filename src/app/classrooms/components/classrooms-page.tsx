@@ -23,6 +23,7 @@ import {
   IconTouchButton,
   PageHeader,
   useClassroomDialog,
+  AnimatedEntrance,
 } from '@/src/components/classroom'
 import { useClassroomList } from '@/src/hooks/useClassroomList'
 import type { DatabaseSummary } from '@/src/database/types'
@@ -575,39 +576,40 @@ export function ClassroomsPage() {
               </ClassroomCard>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                {activeClassrooms.map((classroom) => (
-                  <ClassroomManagementCard
-                    key={classroom.id}
-                    classroom={classroom}
-                    isActive={activeId === classroom.id}
-                    busy={busy}
-                    hydrateError={hydrateErrors[classroom.id]}
-                    hasCloudBackupPermission={hasCloudBackupPermission}
-                    onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
-                    onSwitch={() => void handleSwitch(classroom.id)}
-                    onManage={() =>
-                      router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
-                    }
-                    onDuplicate={() => {
-                      setTarget(classroom)
-                      setDupDraft({
-                        className: '',
-                        schoolYear: defaultSchoolYear(),
-                        mode: 'settings-only',
-                      })
-                      setModal('duplicate')
-                    }}
-                    onArchive={() => {
-                      setTarget(classroom)
-                      setModal('archive')
-                    }}
-                    onDelete={() => {
-                      setTarget(classroom)
-                      setDeleteInput('')
-                      setModal('delete')
-                    }}
-                    onRestore={() => void handleRestore(classroom)}
-                  />
+                {activeClassrooms.map((classroom, index) => (
+                  <AnimatedEntrance key={classroom.id} variant="random" staggerIndex={index}>
+                    <ClassroomManagementCard
+                      classroom={classroom}
+                      isActive={activeId === classroom.id}
+                      busy={busy}
+                      hydrateError={hydrateErrors[classroom.id]}
+                      hasCloudBackupPermission={hasCloudBackupPermission}
+                      onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
+                      onSwitch={() => void handleSwitch(classroom.id)}
+                      onManage={() =>
+                        router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
+                      }
+                      onDuplicate={() => {
+                        setTarget(classroom)
+                        setDupDraft({
+                          className: '',
+                          schoolYear: defaultSchoolYear(),
+                          mode: 'settings-only',
+                        })
+                        setModal('duplicate')
+                      }}
+                      onArchive={() => {
+                        setTarget(classroom)
+                        setModal('archive')
+                      }}
+                      onDelete={() => {
+                        setTarget(classroom)
+                        setDeleteInput('')
+                        setModal('delete')
+                      }}
+                      onRestore={() => void handleRestore(classroom)}
+                    />
+                  </AnimatedEntrance>
                 ))}
               </div>
             )}
@@ -617,28 +619,29 @@ export function ClassroomsPage() {
             <section className="grid gap-4">
               <h2 className="font-display text-lg font-extrabold text-slate-800">Đã lưu trữ</h2>
               <div className="grid gap-4 md:grid-cols-2">
-                {archivedClassrooms.map((classroom) => (
-                  <ClassroomManagementCard
-                    key={classroom.id}
-                    classroom={classroom}
-                    isActive={activeId === classroom.id}
-                    busy={busy}
-                    hydrateError={hydrateErrors[classroom.id]}
-                    hasCloudBackupPermission={hasCloudBackupPermission}
-                    onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
-                    onSwitch={() => void handleSwitch(classroom.id)}
-                    onManage={() =>
-                      router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
-                    }
-                    onDuplicate={() => {}}
-                    onArchive={() => {}}
-                    onDelete={() => {
-                      setTarget(classroom)
-                      setDeleteInput('')
-                      setModal('delete')
-                    }}
-                    onRestore={() => void handleRestore(classroom)}
-                  />
+                {archivedClassrooms.map((classroom, index) => (
+                  <AnimatedEntrance key={classroom.id} variant="random" staggerIndex={index}>
+                    <ClassroomManagementCard
+                      classroom={classroom}
+                      isActive={activeId === classroom.id}
+                      busy={busy}
+                      hydrateError={hydrateErrors[classroom.id]}
+                      hasCloudBackupPermission={hasCloudBackupPermission}
+                      onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
+                      onSwitch={() => void handleSwitch(classroom.id)}
+                      onManage={() =>
+                        router.push(`/classrooms/manage?id=${encodeURIComponent(classroom.id)}`)
+                      }
+                      onDuplicate={() => {}}
+                      onArchive={() => {}}
+                      onDelete={() => {
+                        setTarget(classroom)
+                        setDeleteInput('')
+                        setModal('delete')
+                      }}
+                      onRestore={() => void handleRestore(classroom)}
+                    />
+                  </AnimatedEntrance>
                 ))}
               </div>
             </section>

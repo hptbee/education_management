@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowLeft, School, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { ClassroomButton, PageHeader } from '@/src/components/classroom'
+import { ClassroomButton, PageHeader, AnimatedEntrance } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import { ClassroomRolesSection } from '@/src/app/settings/components/classroom-roles-section'
 import { DataSection } from '@/src/app/settings/components/data-section'
@@ -225,7 +225,8 @@ export function ClassroomManagePage() {
       )}
 
       {showProfileSection && (
-        <ProfileSection
+        <AnimatedEntrance variant="random">
+          <ProfileSection
           teacherDraft={teacherDraft}
           classroomDraft={classroomDraft}
           schoolYear={data.classroomSettings.schoolYear}
@@ -237,12 +238,18 @@ export function ClassroomManagePage() {
           onError={setError}
           onGoToDataTab={() => setActiveTab('data')}
         />
+        </AnimatedEntrance>
       )}
 
-      {showRolesSection && <ClassroomRolesSection />}
+      {showRolesSection && (
+        <AnimatedEntrance variant="random">
+          <ClassroomRolesSection />
+        </AnimatedEntrance>
+      )}
 
       {activeTab === 'data' && (
-        <DataSection
+        <AnimatedEntrance variant="random">
+          <DataSection
           data={data}
           renameDraft={renameDraft}
           renaming={renaming}
@@ -259,6 +266,7 @@ export function ClassroomManagePage() {
           }}
           onCloudBackupEnabledChange={(enabled) => updateAppSettings({ cloudBackupEnabled: enabled })}
         />
+        </AnimatedEntrance>
       )}
     </div>
   )

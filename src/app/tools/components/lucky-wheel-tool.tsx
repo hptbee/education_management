@@ -50,6 +50,7 @@ export function LuckyWheelTool() {
         iconBg="bg-pastel-sky"
         title="Vòng quay may mắn"
         description="Quay vòng lớn để cả lớp cùng xem."
+        entranceIndex={0}
       >
         {students.length === 0 ? (
           <EmptyState

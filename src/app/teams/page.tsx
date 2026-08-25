@@ -16,7 +16,7 @@ import { RandomizeDialog } from './components/randomize-dialog'
 
 import { TeamCard } from './components/team-card'
 import { TeamRankingList } from './components/team-ranking-list'
-import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, useClassroomDialog, IconTouchButton } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, useClassroomDialog, IconTouchButton, AnimatedEntrance } from '@/src/components/classroom'
 
 export default function TeamsPage() {
   const { data, saveTeam, deleteTeam, saveStudent, saveStudents } = useAppData()
@@ -266,20 +266,21 @@ export default function TeamsPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {sortedTeams.map((team, idx) => (
-                <TeamCard
-                  key={team.id}
-                  team={team}
-                  members={getMembers(team.id)}
-                  rank={idx}
-                  totalTeams={sortedTeams.length}
-                  highestScore={highestScore}
-                  colorIndex={Math.max(0, teams.findIndex((t) => t.id === team.id))}
-                  onEdit={() => handleOpenEdit(team)}
-                  onDelete={() => handleOpenDelete(team)}
-                  onClearAllMembers={() => void handleClearAllMembers(team)}
-                  onViewDetails={() => handleOpenDetails(team)}
-                  onViewMembers={() => handleOpenDetails(team)}
-                />
+                <AnimatedEntrance key={team.id} variant="random" staggerIndex={idx}>
+                  <TeamCard
+                    team={team}
+                    members={getMembers(team.id)}
+                    rank={idx}
+                    totalTeams={sortedTeams.length}
+                    highestScore={highestScore}
+                    colorIndex={Math.max(0, teams.findIndex((t) => t.id === team.id))}
+                    onEdit={() => handleOpenEdit(team)}
+                    onDelete={() => handleOpenDelete(team)}
+                    onClearAllMembers={() => void handleClearAllMembers(team)}
+                    onViewDetails={() => handleOpenDetails(team)}
+                    onViewMembers={() => handleOpenDetails(team)}
+                  />
+                </AnimatedEntrance>
               ))}
             </div>
           )}
@@ -287,7 +288,8 @@ export default function TeamsPage() {
 
         {/* ── BOTTOM SECTION: RANKING LIST ── */}
         {teams.length > 0 && (
-          <ClassroomCard>
+          <AnimatedEntrance variant="random" staggerIndex={0}>
+            <ClassroomCard>
             <div className="mb-4 flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-pastel-yellow text-lg">
                 🏆
@@ -302,6 +304,7 @@ export default function TeamsPage() {
               getMembers={getMembers}
             />
           </ClassroomCard>
+          </AnimatedEntrance>
         )}
         </div>
       </div>

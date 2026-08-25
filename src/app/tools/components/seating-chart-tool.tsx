@@ -13,6 +13,7 @@ export function SeatingChartTool() {
       iconBg="bg-pastel-mint"
       title="Sơ đồ lớp"
       description="Sắp xếp chỗ ngồi trực quan, kéo thả học sinh và trình chiếu lên màn hình lớn."
+      entranceIndex={2}
     >
       <div className="mt-auto flex flex-col gap-3">
         <p className="text-sm font-semibold text-slate-500">

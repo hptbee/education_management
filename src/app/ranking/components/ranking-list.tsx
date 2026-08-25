@@ -3,7 +3,7 @@
 import { Search } from 'lucide-react'
 import type { ClassroomRole, Team } from '@/src/types/models'
 import type { RankedStudent } from '@/src/utils/ranking'
-import { EmptyState } from '@/src/components/classroom'
+import { EmptyState, AnimatedEntrance } from '@/src/components/classroom'
 import { RankingRow } from './ranking-row'
 
 export function RankingList({
@@ -31,16 +31,18 @@ export function RankingList({
 
   return (
     <ul className="flex flex-col gap-2">
-      {entries.map((entry) => (
-        <li key={entry.student.id}>
-          <RankingRow
-            entry={entry}
-            teams={teams}
-            classroomRoles={classroomRoles}
-            onClick={onStudentClick ? () => onStudentClick(entry) : undefined}
-            presentation={presentation}
-          />
-        </li>
+      {entries.map((entry, index) => (
+        <AnimatedEntrance key={entry.student.id} variant="random" staggerIndex={index}>
+          <li>
+            <RankingRow
+              entry={entry}
+              teams={teams}
+              classroomRoles={classroomRoles}
+              onClick={onStudentClick ? () => onStudentClick(entry) : undefined}
+              presentation={presentation}
+            />
+          </li>
+        </AnimatedEntrance>
       ))}
     </ul>
   )

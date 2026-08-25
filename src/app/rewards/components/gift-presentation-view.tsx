@@ -3,6 +3,7 @@
 import { Gift as GiftIcon } from "lucide-react";
 import type { Gift } from "@/src/types/models";
 import { PresentationChrome } from "@/src/components/PresentationChrome";
+import { AnimatedEntrance } from "@/src/components/classroom";
 import { GiftCard } from "./gift-card";
 
 interface GiftPresentationViewProps {
@@ -28,8 +29,10 @@ export function GiftPresentationView({ gifts, classroomId }: GiftPresentationVie
         </div>
       ) : (
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 motion-reduce:transition-none">
-          {gifts.map((gift) => (
-            <GiftCard key={gift.id} gift={gift} classroomId={classroomId} presentation />
+          {gifts.map((gift, index) => (
+            <AnimatedEntrance key={gift.id} variant="random" staggerIndex={index}>
+              <GiftCard gift={gift} classroomId={classroomId} presentation />
+            </AnimatedEntrance>
           ))}
         </div>
       )}

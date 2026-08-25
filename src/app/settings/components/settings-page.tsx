@@ -5,7 +5,7 @@ import { AlertTriangle, Settings, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Field, Input } from '@/src/components/ui'
-import { ClassroomButton, ClassroomCard, PageHeader } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomCard, PageHeader, AnimatedEntrance } from '@/src/components/classroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import { ClassroomRolesSection } from './classroom-roles-section'
 import { DataSection } from './data-section'
@@ -192,7 +192,8 @@ export function SettingsPage() {
       )}
 
       {showProfileSection && (
-        <ProfileSection
+        <AnimatedEntrance variant="random">
+          <ProfileSection
           teacherDraft={teacherDraft}
           classroomDraft={classroomDraft}
           schoolYear={data!.classroomSettings.schoolYear}
@@ -204,14 +205,24 @@ export function SettingsPage() {
           onError={setError}
           onGoToDataTab={SETTINGS_TABS.showDataTab ? () => setActiveTab('data') : undefined}
         />
+        </AnimatedEntrance>
       )}
 
-      {showRolesSection && <ClassroomRolesSection />}
+      {showRolesSection && (
+        <AnimatedEntrance variant="random">
+          <ClassroomRolesSection />
+        </AnimatedEntrance>
+      )}
 
-      {activeTab === 'account' && <AccountSection />}
+      {activeTab === 'account' && (
+        <AnimatedEntrance variant="random">
+          <AccountSection />
+        </AnimatedEntrance>
+      )}
 
       {SETTINGS_TABS.showDataTab && activeTab === 'data' && (
-        <DataSection
+        <AnimatedEntrance variant="random">
+          <DataSection
           data={data!}
           renameDraft={renameDraft}
           renaming={renaming}
@@ -223,10 +234,12 @@ export function SettingsPage() {
           onCloseDatabase={() => router.push('/classrooms')}
           onCloudBackupEnabledChange={(enabled) => updateAppSettings({ cloudBackupEnabled: enabled })}
         />
+        </AnimatedEntrance>
       )}
 
       {SETTINGS_TABS.showDangerTab && activeTab === 'danger' && (
-        <ClassroomCard className="border-2 border-rose-200">
+        <AnimatedEntrance variant="random">
+          <ClassroomCard className="border-2 border-rose-200">
           <div className="mb-6 flex items-center gap-4">
             <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-500">
               <AlertTriangle className="size-7" />
@@ -296,6 +309,7 @@ export function SettingsPage() {
             )}
           </div>
         </ClassroomCard>
+        </AnimatedEntrance>
       )}
     </div>
   )

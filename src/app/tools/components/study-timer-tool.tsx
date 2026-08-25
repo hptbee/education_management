@@ -203,6 +203,7 @@ export function StudyTimerTool() {
       iconBg="bg-pastel-yellow"
       title="Đếm giờ học tập"
       description="Đặt thời gian rồi bắt đầu."
+      entranceIndex={0}
     >
       <div
         className={`flex min-h-[120px] flex-1 items-center justify-center rounded-2xl py-8 text-center transition ${

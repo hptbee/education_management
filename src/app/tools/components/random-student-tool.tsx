@@ -113,6 +113,7 @@ export function RandomStudentTool() {
       iconBg="bg-pastel-lavender"
       title="Chọn ngẫu nhiên"
       description="Chọn lần lượt, không trùng trong cùng một vòng."
+      entranceIndex={1}
     >
       {pool.length === 0 ? (
         <EmptyState

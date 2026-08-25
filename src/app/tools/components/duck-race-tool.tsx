@@ -46,6 +46,7 @@ export function DuckRaceTool() {
         iconBg="bg-pastel-pink"
         title="Đua vịt"
         description="Cuộc đua vui nhộn để cả lớp cùng cổ vũ."
+        entranceIndex={1}
       >
         {students.length === 0 ? (
           <EmptyState

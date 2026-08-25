@@ -8,6 +8,7 @@ import {
   IconTouchButton,
   useClassroomDialog,
   ClassroomDialogFrame,
+  AnimatedEntrance,
 } from '@/src/components/classroom'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 import {
@@ -433,6 +434,7 @@ export function SeatingChartWorkspace({ presentation = false }: SeatingChartWork
         </div>
       ) : null}
 
+      <AnimatedEntrance variant="random" staggerIndex={0} className="relative flex min-h-0 flex-1 flex-col gap-3">
       <div
         className={`relative flex min-h-0 flex-1 flex-col gap-3 ${presentation ? '' : 'lg:flex-row'}`}
       >
@@ -506,6 +508,7 @@ export function SeatingChartWorkspace({ presentation = false }: SeatingChartWork
           ) : null}
         </div>
       </div>
+      </AnimatedEntrance>
 
       <ClassroomDialogFrame
         open={configOpen && !presentation && !activeRandomPreview}

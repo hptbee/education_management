@@ -2,9 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   MOTION_DURATION_MS,
   MOTION_DURATION_S,
+  PAGE_TRANSITION_PRESETS,
   canAnimate,
   filterBurstsForClassroom,
+  ENTRANCE_PRESETS,
+  MAX_ENTRANCE_ANIMATED_ITEMS,
+  pickEntrancePreset,
+  pickPageTransition,
   prefersReducedMotion,
+  resolveEntrancePreset,
+  resolvePageTransition,
+  shouldAnimateEntranceItem,
   staggerDelay,
 } from './motion'
 
@@ -17,13 +25,17 @@ describe('motion', () => {
     expect(MOTION_DURATION_MS.fast).toBe(120)
     expect(MOTION_DURATION_MS.normal).toBe(180)
     expect(MOTION_DURATION_MS.smooth).toBe(250)
+    expect(MOTION_DURATION_MS.entrance).toBe(320)
     expect(MOTION_DURATION_MS.emphasis).toBe(350)
+    expect(MOTION_DURATION_MS.page).toBe(320)
     expect(MOTION_DURATION_S.normal).toBe(0.18)
+    expect(MOTION_DURATION_S.page).toBe(0.32)
+    expect(MOTION_DURATION_S.entrance).toBe(0.32)
   })
 
   it('staggerDelay caps delay for large indices', () => {
     expect(staggerDelay(0)).toBe(0)
-    expect(staggerDelay(2)).toBe(80)
+    expect(staggerDelay(2)).toBe(120)
     expect(staggerDelay(10)).toBe(160)
     expect(staggerDelay(100)).toBe(160)
   })
@@ -51,5 +63,56 @@ describe('motion', () => {
     ]
     expect(filterBurstsForClassroom(bursts, 'class-a')).toEqual([{ id: 'a', classroomId: 'class-a' }])
     expect(filterBurstsForClassroom(bursts, undefined)).toEqual([])
+  })
+
+  it('pickEntrancePreset returns one of the approved presets', () => {
+    for (let i = 0; i < 20; i += 1) {
+      expect(ENTRANCE_PRESETS).toContain(pickEntrancePreset(() => i / 20))
+    }
+  })
+
+  it('resolveEntrancePreset keeps explicit variants deterministic', () => {
+    expect(resolveEntrancePreset('fadeUp', null)).toBe('fadeUp')
+    expect(resolveEntrancePreset('fadeScale', 'fade')).toBe('fadeScale')
+  })
+
+  it('resolveEntrancePreset reuses stored random preset', () => {
+    expect(resolveEntrancePreset('random', 'fadeUp', () => 0)).toBe('fadeUp')
+    expect(resolveEntrancePreset('random', null, () => 0)).toBe('fade')
+  })
+
+  it('shouldAnimateEntranceItem caps animated list items', () => {
+    expect(shouldAnimateEntranceItem()).toBe(true)
+    expect(shouldAnimateEntranceItem(0)).toBe(true)
+    expect(shouldAnimateEntranceItem(MAX_ENTRANCE_ANIMATED_ITEMS - 1)).toBe(true)
+    expect(shouldAnimateEntranceItem(MAX_ENTRANCE_ANIMATED_ITEMS)).toBe(false)
+    expect(shouldAnimateEntranceItem(100)).toBe(false)
+  })
+
+  it('pickPageTransition returns one of the approved presets', () => {
+    for (let i = 0; i < 20; i += 1) {
+      const pick = pickPageTransition('/students', () => i / 20)
+      expect(PAGE_TRANSITION_PRESETS).toContain(pick.preset)
+      expect(pick.path).toBe('/students')
+      expect([1, -1]).toContain(pick.slideDir)
+    }
+  })
+
+  it('resolvePageTransition reuses stored pick for the same path', () => {
+    const stored = pickPageTransition('/teams', () => 0.9)
+    expect(resolvePageTransition('/teams', stored, () => 0)).toEqual(stored)
+  })
+
+  it('resolvePageTransition picks again when the path changes', () => {
+    const stored = pickPageTransition('/teams', () => 0.9)
+    const next = resolvePageTransition('/rewards', stored, () => 0)
+    expect(next.path).toBe('/rewards')
+    expect(next.preset).toBe('sparkleReveal')
+  })
+
+  it('pickPageTransition prefers the route personality when rng hits the preferred bucket', () => {
+    expect(pickPageTransition('/rewards', () => 0).preset).toBe('sparkleReveal')
+    expect(pickPageTransition('/classrooms', () => 0).preset).toBe('bubbleReveal')
+    expect(pickPageTransition('/students', () => 0).preset).toBe('bouncyPop')
   })
 })

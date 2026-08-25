@@ -1,3 +1,4 @@
+export { AnimatedEntrance } from './AnimatedEntrance'
 export { ClassroomDialogFrame } from './ClassroomDialogFrame'
 export { PageTransition } from './PageTransition'
 export { PointBurstProvider, usePointBurst } from './PointBurstProvider'

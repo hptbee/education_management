@@ -45,6 +45,7 @@ export function PointsWheelTool() {
         iconBg="bg-pastel-peach"
         title="Vòng quay điểm"
         description="Quay ngẫu nhiên điểm thưởng cho học sinh."
+        entranceIndex={2}
       >
         {students.length === 0 ? (
           <EmptyState

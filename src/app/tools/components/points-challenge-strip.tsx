@@ -5,7 +5,7 @@ import { ArrowRight, Star, Trophy } from 'lucide-react'
 import { useAppData } from '@/src/store/AppDataContext'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { rankStudents } from '@/src/utils/ranking'
-import { ClassroomCard, EmptyState } from '@/src/components/classroom'
+import { ClassroomCard, EmptyState, AnimatedEntrance } from '@/src/components/classroom'
 
 const TOP_COUNT = 4
 
@@ -19,7 +19,8 @@ export function PointsChallengeStrip() {
     .map((entry) => entry.student)
 
   return (
-    <ClassroomCard>
+    <AnimatedEntrance variant="random" staggerIndex={0}>
+      <ClassroomCard>
       <header className="mb-4 flex flex-wrap items-start gap-3">
         <span className="flex size-10 items-center justify-center rounded-xl bg-pastel-yellow">
           <Trophy className="size-5 text-amber-600" />
@@ -80,5 +81,6 @@ export function PointsChallengeStrip() {
         </div>
       )}
     </ClassroomCard>
+    </AnimatedEntrance>
   )
 }

@@ -14,7 +14,7 @@ import {
   filterRankedStudents,
   type RankingPeriod,
 } from '@/src/utils/ranking'
-import { PageHeader, ClassroomCard, EmptyState, ClassroomButton } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, ClassroomButton, AnimatedEntrance } from '@/src/components/classroom'
 import { StudentDetailsModal } from '@/src/app/students/components/student-details-modal'
 import { RankingModeToggle, type RankingMode } from './components/ranking-mode-toggle'
 import { RankingFilters } from './components/ranking-filters'
@@ -221,38 +221,44 @@ export default function RankingPage() {
               ) : null}
 
               {filteredStudents.length > 0 ? (
+                <AnimatedEntrance variant="random" staggerIndex={0}>
+                  <ClassroomCard>
+                    <RankingPodium
+                      entries={filteredStudents}
+                      onStudentClick={(entry) => openStudentDetails(entry.student)}
+                    />
+                  </ClassroomCard>
+                </AnimatedEntrance>
+              ) : null}
+
+              <AnimatedEntrance variant="random" staggerIndex={1}>
                 <ClassroomCard>
-                  <RankingPodium
+                  <h3 className="mb-4 font-display text-lg font-extrabold text-slate-800">
+                    Toàn bộ lớp
+                  </h3>
+                  <RankingList
                     entries={filteredStudents}
+                    teams={teams}
+                    classroomRoles={classroomRoles}
                     onStudentClick={(entry) => openStudentDetails(entry.student)}
                   />
                 </ClassroomCard>
-              ) : null}
-
-              <ClassroomCard>
-                <h3 className="mb-4 font-display text-lg font-extrabold text-slate-800">
-                  Toàn bộ lớp
-                </h3>
-                <RankingList
-                  entries={filteredStudents}
-                  teams={teams}
-                  classroomRoles={classroomRoles}
-                  onStudentClick={(entry) => openStudentDetails(entry.student)}
-                />
-              </ClassroomCard>
+              </AnimatedEntrance>
             </>
           )
         ) : (
-          <ClassroomCard>
-            <h3 className="mb-4 font-display text-lg font-extrabold text-slate-800">
-              Thi đua tổ
-            </h3>
+          <AnimatedEntrance variant="random" staggerIndex={0}>
+            <ClassroomCard>
+              <h3 className="mb-4 font-display text-lg font-extrabold text-slate-800">
+                Thi đua tổ
+              </h3>
             <TeamRankingList
               entries={rankedTeams}
               allTeams={teams}
               memberCounts={memberCounts}
             />
           </ClassroomCard>
+          </AnimatedEntrance>
         )}
       </div>
 

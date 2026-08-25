@@ -9,7 +9,7 @@ import { sortStudents, type StudentSortOption } from '@/src/utils/student'
 import type { Student } from '@/src/types/models'
 import { StudentPointsDialog, type PointsDialogMode } from './components/student-points-dialog'
 import { PointActionsCatalogSection } from './components/point-actions-catalog-section'
-import { PageHeader, ClassroomCard, EmptyState, IconTouchButton, ClassroomSelect } from '@/src/components/classroom'
+import { PageHeader, ClassroomCard, EmptyState, IconTouchButton, ClassroomSelect, AnimatedEntrance } from '@/src/components/classroom'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 
 const RECENT_HISTORY_LIMIT = 8
@@ -83,6 +83,7 @@ export default function PointsPage() {
             }
           />
         ) : (
+          <AnimatedEntrance variant="random" staggerIndex={0}>
           <ClassroomCard>
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative min-w-0 flex-1">
@@ -200,9 +201,11 @@ export default function PointsPage() {
               </div>
             )}
           </ClassroomCard>
+          </AnimatedEntrance>
         )}
 
         {recentHistory.length > 0 ? (
+          <AnimatedEntrance variant="random" staggerIndex={1}>
           <ClassroomCard>
             <h2 className="font-display text-lg font-black text-slate-800">Hoạt động gần đây</h2>
             <p className="mb-4 text-sm font-semibold text-slate-500">8 lần cộng/trừ điểm mới nhất</p>
@@ -227,9 +230,12 @@ export default function PointsPage() {
               ))}
             </div>
           </ClassroomCard>
+          </AnimatedEntrance>
         ) : null}
 
+        <AnimatedEntrance variant="random" staggerIndex={2}>
         <PointActionsCatalogSection />
+        </AnimatedEntrance>
       </div>
 
       <StudentPointsDialog
