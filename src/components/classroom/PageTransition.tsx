@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { useRef } from 'react'
+import { useMemo } from 'react'
 import { useMotionEnabled } from '@/src/hooks/useMotionEnabled'
 import { usePresentationMode } from '@/src/store/PresentationModeContext'
 import {
@@ -12,7 +12,6 @@ import {
   personalityForPath,
   reducedMotionTransition,
   resolvePageTransition,
-  type PageTransitionPick,
 } from '@/src/utils/motion'
 import { PageTransitionDecor } from './PageTransitionDecor'
 
@@ -22,16 +21,15 @@ export function PageTransition({ children }: { children: ReactNode }) {
   const { isPresentationMode } = usePresentationMode()
   const skipMotion = isPresentationMode
 
-  const pickRef = useRef<PageTransitionPick | null>(null)
-  if (!skipMotion && motionEnabled) {
-    pickRef.current = resolvePageTransition(pathname, pickRef.current)
-  }
+  const pick = useMemo(() => {
+    if (!motionEnabled || skipMotion) return null
+    return resolvePageTransition(pathname, null)
+  }, [pathname, motionEnabled, skipMotion])
 
-  if (!motionEnabled || skipMotion) {
+  if (!motionEnabled || skipMotion || !pick) {
     return <>{children}</>
   }
 
-  const pick = pickRef.current!
   const personality = personalityForPath(pathname)
   const variants = pageContentVariants(pick)
 

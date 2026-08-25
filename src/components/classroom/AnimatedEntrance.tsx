@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
-import { useRef } from 'react'
+import { useMemo } from 'react'
 import { useMotionEnabled } from '@/src/hooks/useMotionEnabled'
 import { usePresentationMode } from '@/src/store/PresentationModeContext'
 import { cn } from '@/lib/utils'
@@ -37,17 +37,12 @@ export function AnimatedEntrance({
     isPresentationMode ||
     !shouldAnimateEntranceItem(staggerIndex)
 
-  const presetRef = useRef<EntrancePreset | null>(null)
+  const preset = useMemo(() => resolveEntrancePreset(variant, null), [variant])
 
   if (skipMotion) {
     return className ? <div className={className}>{children}</div> : <>{children}</>
   }
 
-  if (presetRef.current === null) {
-    presetRef.current = resolveEntrancePreset(variant, presetRef.current)
-  }
-
-  const preset = presetRef.current
   const variants = ENTRANCE_VARIANT_MAP[preset]
   const duration = ENTRANCE_DURATION_MAP[preset]
   const delaySeconds = staggerDelay(staggerIndex ?? 0) / 1000

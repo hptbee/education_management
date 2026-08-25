@@ -7,7 +7,7 @@ export const MOTION_DURATION_MS = {
   smooth: 250,
   entrance: 320,
   emphasis: 350,
-  page: 1500,
+  page: 320,
 } as const
 
 /** Duration tokens in seconds (for Framer Motion). */
