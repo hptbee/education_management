@@ -55,6 +55,11 @@ export default function TeamsPage() {
     })
   }, [teams, filteredStudents, searchQuery])
 
+  const teamRankById = useMemo(() => {
+    const ranked = rankTeams(teams)
+    return new Map(ranked.map((entry) => [entry.team.id, entry.rank]))
+  }, [teams])
+
   // Sorted teams for the Top Cards (could be score, or just alphabetical as before)
   const sortedTeams = useMemo(
     () => rankTeams(filteredTeams).map((entry) => entry.team),
@@ -204,6 +209,7 @@ export default function TeamsPage() {
           icon={Users}
           title="Quản lý nhóm"
           subtitle="Quản lý thành viên, điểm và bảng xếp hạng từng tổ trong lớp."
+          className="sm:items-center"
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <ClassroomButton onClick={() => { setSelectedTeam(null); setIsFormOpen(true) }}>
@@ -217,14 +223,18 @@ export default function TeamsPage() {
         />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <div className="relative min-w-0 flex-1">
+            <label htmlFor="teams-search" className="sr-only">
+              Tìm nhóm hoặc tên học sinh
+            </label>
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
             <input
+              id="teams-search"
               type="text"
               placeholder="Tìm nhóm hoặc tên học sinh..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="classroom-search-field rounded-2xl py-2.5"
+              className="classroom-search-field rounded-2xl py-2.5 shadow-sm"
             />
             {searchQuery ? (
               <IconTouchButton
@@ -238,7 +248,8 @@ export default function TeamsPage() {
             ) : null}
           </div>
           {unassignedCount > 0 ? (
-            <p className="text-sm font-semibold text-rose-600">
+            <p className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700 ring-1 ring-rose-100 sm:self-center">
+              <span className="size-1.5 shrink-0 rounded-full bg-rose-400" aria-hidden />
               {unassignedCount} học sinh chưa có tổ
             </p>
           ) : null}
@@ -264,19 +275,16 @@ export default function TeamsPage() {
               }
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {sortedTeams.map((team, idx) => (
-                <AnimatedEntrance key={team.id} variant="random" staggerIndex={idx}>
+                <AnimatedEntrance key={team.id} variant="random" staggerIndex={idx} className="h-full">
                   <TeamCard
                     team={team}
                     members={getMembers(team.id)}
-                    rank={idx}
-                    totalTeams={sortedTeams.length}
+                    rank={(teamRankById.get(team.id) ?? 1) - 1}
+                    totalTeams={teams.length}
                     highestScore={highestScore}
                     colorIndex={Math.max(0, teams.findIndex((t) => t.id === team.id))}
-                    onEdit={() => handleOpenEdit(team)}
-                    onDelete={() => handleOpenDelete(team)}
-                    onClearAllMembers={() => void handleClearAllMembers(team)}
                     onViewDetails={() => handleOpenDetails(team)}
                     onViewMembers={() => handleOpenDetails(team)}
                   />
@@ -287,23 +295,29 @@ export default function TeamsPage() {
         </section>
 
         {/* ── BOTTOM SECTION: RANKING LIST ── */}
-        {teams.length > 0 && (
+        {sortedTeams.length > 0 && (
           <AnimatedEntrance variant="random" staggerIndex={0}>
             <ClassroomCard>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-pastel-yellow text-lg">
-                🏆
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-pastel-yellow text-lg shadow-sm">
+                  🏆
+                </div>
+                <div className="min-w-0">
+                  <h2 className="font-display text-xl font-black text-slate-800">Bảng xếp hạng nhóm</h2>
+                  <p className="text-xs font-semibold text-slate-500">
+                    {sortedTeams.length} tổ · nhấn vào từng hàng để xem thành viên
+                  </p>
+                </div>
               </div>
-              <h2 className="font-display text-xl font-black text-slate-800">Bảng xếp hạng nhóm</h2>
-            </div>
 
-            <TeamRankingList 
-              teams={sortedTeams}
-              allTeams={teams}
-              roster={students}
-              getMembers={getMembers}
-            />
-          </ClassroomCard>
+              <TeamRankingList
+                teams={sortedTeams}
+                allTeams={teams}
+                teamRankById={teamRankById}
+                roster={students}
+                getMembers={getMembers}
+              />
+            </ClassroomCard>
           </AnimatedEntrance>
         )}
         </div>
@@ -352,6 +366,7 @@ export default function TeamsPage() {
         onRemove={handleRemove}
         onClearAllMembers={() => selectedTeam && void handleClearAllMembers(selectedTeam)}
         onEditTeam={() => { setIsDetailsOpen(false); selectedTeam && handleOpenEdit(selectedTeam) }}
+        onDeleteTeam={() => { setIsDetailsOpen(false); selectedTeam && handleOpenDelete(selectedTeam) }}
         onOpenPoints={() => { setIsDetailsOpen(false); selectedTeam && handleOpenPoints(selectedTeam) }}
         onUpdateLeadership={handleUpdateLeadership}
       />

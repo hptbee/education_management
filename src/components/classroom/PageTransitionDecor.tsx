@@ -25,9 +25,9 @@ export function PageTransitionDecor({ preset, colors }: PageTransitionDecorProps
     return (
       <motion.div
         aria-hidden
-        className={`pointer-events-none absolute -right-8 -top-8 size-32 rounded-full blur-2xl ${c0}`}
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: [0, 0.55, 0], scale: [0.6, 1.1, 1.2] }}
+        className={`pointer-events-none absolute -right-10 -top-10 size-44 rounded-full blur-3xl ${c0}`}
+        initial={{ opacity: 0, scale: 0.45 }}
+        animate={{ opacity: [0, 0.78, 0], scale: [0.45, 1.25, 1.5] }}
         transition={decorTransition}
       />
     )
@@ -38,17 +38,17 @@ export function PageTransitionDecor({ preset, colors }: PageTransitionDecorProps
       <>
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute -left-10 top-1/4 size-28 rounded-full blur-2xl ${c0}`}
-          initial={{ opacity: 0, x: -12, scale: 0.8 }}
-          animate={{ opacity: [0, 0.5, 0], x: 0, scale: 1.05 }}
+          className={`pointer-events-none absolute -left-14 top-1/4 size-36 rounded-full blur-3xl ${c0}`}
+          initial={{ opacity: 0, x: -28, scale: 0.65 }}
+          animate={{ opacity: [0, 0.65, 0], x: 0, scale: 1.12 }}
           transition={decorTransition}
         />
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute -right-6 bottom-1/4 size-24 rounded-full blur-2xl ${c1 ?? c0}`}
-          initial={{ opacity: 0, x: 12, scale: 0.75 }}
-          animate={{ opacity: [0, 0.45, 0], x: 0, scale: 1 }}
-          transition={{ ...decorTransition, delay: 0.04 }}
+          className={`pointer-events-none absolute -right-8 bottom-1/4 size-32 rounded-full blur-2xl ${c1 ?? c0}`}
+          initial={{ opacity: 0, x: 28, scale: 0.6 }}
+          animate={{ opacity: [0, 0.55, 0], x: 0, scale: 1.08 }}
+          transition={{ ...decorTransition, delay: 0.05 }}
         />
       </>
     )
@@ -59,24 +59,24 @@ export function PageTransitionDecor({ preset, colors }: PageTransitionDecorProps
       <>
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute left-[8%] top-[12%] size-20 rounded-full blur-xl ${c0}`}
-          initial={{ opacity: 0, scale: 0.2 }}
-          animate={{ opacity: [0, 0.5, 0], scale: [0.2, 1.15, 1.3] }}
+          className={`pointer-events-none absolute left-[8%] top-[12%] size-28 rounded-full blur-2xl ${c0}`}
+          initial={{ opacity: 0, scale: 0.1 }}
+          animate={{ opacity: [0, 0.62, 0], scale: [0.1, 1.25, 1.45] }}
           transition={decorTransition}
         />
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute right-[10%] top-[18%] size-14 rounded-full blur-lg ${c1 ?? c0}`}
-          initial={{ opacity: 0, scale: 0.25 }}
-          animate={{ opacity: [0, 0.45, 0], scale: [0.25, 1.2, 1.35] }}
-          transition={{ ...decorTransition, delay: 0.06 }}
+          className={`pointer-events-none absolute right-[10%] top-[18%] size-20 rounded-full blur-xl ${c1 ?? c0}`}
+          initial={{ opacity: 0, scale: 0.15 }}
+          animate={{ opacity: [0, 0.55, 0], scale: [0.15, 1.3, 1.5] }}
+          transition={{ ...decorTransition, delay: 0.07 }}
         />
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute bottom-[14%] left-[42%] size-10 rounded-full blur-md ${c2 ?? c1 ?? c0}`}
-          initial={{ opacity: 0, scale: 0.3 }}
-          animate={{ opacity: [0, 0.4, 0], scale: [0.3, 1.1, 1.25] }}
-          transition={{ ...decorTransition, delay: 0.1 }}
+          className={`pointer-events-none absolute bottom-[14%] left-[42%] size-14 rounded-full blur-lg ${c2 ?? c1 ?? c0}`}
+          initial={{ opacity: 0, scale: 0.2 }}
+          animate={{ opacity: [0, 0.48, 0], scale: [0.2, 1.2, 1.38] }}
+          transition={{ ...decorTransition, delay: 0.12 }}
         />
       </>
     )
@@ -97,10 +97,10 @@ export function PageTransitionDecor({ preset, colors }: PageTransitionDecorProps
           aria-hidden
           className={`pointer-events-none absolute ${position}`}
           initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: [0, 1, 0], scale: [0, 1.2, 0.6] }}
-          transition={{ ...decorTransition, delay: index * 0.05 }}
+          animate={{ opacity: [0, 1, 0], scale: [0, 1.55, 0.45] }}
+          transition={{ ...decorTransition, delay: index * 0.06 }}
         >
-          <Sparkles className={`size-4 ${index % 2 === 0 ? 'text-star' : 'text-accent-pink'}`} />
+          <Sparkles className={`size-5 ${index % 2 === 0 ? 'text-star' : 'text-accent-pink'}`} />
         </motion.div>
       ))}
     </>

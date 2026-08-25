@@ -117,6 +117,7 @@ export default function PointsPage() {
                   id="points-student-sort"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as StudentSortOption)}
+                  aria-label="Sắp xếp học sinh"
                 >
                   <option value="role-stt">Vai trò → STT</option>
                   <option value="name-asc">Tên A → Z</option>

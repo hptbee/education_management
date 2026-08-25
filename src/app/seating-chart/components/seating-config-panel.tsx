@@ -2,7 +2,7 @@
 
 import { Minus, Plus } from 'lucide-react'
 import type { BoardPosition, DeskType, SeatingChartConfig } from '@/src/types/models'
-import { ClassroomButton } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomSelect } from '@/src/components/classroom'
 import {
   generateSeatIds,
   SEATING_CHART_MAX_COLUMNS,
@@ -156,18 +156,20 @@ export function SeatingConfigPanel({ config, onChange }: SeatingConfigPanelProps
         <label htmlFor="board-position" className="text-sm font-bold text-slate-600">
           Hướng bảng
         </label>
-        <select
+        <ClassroomSelect
           id="board-position"
+          variant="field"
           value={config.boardPosition}
           onChange={(event) => onChange({ boardPosition: event.target.value as BoardPosition })}
-          className="classroom-field w-full rounded-xl"
+          aria-label="Hướng bảng"
+          className="w-full rounded-xl"
         >
           {BOARD_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </select>
+        </ClassroomSelect>
       </div>
     </div>
   )

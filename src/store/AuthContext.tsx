@@ -28,6 +28,7 @@ import { isTauri } from "@/src/database/tauri-fs.service";
 interface AuthContextValue {
   isLoading: boolean;
   isBootstrapping: boolean;
+  storageError: string | null;
   isLoggingIn: boolean;
   loginStep: LoginStep | null;
   accessState: AccessState;
@@ -39,6 +40,7 @@ interface AuthContextValue {
   offlineValidUntil: number | null;
   loginWithGoogle: (idToken?: string) => Promise<void>;
   cancelLogin: () => void;
+  retrySessionRestore: () => Promise<void>;
   refreshSession: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -52,6 +54,7 @@ function isOnline(): boolean {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [storageError, setStorageError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginStep, setLoginStep] = useState<LoginStep | null>(null);
   const [session, setSession] = useState<StoredAuthSession | null>(null);
@@ -61,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<EntitlementPermissions | null>(null);
 
   const cacheAndSetSession = useCallback((next: StoredAuthSession | null) => {
-    if (next) rememberAuthSession(next);
+    rememberAuthSession(next);
     setSession(next);
   }, []);
 
@@ -92,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const bootstrap = useCallback(async () => {
     setIsBootstrapping(true);
+    setStorageError(null);
     try {
       const stored = await loadAuthSession();
       cacheAndSetSession(stored);
@@ -122,6 +126,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await recomputeAccess(stored, null);
         }
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[AuthProvider] secure session bootstrap failed:", error);
+      // Keep the storage cache unset so a retry reads Credential Manager again.
+      setSession(null);
+      setServerDenied("AUTH_REQUIRED");
+      await recomputeAccess(null, "AUTH_REQUIRED");
+      setStorageError(message || "Unable to load the secure authentication session");
     } finally {
       setIsBootstrapping(false);
     }
@@ -193,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         await saveAuthSession(next);
         cacheAndSetSession(next);
+        setStorageError(null);
         setServerDenied(null);
         await recomputeAccess(next, null);
       } catch (error) {
@@ -261,6 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await clearAuthSession();
     setSession(null);
+    setStorageError(null);
     setServerDenied(null);
     setOfflineValidUntil(null);
     setPermissions(null);
@@ -288,6 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       isLoading: isBootstrapping,
       isBootstrapping,
+      storageError,
       isLoggingIn,
       loginStep,
       accessState,
@@ -299,6 +314,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       offlineValidUntil,
       loginWithGoogle,
       cancelLogin,
+      retrySessionRestore: bootstrap,
       refreshSession,
       logout,
     }),
@@ -309,11 +325,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginStep,
       loginWithGoogle,
       cancelLogin,
+      bootstrap,
       logout,
       offlineValidUntil,
       permissions,
       refreshSession,
       session,
+      storageError,
     ],
   );
 

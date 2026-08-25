@@ -123,6 +123,10 @@ Display uses `useAssetUrl(classroomId, key)` (blob URL). Bundled fallbacks (`/av
 
 **Out of scope:** team/role/badge emoji icons, Google account picture URL, sound files.
 
+## Desktop diagnostic logs (Tauri)
+
+Not classroom data. Desktop writes `logs/app.log` under the app data directory (`append_app_logs` in `src-tauri`). Line prefix is **UTC** wall time: `YYYY-MM-DD HH:MM:SS UTC | LEVEL | category | message`. Preview/clear lives in **Cài đặt** (`app-log-section.tsx`).
+
 ### Scaling notes
 
 - Activity files grow with daily edits; large histories are partitioned by date.

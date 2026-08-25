@@ -10,7 +10,7 @@ import {
   formatRecognitionRelativeDate,
   type RecognitionTimeFilter,
 } from '@/src/utils/recognition'
-import { ClassroomButton, EmptyState, ClassroomDialogFrame } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomSelect, EmptyState, ClassroomDialogFrame } from '@/src/components/classroom'
 
 interface WallOfFameSectionProps {
   students: Student[]
@@ -120,47 +120,53 @@ export function WallOfFameSection({
 
       {!presentation ? (
         <div className="grid gap-3 sm:grid-cols-3">
-          <select
-          value={studentFilter}
-          onChange={(e) => setStudentFilter(e.target.value)}
-          className="classroom-field px-4"
-        >
-          <option value="">Tất cả học sinh</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={titleFilter}
-          onChange={(e) => setTitleFilter(e.target.value)}
-          className="classroom-field px-4"
-        >
-          <option value="">Tất cả danh hiệu</option>
-          {[...new Set(recognitions.map((r) => r.titleId ?? r.title))].map((key) => {
-            const title = titles.find((t) => t.id === key)
-            const label = title?.name ?? recognitions.find((r) => r.title === key)?.title ?? key
-            return (
-              <option key={key} value={key}>
-                {label}
+          <ClassroomSelect
+            variant="field"
+            value={studentFilter}
+            onChange={(e) => setStudentFilter(e.target.value)}
+            aria-label="Lọc theo học sinh"
+            className="px-4"
+          >
+            <option value="">Tất cả học sinh</option>
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
-            )
-          })}
-        </select>
-        <select
-          value={teamFilter}
-          onChange={(e) => setTeamFilter(e.target.value)}
-          className="classroom-field px-4"
-        >
-          <option value="">Cả lớp</option>
-          {teams.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </div>
+            ))}
+          </ClassroomSelect>
+          <ClassroomSelect
+            variant="field"
+            value={titleFilter}
+            onChange={(e) => setTitleFilter(e.target.value)}
+            aria-label="Lọc theo danh hiệu"
+            className="px-4"
+          >
+            <option value="">Tất cả danh hiệu</option>
+            {[...new Set(recognitions.map((r) => r.titleId ?? r.title))].map((key) => {
+              const title = titles.find((t) => t.id === key)
+              const label = title?.name ?? recognitions.find((r) => r.title === key)?.title ?? key
+              return (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              )
+            })}
+          </ClassroomSelect>
+          <ClassroomSelect
+            variant="field"
+            value={teamFilter}
+            onChange={(e) => setTeamFilter(e.target.value)}
+            aria-label="Lọc theo tổ"
+            className="px-4"
+          >
+            <option value="">Cả lớp</option>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </ClassroomSelect>
+        </div>
       ) : null}
 
       {filtered.length === 0 ? (

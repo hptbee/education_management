@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Plus, Star, ArrowLeftRight, UserMinus, History, Crown, Shield } from 'lucide-react'
+import { X, Plus, Star, ArrowLeftRight, UserMinus, History, Crown, Shield, Pencil, Trash2 } from 'lucide-react'
 import type { Student, Team, TeamScoreHistory } from '@/src/types/models'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { useAppData } from '@/src/store/AppDataContext'
-import { IconTouchButton, useClassroomDialog, useModalFocusTrap } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomSelect, IconTouchButton, useClassroomDialog, useModalFocusTrap } from '@/src/components/classroom'
 import { AssignStudentsDialog } from './assign-students-dialog'
 import { MoveStudentDialog } from './move-student-dialog'
 import {
@@ -27,6 +27,7 @@ interface TeamDetailsProps {
   onRemove: (studentId: string) => void
   onClearAllMembers: () => void
   onEditTeam: () => void
+  onDeleteTeam: () => void
   onOpenPoints: () => void
   onUpdateLeadership: (leaderStudentId?: string, viceLeaderStudentId?: string) => void
 }
@@ -38,7 +39,7 @@ function formatDate(iso: string) {
 
 export function TeamDetails({
   team, isOpen, onClose, members, allStudents, allTeams, pointHistory,
-  onAssign, onMove, onRemove, onClearAllMembers, onEditTeam, onOpenPoints, onUpdateLeadership,
+  onAssign, onMove, onRemove, onClearAllMembers, onEditTeam, onDeleteTeam, onOpenPoints, onUpdateLeadership,
 }: TeamDetailsProps) {
   const { data } = useAppData()
   const classroomId = data?.metadata.id
@@ -100,33 +101,28 @@ export function TeamDetails({
         </div>
 
         {/* Quick actions */}
-        <div className="flex gap-2 border-b border-slate-100 px-5 py-3">
-          <button
-            onClick={onOpenPoints}
-            className="flex items-center gap-1.5 rounded-xl bg-amber-100 px-3 py-2 text-sm font-bold text-amber-700 transition hover:bg-amber-200"
-          >
-            <Star className="size-4" /> Điểm tổ
-          </button>
-          <button
-            onClick={() => setIsAssignOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-brand-soft px-3 py-2 text-sm font-bold text-brand-dark transition hover:bg-pastel-sky"
-          >
-            <Plus className="size-4" /> Thêm thành viên
-          </button>
-          {members.length > 0 ? (
-            <button
-              onClick={onClearAllMembers}
-              className="flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-sm font-bold text-amber-700 transition hover:bg-amber-100"
-            >
-              <UserMinus className="size-4" /> Bỏ hết thành viên
-            </button>
-          ) : null}
-          <button
-            onClick={onEditTeam}
-            className="ml-auto flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-200"
-          >
-            Chỉnh sửa
-          </button>
+        <div className="space-y-2 border-b border-slate-100 px-5 py-3">
+          <div className="grid grid-cols-2 gap-2">
+            <ClassroomButton variant="secondary" className="w-full" onClick={onOpenPoints}>
+              <Star className="size-4" /> Điểm tổ
+            </ClassroomButton>
+            <ClassroomButton className="w-full" onClick={() => setIsAssignOpen(true)}>
+              <Plus className="size-4" /> Thêm thành viên
+            </ClassroomButton>
+            {members.length > 0 ? (
+              <ClassroomButton variant="outline" className="col-span-2 w-full" onClick={onClearAllMembers}>
+                <UserMinus className="size-4" /> Bỏ hết thành viên
+              </ClassroomButton>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <ClassroomButton variant="outline" className="w-full" onClick={onEditTeam}>
+              <Pencil className="size-4" /> Chỉnh sửa
+            </ClassroomButton>
+            <ClassroomButton variant="danger" className="w-full" onClick={onDeleteTeam}>
+              <Trash2 className="size-4" /> Xóa tổ
+            </ClassroomButton>
+          </div>
         </div>
 
         {/* Leadership */}
@@ -138,7 +134,8 @@ export function TeamDetails({
                 <Crown className="size-4 fill-amber-500 text-amber-500" />
                 Tổ trưởng
               </label>
-              <select
+              <ClassroomSelect
+                variant="field"
                 value={team.leaderStudentId ?? ''}
                 onChange={(e) => {
                   const leaderStudentId = e.target.value || undefined
@@ -148,20 +145,22 @@ export function TeamDetails({
                       : team.viceLeaderStudentId
                   onUpdateLeadership(leaderStudentId, viceLeaderStudentId)
                 }}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+                aria-label="Tổ trưởng"
+                className="rounded-xl px-3 py-2.5"
               >
                 <option value="">Chưa chọn</option>
                 {members.map((student) => (
                   <option key={student.id} value={student.id}>{student.name}</option>
                 ))}
-              </select>
+              </ClassroomSelect>
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-700">
                 <Shield className="size-4 fill-sky-400 text-sky-500" />
                 Tổ phó
               </label>
-              <select
+              <ClassroomSelect
+                variant="field"
                 value={team.viceLeaderStudentId ?? ''}
                 onChange={(e) => {
                   const viceLeaderStudentId = e.target.value || undefined
@@ -171,7 +170,8 @@ export function TeamDetails({
                       : team.leaderStudentId
                   onUpdateLeadership(leaderStudentId, viceLeaderStudentId)
                 }}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-purple"
+                aria-label="Tổ phó"
+                className="rounded-xl px-3 py-2.5"
               >
                 <option value="">Chưa chọn</option>
                 {members
@@ -179,7 +179,7 @@ export function TeamDetails({
                   .map((student) => (
                     <option key={student.id} value={student.id}>{student.name}</option>
                   ))}
-              </select>
+              </ClassroomSelect>
             </div>
           </div>
         </div>

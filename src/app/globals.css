@@ -128,10 +128,10 @@
   --sidebar-border: #d5e6f2;
   --sidebar-ring: #7ec4f0;
 
-  --motion-fast: 120ms;
-  --motion-normal: 180ms;
-  --motion-smooth: 250ms;
-  --motion-emphasis: 350ms;
+  --motion-fast: 200ms;
+  --motion-normal: 300ms;
+  --motion-smooth: 420ms;
+  --motion-emphasis: 580ms;
   --motion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-ease-exit: ease-in;
   --motion-ease-interactive: ease-out;
@@ -243,7 +243,7 @@
   }
 
   .motion-safe-hover:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
   }
 
   .ui-press {
@@ -251,7 +251,7 @@
   }
 
   .ui-press:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: scale(0.96);
   }
 
   .ui-card-lift {
@@ -263,11 +263,11 @@
   }
 
   .ui-card-lift:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
   }
 
   .ui-card-lift:active:not(:disabled) {
-    transform: scale(0.99) translateY(-1px);
+    transform: scale(0.97) translateY(-2px);
   }
 
   @media (prefers-reduced-motion: reduce) {

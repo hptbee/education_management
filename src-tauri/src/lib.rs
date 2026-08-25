@@ -230,17 +230,25 @@ fn save_entitlement(app: AppHandle, payload: String) -> Result<(), String> {
 
 #[tauri::command]
 fn load_entitlement(app: AppHandle) -> Result<Option<String>, String> {
-  // Prefer keyring. If empty, migrate entitlement.sec into keyring and delete the file.
-  // Fail closed: if keyring set fails, do not return plaintext from the file.
-  if let Ok(entry) = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER) {
-    if let Ok(value) = entry.get_password() {
-      if !value.trim().is_empty() {
-        remove_entitlement_file(&app);
-        return Ok(Some(value));
-      }
+  let entry = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER)
+    .map_err(|e| format!("Failed to access secure storage: {}", e))?;
+
+  match entry.get_password() {
+    Ok(value) if !value.trim().is_empty() => {
+      remove_entitlement_file(&app);
+      return Ok(Some(value));
+    }
+    Ok(_) | Err(keyring::Error::NoEntry) => {}
+    Err(error) => {
+      return Err(format!(
+        "Failed to load entitlement from secure storage: {}",
+        error
+      ));
     }
   }
 
+  // Migrate a legacy plaintext session only when the keyring has no entry.
+  // Fail closed if migration or read-back verification fails.
   let path = entitlement_file_path(&app)?;
   if !path.exists() {
     return Ok(None);
@@ -252,13 +260,17 @@ fn load_entitlement(app: AppHandle) -> Result<Option<String>, String> {
     return Ok(None);
   }
 
-  let entry = keyring::Entry::new(ENTITLEMENT_SERVICE, ENTITLEMENT_USER)
-    .map_err(|e| format!("Failed to access secure storage: {}", e))?;
   entry
     .set_password(&legacy)
     .map_err(|e| format!("Failed to migrate entitlement to secure storage: {}", e))?;
+  let stored = entry
+    .get_password()
+    .map_err(|e| format!("Failed to verify migrated entitlement: {}", e))?;
+  if stored != legacy {
+    return Err("Failed to verify migrated entitlement in secure storage".to_string());
+  }
 
-  let _ = std::fs::remove_file(&path);
+  remove_entitlement_file(&app);
   Ok(Some(legacy))
 }
 
@@ -709,12 +721,7 @@ fn rotate_app_log_if_needed(path: &Path) -> Result<(), String> {
 }
 
 fn format_log_timestamp() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let millis = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis())
-        .unwrap_or(0);
-    format!("{millis}")
+    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()
 }
 
 fn append_log_lines(app: &AppHandle, entries: &[AppLogEntry]) -> Result<(), String> {
@@ -859,8 +866,8 @@ pub fn run() {
 #[cfg(test)]
 mod path_tests {
     // Entitlement keyring migrate/fail-closed (`load_entitlement`) is not covered here:
-    // these tests have no keyring crate fixture. Fail-closed means: if `entitlement.sec`
-    // exists and `keyring::Entry::set_password` fails, do not return the file contents.
+    // these tests have no keyring crate fixture. A legacy `entitlement.sec` payload
+    // is returned only after keyring write and read-back verification succeeds.
     use super::*;
     use std::fs;
     use std::sync::{Mutex, OnceLock};
@@ -880,6 +887,17 @@ mod path_tests {
         fs::create_dir_all(&base).expect("create temp data dir");
         test(&base);
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn format_log_timestamp_uses_utc_hms() {
+        let ts = format_log_timestamp();
+        assert!(ts.ends_with(" UTC"));
+        assert!(ts.len() >= "2000-01-01 00:00:00 UTC".len());
+        let parts: Vec<&str> = ts.split(' ').collect();
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[2], "UTC");
+        assert!(parts[1].contains(':'));
     }
 
     #[test]

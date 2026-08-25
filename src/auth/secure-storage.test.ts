@@ -108,4 +108,16 @@ describe("secure-storage tauri", () => {
     const loaded = await mod.loadAuthSession();
     expect(loaded?.entitlement).toBe("token");
   });
+
+  it("surfaces secure storage failures instead of treating them as logout", async () => {
+    const invoke = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("credential store unavailable"))
+      .mockResolvedValueOnce(JSON.stringify(session));
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+    vi.resetModules();
+    const mod = await import("./secure-storage");
+    await expect(mod.loadAuthSession()).rejects.toThrow("credential store unavailable");
+    await expect(mod.loadAuthSession()).resolves.toEqual(session);
+  });
 });

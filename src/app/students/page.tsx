@@ -3,20 +3,32 @@
 import { useState, useMemo } from 'react'
 import {
   Plus, FileSpreadsheet, Download, GraduationCap,
-  Search, X, ArrowUpDown, Filter, ChevronDown, Crown, Medal, Star, UserCheck,
+  Search, X, ArrowUpDown, Filter, ChevronDown, Crown, Medal, Star, UserCheck, Users,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useActiveClassroom } from '@/src/hooks/useActiveClassroom'
 import { useAppData } from '@/src/store/AppDataContext'
 import type { Student } from '@/src/types/models'
 import { sortStudents, type StudentSortOption } from '@/src/utils/student'
 import { downloadStudentExcelTemplate } from '@/src/utils/studentExcel'
+import { cn } from '@/lib/utils'
 
 import { StudentCard } from './components/student-card'
 import { StudentFormModal } from './components/student-form-modal'
 import { StudentDetailsModal } from './components/student-details-modal'
 import { DeleteConfirmModal } from './components/delete-confirm-modal'
 import { ImportModal } from './components/import-modal'
-import { PageHeader, EmptyState, ClassroomButton, ClassroomCard, IconTouchButton, ClassroomSelect, AnimatedEntrance } from '@/src/components/classroom'
+import { PageHeader, EmptyState, ClassroomButton, ClassroomCard, IconTouchButton, ClassroomMenuSelect, AnimatedEntrance } from '@/src/components/classroom'
+
+const STUDENT_SORT_OPTIONS: { value: StudentSortOption; label: string }[] = [
+  { value: 'role-stt', label: 'Vai trò → STT' },
+  { value: 'name-asc', label: 'Tên A → Z' },
+  { value: 'name-desc', label: 'Tên Z → A' },
+  { value: 'points-desc', label: 'Điểm cao → thấp' },
+  { value: 'points-asc', label: 'Điểm thấp → cao' },
+  { value: 'team', label: 'Theo tổ' },
+  { value: 'newest', label: 'Mới thêm gần đây' },
+]
 
 // ─── Summary Card ────────────────────────────────────────────────────────────
 function SummaryCard({
@@ -32,6 +44,59 @@ function SummaryCard({
         </p>
       </div>
     </div>
+  )
+}
+
+function QuickFilterSelect({
+  id,
+  label,
+  icon: Icon,
+  value,
+  onChange,
+  active,
+  options,
+}: {
+  id: string
+  label: string
+  icon: LucideIcon
+  value: string
+  onChange: (value: string) => void
+  active: boolean
+  options: { value: string; label: string }[]
+}) {
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? options[0]?.label
+
+  return (
+    <ClassroomMenuSelect
+      id={id}
+      value={value}
+      onChange={onChange}
+      options={options}
+      aria-label={label}
+      className="min-w-[160px] flex-1"
+      triggerClassName={cn(
+        'rounded-xl border px-3 py-2 transition',
+        active
+          ? 'border-brand/40 bg-white ring-1 ring-brand/15'
+          : 'border-slate-200/80 bg-white/80 hover:border-sky-200 hover:bg-white',
+      )}
+    >
+      {(open) => (
+        <>
+          <Icon className={cn('size-3.5 shrink-0', active ? 'text-brand' : 'text-slate-400')} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">
+              {label}
+            </span>
+            <span className="block truncate text-sm font-bold text-slate-800">{selectedLabel}</span>
+          </span>
+          <ChevronDown
+            className={cn('size-4 shrink-0 text-slate-400 transition-transform', open && 'rotate-180')}
+            aria-hidden
+          />
+        </>
+      )}
+    </ClassroomMenuSelect>
   )
 }
 
@@ -98,7 +163,7 @@ export default function StudentsPage() {
   const [filterBadge, setFilterBadge] = useState('all')
   const [filterPoints, setFilterPoints] = useState('all')
   const [sortBy, setSortBy] = useState<StudentSortOption>('role-stt')
-  const [filtersOpen, setFiltersOpen] = useState(true)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -154,13 +219,17 @@ export default function StudentsPage() {
     return sortStudents(filtered, students, sortBy, teams)
   }, [students, teams, searchQuery, filterGender, filterTeam, filterRole, filterBadge, filterPoints, sortBy])
 
+  const activeQuickFilterCount = [
+    filterGender !== 'all',
+    filterTeam !== 'all',
+    filterRole !== 'all',
+    filterBadge !== 'all',
+    filterPoints !== 'all',
+  ].filter(Boolean).length
+
   const hasActiveFilter =
     searchQuery !== '' ||
-    filterGender !== 'all' ||
-    filterTeam !== 'all' ||
-    filterRole !== 'all' ||
-    filterBadge !== 'all' ||
-    filterPoints !== 'all' ||
+    activeQuickFilterCount > 0 ||
     sortBy !== 'role-stt'
 
   // ── Handlers
@@ -257,15 +326,22 @@ export default function StudentsPage() {
         </div>
 
         <ClassroomCard className="space-y-3">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <label htmlFor="students-search" className="sr-only">
+                Tìm học sinh
+              </label>
+              <Search
+                className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
               <input
+                id="students-search"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm theo tên, quê quán, SĐT, phụ huynh..."
-                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm font-semibold text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="classroom-search-field min-h-11"
               />
               {searchQuery ? (
                 <IconTouchButton
@@ -279,130 +355,158 @@ export default function StudentsPage() {
               ) : null}
             </div>
 
-            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <ArrowUpDown className="size-3.5 shrink-0 text-slate-400" />
-              <ClassroomSelect
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as StudentSortOption)}
-                aria-label="Sắp xếp học sinh"
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((open) => !open)}
+                aria-expanded={filtersOpen}
+                aria-controls="students-quick-filters"
+                className={cn(
+                  'inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
+                  filtersOpen || activeQuickFilterCount > 0
+                    ? 'border-brand/30 bg-brand-soft text-brand-dark'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-sky-200 hover:bg-slate-50',
+                )}
               >
-                <option value="role-stt">Vai trò → STT</option>
-                <option value="name-asc">Tên A → Z</option>
-                <option value="name-desc">Tên Z → A</option>
-                <option value="points-desc">Điểm cao → thấp</option>
-                <option value="points-asc">Điểm thấp → cao</option>
-                <option value="team">Theo tổ</option>
-                <option value="newest">Mới thêm gần đây</option>
-              </ClassroomSelect>
-            </div>
+                <Filter className="size-4 shrink-0 text-brand" aria-hidden />
+                Lọc
+                {activeQuickFilterCount > 0 ? (
+                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-black text-white">
+                    {activeQuickFilterCount}
+                  </span>
+                ) : null}
+                <ChevronDown
+                  className={cn(
+                    'size-4 shrink-0 text-slate-400 transition-transform',
+                    filtersOpen && 'rotate-180',
+                  )}
+                  aria-hidden
+                />
+              </button>
 
-            <ClassroomButton
-              variant="danger"
-              size="sm"
-              onClick={handleClearFilters}
-              disabled={!hasActiveFilter}
-              className="shrink-0 rounded-xl"
-            >
-              <X className="size-3.5" />
-              Xóa lọc
-            </ClassroomButton>
+              <ClassroomMenuSelect
+                id="students-sort"
+                value={sortBy}
+                onChange={(next) => setSortBy(next as StudentSortOption)}
+                options={STUDENT_SORT_OPTIONS}
+                aria-label="Sắp xếp học sinh"
+                className="shrink-0"
+                triggerClassName="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+              >
+                {(open) => (
+                  <>
+                    <ArrowUpDown className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+                    <span className="min-w-0 truncate">
+                      {STUDENT_SORT_OPTIONS.find((option) => option.value === sortBy)?.label}
+                    </span>
+                    <ChevronDown
+                      className={cn('size-4 shrink-0 text-slate-400 transition-transform', open && 'rotate-180')}
+                      aria-hidden
+                    />
+                  </>
+                )}
+              </ClassroomMenuSelect>
+
+              {hasActiveFilter ? (
+                <ClassroomButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="min-h-11 shrink-0 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                >
+                  <X className="size-3.5" />
+                  Xóa lọc
+                </ClassroomButton>
+              ) : null}
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((open) => !open)}
-            aria-expanded={filtersOpen}
-            className="flex w-full items-center justify-between rounded-xl border border-sky-100 bg-brand-soft/50 px-3 py-2.5 text-left"
-          >
-            <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
-              <Filter className="size-4 text-brand" />
-              Bộ lọc nhanh
-            </span>
-            <ChevronDown className={`size-4 text-slate-400 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
-          </button>
-
           {filtersOpen ? (
-            <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <Filter className="size-3.5 text-slate-400" />
-                <ClassroomSelect
-                  value={filterGender}
-                  onChange={(e) => setFilterGender(e.target.value)}
-                  aria-label="Lọc giới tính"
-                >
-                  <option value="all">Tất cả giới tính</option>
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                </ClassroomSelect>
-              </div>
+            <div
+              id="students-quick-filters"
+              className="flex flex-wrap gap-2 rounded-xl border border-sky-100 bg-brand-soft/40 p-2"
+            >
+              <QuickFilterSelect
+                id="students-filter-gender"
+                label="Giới tính"
+                icon={Users}
+                value={filterGender}
+                onChange={setFilterGender}
+                active={filterGender !== 'all'}
+                options={[
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'male', label: 'Nam' },
+                  { value: 'female', label: 'Nữ' },
+                ]}
+              />
 
               {teams.length > 0 ? (
-                <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <UserCheck className="size-3.5 text-slate-400" />
-                  <ClassroomSelect
-                    value={filterTeam}
-                    onChange={(e) => setFilterTeam(e.target.value)}
-                    aria-label="Lọc tổ"
-                  >
-                    <option value="all">Tất cả tổ</option>
-                    <option value="none">Chưa có tổ</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </ClassroomSelect>
-                </div>
+                <QuickFilterSelect
+                  id="students-filter-team"
+                  label="Tổ"
+                  icon={UserCheck}
+                  value={filterTeam}
+                  onChange={setFilterTeam}
+                  active={filterTeam !== 'all'}
+                  options={[
+                    { value: 'all', label: 'Tất cả tổ' },
+                    { value: 'none', label: 'Chưa có tổ' },
+                    ...teams.map((t) => ({ value: t.id, label: t.name })),
+                  ]}
+                />
               ) : null}
 
               {classroomRoles.length > 0 ? (
-                <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <Crown className="size-3.5 text-slate-400" />
-                  <ClassroomSelect
-                    value={filterRole}
-                    onChange={(e) => setFilterRole(e.target.value)}
-                    aria-label="Lọc vai trò"
-                  >
-                    <option value="all">Tất cả vai trò</option>
-                    <option value="none">Chưa có vai trò</option>
-                    {classroomRoles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.icon ? `${role.icon} ` : ''}{role.name}
-                      </option>
-                    ))}
-                  </ClassroomSelect>
-                </div>
+                <QuickFilterSelect
+                  id="students-filter-role"
+                  label="Vai trò"
+                  icon={Crown}
+                  value={filterRole}
+                  onChange={setFilterRole}
+                  active={filterRole !== 'all'}
+                  options={[
+                    { value: 'all', label: 'Tất cả vai trò' },
+                    { value: 'none', label: 'Chưa có vai trò' },
+                    ...classroomRoles.map((role) => ({
+                      value: role.id,
+                      label: role.icon ? `${role.icon} ${role.name}` : role.name,
+                    })),
+                  ]}
+                />
               ) : null}
 
               {badges.length > 0 ? (
-                <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <Medal className="size-3.5 text-slate-400" />
-                  <ClassroomSelect
-                    value={filterBadge}
-                    onChange={(e) => setFilterBadge(e.target.value)}
-                    aria-label="Lọc huy hiệu"
-                  >
-                    <option value="all">Tất cả huy hiệu</option>
-                    <option value="none">Chưa có huy hiệu</option>
-                    {badges.map((badge) => (
-                      <option key={badge.id} value={badge.id}>
-                        {badge.icon ? `${badge.icon} ` : ''}{badge.name}
-                      </option>
-                    ))}
-                  </ClassroomSelect>
-                </div>
+                <QuickFilterSelect
+                  id="students-filter-badge"
+                  label="Huy hiệu"
+                  icon={Medal}
+                  value={filterBadge}
+                  onChange={setFilterBadge}
+                  active={filterBadge !== 'all'}
+                  options={[
+                    { value: 'all', label: 'Tất cả huy hiệu' },
+                    { value: 'none', label: 'Chưa có huy hiệu' },
+                    ...badges.map((badge) => ({
+                      value: badge.id,
+                      label: badge.icon ? `${badge.icon} ${badge.name}` : badge.name,
+                    })),
+                  ]}
+                />
               ) : null}
 
-              <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <Star className="size-3.5 text-amber-500" />
-                <ClassroomSelect
-                  value={filterPoints}
-                  onChange={(e) => setFilterPoints(e.target.value)}
-                  aria-label="Lọc điểm"
-                >
-                  <option value="all">Tất cả điểm</option>
-                  <option value="has">Có điểm</option>
-                  <option value="none">Chưa có điểm</option>
-                </ClassroomSelect>
-              </div>
+              <QuickFilterSelect
+                id="students-filter-points"
+                label="Điểm"
+                icon={Star}
+                value={filterPoints}
+                onChange={setFilterPoints}
+                active={filterPoints !== 'all'}
+                options={[
+                  { value: 'all', label: 'Tất cả điểm' },
+                  { value: 'has', label: 'Có điểm' },
+                  { value: 'none', label: 'Chưa có điểm' },
+                ]}
+              />
             </div>
           ) : null}
         </ClassroomCard>
@@ -430,7 +534,7 @@ export default function StudentsPage() {
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {filteredStudents.map((student, index) => (
-                <AnimatedEntrance key={student.id} variant="random" staggerIndex={index}>
+                <AnimatedEntrance key={student.id} variant="random" staggerIndex={index} className="h-full">
                   <StudentCard
                     student={student}
                     teams={teams}

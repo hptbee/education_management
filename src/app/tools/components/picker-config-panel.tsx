@@ -3,7 +3,7 @@
 import { ChevronDown, Minus, Plus, RotateCcw } from 'lucide-react'
 import type { Team } from '@/src/types/models'
 import type { PickerMode, PickerScope, PickerSession } from '@/src/utils/pickerSession'
-import { ClassroomButton } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomSelect } from '@/src/components/classroom'
 
 const MODE_OPTIONS: Array<{ id: PickerMode; label: string; emoji: string }> = [
   { id: 'single', label: 'Một bạn', emoji: '🎯' },
@@ -99,19 +99,23 @@ export function PickerConfigPanel({
         </div>
 
         {session.scopeType === 'team' ? (
-          <select
-            value={session.teamId ?? ''}
-            disabled={isBusy || teams.length === 0}
-            onChange={(e) => onTeamChange(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-brand-purple focus-visible:ring-2 focus-visible:ring-brand/40"
-          >
-            <option value="">Chọn tổ</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.avatar ? `${team.avatar} ` : ''}{team.name}
-              </option>
-            ))}
-          </select>
+          <div className="mt-2">
+            <ClassroomSelect
+              variant="field"
+              value={session.teamId ?? ''}
+              disabled={isBusy || teams.length === 0}
+              onChange={(e) => onTeamChange(e.target.value)}
+              aria-label="Chọn tổ"
+              className="rounded-xl border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700"
+            >
+              <option value="">Chọn tổ</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.avatar ? `${team.avatar} ` : ''}{team.name}
+                </option>
+              ))}
+            </ClassroomSelect>
+          </div>
         ) : null}
       </div>
 

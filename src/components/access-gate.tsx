@@ -120,11 +120,13 @@ function formatLoginError(error: unknown): string {
 export function AccessGate({ children }: { children: React.ReactNode }) {
   const {
     isBootstrapping,
+    storageError,
     isLoggingIn,
     loginStep,
     accessState,
     loginWithGoogle,
     cancelLogin,
+    retrySessionRestore,
     refreshSession,
     logout,
   } = useAuth();
@@ -169,11 +171,25 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
           <Icon className="size-7" aria-hidden />
         </div>
         <h1 className="mt-4 font-display text-2xl font-black text-slate-800">{message.title}</h1>
-        <p className="mt-2 text-sm font-semibold text-slate-500">{message.body}</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">
+          {storageError
+            ? "Không thể đọc phiên đăng nhập an toàn từ Windows Credential Manager."
+            : message.body}
+        </p>
+        {storageError ? (
+          <p className="mt-2 break-words rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+            {storageError}
+          </p>
+        ) : null}
 
         <div className="mt-6 flex flex-col gap-3">
           {accessState === "AUTH_REQUIRED" ? (
             <>
+              {storageError ? (
+                <ClassroomButton variant="outline" onClick={() => void retrySessionRestore()}>
+                  Thử đọc lại phiên đăng nhập
+                </ClassroomButton>
+              ) : null}
               {isTauri() ? (
                 <ClassroomButton disabled={isLoggingIn} onClick={() => void handleLogin()}>
                   Đăng nhập bằng Google

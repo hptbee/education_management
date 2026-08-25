@@ -12,6 +12,8 @@ description: Project-specific UI constraints for the classroom gamification app.
 - [docs/PROJECT_SCOPE.md](../../../docs/PROJECT_SCOPE.md) — §12 UI/UX Requirements
 - [`.cursor/rules/frontend.mdc`](../../rules/frontend.mdc)
 - `src/app/globals.css`, `src/components/classroom/*`
+- Motion tokens: `src/utils/motion.ts` — see [PROJECT_SCOPE.md](../../../docs/PROJECT_SCOPE.md) §13
+- Dropdowns: `ClassroomSelect` / `ClassroomMenuSelect` only (no native `<select>`)
 
 ## Design direction
 
@@ -34,7 +36,7 @@ When using `ui-ux-pro-max` or `redesign-existing-projects`, **ignore** advice to
 | Dial | Value |
 |---|---|
 | DESIGN_VARIANCE | 3–5 |
-| MOTION_INTENSITY | 4–6 |
+| MOTION_INTENSITY | 6–7 |
 | VISUAL_DENSITY | 5–7 |
 
 ## Copy and empty states

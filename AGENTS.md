@@ -21,7 +21,7 @@ Read before implementing when the task touches that area:
 
 | Doc | When |
 |---|---|
-| [docs/PROJECT_SCOPE.md](docs/PROJECT_SCOPE.md) | Product scope, features, UI requirements |
+| [docs/PROJECT_SCOPE.md](docs/PROJECT_SCOPE.md) | Product scope, features, UI, motion, dropdowns |
 | [PROJECT_RULES.md](PROJECT_RULES.md) | Shell, navigation, SSOT constraints |
 | [docs/DATA_ARCHITECTURE.md](docs/DATA_ARCHITECTURE.md) | Persistence, assets, cloud backup layout |
 | [docs/ACCOUNTS.md](docs/ACCOUNTS.md) | OAuth, entitlements, licensing |

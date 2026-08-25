@@ -128,4 +128,17 @@ describe("rankTeams", () => {
     const ranked = rankTeams(teams);
     expect(ranked[0].team.id).toBe("t1");
   });
+
+  it("keeps canonical ranks when filtering a subset", () => {
+    const teams: Team[] = [
+      { id: "t1", name: "Alpha", score: 30, createdAt: "2026-01-01", updatedAt: "2026-01-01" },
+      { id: "t2", name: "Beta", score: 20, createdAt: "2026-01-01", updatedAt: "2026-01-01" },
+      { id: "t3", name: "Gamma", score: 10, createdAt: "2026-01-01", updatedAt: "2026-01-01" },
+    ];
+    const rankById = new Map(rankTeams(teams).map((entry) => [entry.team.id, entry.rank]));
+    const filtered = teams.filter((team) => team.id === "t1" || team.id === "t3");
+    expect(filtered.map((team) => team.id)).toEqual(["t1", "t3"]);
+    expect(rankById.get("t1")).toBe(1);
+    expect(rankById.get("t3")).toBe(3);
+  });
 });

@@ -5,6 +5,8 @@ import {
   PAGE_TRANSITION_PRESETS,
   canAnimate,
   filterBurstsForClassroom,
+  pointBurstLifetimeMs,
+  POINT_BURST_HOLD_MS,
   ENTRANCE_PRESETS,
   MAX_ENTRANCE_ANIMATED_ITEMS,
   pickEntrancePreset,
@@ -22,22 +24,22 @@ afterEach(() => {
 
 describe('motion', () => {
   it('exposes duration tokens in ms and seconds', () => {
-    expect(MOTION_DURATION_MS.fast).toBe(120)
-    expect(MOTION_DURATION_MS.normal).toBe(180)
-    expect(MOTION_DURATION_MS.smooth).toBe(250)
-    expect(MOTION_DURATION_MS.entrance).toBe(320)
-    expect(MOTION_DURATION_MS.emphasis).toBe(350)
-    expect(MOTION_DURATION_MS.page).toBe(320)
-    expect(MOTION_DURATION_S.normal).toBe(0.18)
-    expect(MOTION_DURATION_S.page).toBe(0.32)
-    expect(MOTION_DURATION_S.entrance).toBe(0.32)
+    expect(MOTION_DURATION_MS.fast).toBe(200)
+    expect(MOTION_DURATION_MS.normal).toBe(300)
+    expect(MOTION_DURATION_MS.smooth).toBe(420)
+    expect(MOTION_DURATION_MS.entrance).toBe(520)
+    expect(MOTION_DURATION_MS.emphasis).toBe(580)
+    expect(MOTION_DURATION_MS.page).toBe(520)
+    expect(MOTION_DURATION_S.normal).toBe(0.3)
+    expect(MOTION_DURATION_S.page).toBe(0.52)
+    expect(MOTION_DURATION_S.entrance).toBe(0.52)
   })
 
   it('staggerDelay caps delay for large indices', () => {
     expect(staggerDelay(0)).toBe(0)
-    expect(staggerDelay(2)).toBe(120)
-    expect(staggerDelay(10)).toBe(160)
-    expect(staggerDelay(100)).toBe(160)
+    expect(staggerDelay(2)).toBe(180)
+    expect(staggerDelay(10)).toBe(260)
+    expect(staggerDelay(100)).toBe(260)
   })
 
   it('canAnimate respects animationsEnabled when motion is allowed', () => {
@@ -63,6 +65,11 @@ describe('motion', () => {
     ]
     expect(filterBurstsForClassroom(bursts, 'class-a')).toEqual([{ id: 'a', classroomId: 'class-a' }])
     expect(filterBurstsForClassroom(bursts, undefined)).toEqual([])
+  })
+
+  it('pointBurstLifetimeMs covers emphasis animation plus hold', () => {
+    expect(POINT_BURST_HOLD_MS).toBe(MOTION_DURATION_MS.fast)
+    expect(pointBurstLifetimeMs()).toBe(MOTION_DURATION_MS.emphasis + MOTION_DURATION_MS.fast)
   })
 
   it('pickEntrancePreset returns one of the approved presets', () => {

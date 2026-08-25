@@ -43,14 +43,13 @@ function readWebStoredPayload(): string | null {
 
 async function loadAuthSessionFromStore(): Promise<StoredAuthSession | null> {
   if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const raw = await invoke<string | null>("load_entitlement");
+    if (!raw) return null;
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      const raw = await invoke<string | null>("load_entitlement");
-      if (!raw) return null;
       return JSON.parse(raw) as StoredAuthSession;
-    } catch (error) {
-      console.warn("[secure-storage] loadAuthSession failed:", error);
-      return null;
+    } catch {
+      throw new Error("Stored authentication session is invalid");
     }
   }
 

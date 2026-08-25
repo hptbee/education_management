@@ -1,13 +1,14 @@
 'use client'
 
-import { Users, Edit2, Trash2, UserMinus } from 'lucide-react'
+import { Users } from 'lucide-react'
 import type { Team, Student } from '@/src/types/models'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 import { useAppData } from '@/src/store/AppDataContext'
 import { getTeamMotivationMessage } from '@/src/utils/teams'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
 import { getTeamLeadershipRole, TeamLeadershipAvatarOverlay } from './team-leadership-badge'
-import { ClassroomButton, IconTouchButton } from '@/src/components/classroom'
+import { ClassroomButton } from '@/src/components/classroom'
+import { cn } from '@/lib/utils'
 
 interface TeamCardProps {
   team: Team
@@ -16,9 +17,6 @@ interface TeamCardProps {
   totalTeams: number
   highestScore: number
   colorIndex: number
-  onEdit: () => void
-  onDelete: () => void
-  onClearAllMembers: () => void
   onViewDetails: () => void
   onViewMembers: () => void
 }
@@ -29,6 +27,15 @@ const RANK_PILL: Record<number, string> = {
   2: 'bg-pastel-peach text-orange-800',
 }
 
+function uniqueById(students: Student[]): Student[] {
+  const seen = new Set<string>()
+  return students.filter((student) => {
+    if (seen.has(student.id)) return false
+    seen.add(student.id)
+    return true
+  })
+}
+
 export function TeamCard({
   team,
   members,
@@ -36,123 +43,125 @@ export function TeamCard({
   totalTeams,
   highestScore,
   colorIndex,
-  onEdit,
-  onDelete,
-  onClearAllMembers,
   onViewDetails,
+  onViewMembers,
 }: TeamCardProps) {
   const { data } = useAppData()
   const classroomId = data?.metadata.id
   const color = getTeamPastelStyle(colorIndex)
-  const previewAvatars = members.slice(0, 5)
-  const extra = members.length - previewAvatars.length
+  const uniqueMembers = uniqueById(members)
+  const previewAvatars = uniqueMembers.slice(0, 5)
+  const extra = uniqueMembers.length - previewAvatars.length
 
   const maxPointsInTeam = members.length > 0 ? Math.max(...members.map(m => m.points || 0)) : 0
   const championsCount = members.filter(m => m.points === maxPointsInTeam && maxPointsInTeam > 0).length
 
   const message = getTeamMotivationMessage(rank, totalTeams, championsCount)
   const progressPercent = highestScore > 0 ? Math.min(100, (team.score / highestScore) * 100) : 0
+  const displayProgress = Math.round(progressPercent)
 
   return (
-    <article className={`flex flex-col rounded-3xl border border-white/80 p-4 shadow-sm transition hover:shadow-md ${color.bg}`}>
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
-            {team.avatar || <Users className="size-5 text-slate-400" />}
+    <article
+      className={cn(
+        'motion-safe-hover flex h-full flex-col rounded-3xl border border-white/80 p-4 shadow-sm',
+        color.bg,
+      )}
+    >
+      <div className="mb-3 flex min-w-0 items-start gap-2.5">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
+          {team.avatar || <Users className="size-5 text-slate-400" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3
+            title={team.name}
+            className="line-clamp-2 font-display text-lg font-extrabold leading-tight text-slate-800"
+          >
+            {team.name}
+          </h3>
+          <span
+            className={cn(
+              'mt-1 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-extrabold',
+              RANK_PILL[rank] ?? 'bg-white/80 text-slate-500',
+            )}
+          >
+            #{rank + 1}
           </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h3 className="truncate font-display text-lg font-extrabold text-slate-800">{team.name}</h3>
-              {rank < 3 ? (
-                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${RANK_PILL[rank]}`}>
-                  #{rank + 1}
-                </span>
-              ) : null}
-            </div>
-            <p className="text-[11px] font-semibold text-slate-500">{members.length} thành viên</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center">
-          {members.length > 0 ? (
-            <IconTouchButton
-              aria-label="Bỏ hết thành viên"
-              onClick={onClearAllMembers}
-              className="rounded-xl text-slate-400 hover:bg-white hover:text-amber-600"
-            >
-              <UserMinus className="size-4" />
-            </IconTouchButton>
-          ) : null}
-          <IconTouchButton
-            aria-label="Sửa nhóm"
-            onClick={onEdit}
-            className="rounded-xl text-slate-400 hover:bg-white hover:text-brand-dark"
-          >
-            <Edit2 className="size-3.5" />
-          </IconTouchButton>
-          <IconTouchButton
-            aria-label="Xóa nhóm"
-            onClick={onDelete}
-            className="rounded-xl text-slate-400 hover:bg-white hover:text-rose-500"
-          >
-            <Trash2 className="size-4" />
-          </IconTouchButton>
         </div>
       </div>
 
       <div className="mb-3 grid grid-cols-2 gap-2">
-        <div className="rounded-2xl bg-white/80 px-3 py-2 text-center">
-          <p className={`font-display text-2xl font-black ${color.text}`}>{team.score.toLocaleString()}</p>
+        <div className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-2xl bg-white/80 px-3 py-2 text-center">
+          <p className={cn('font-display text-2xl font-black tabular-nums', color.text)}>
+            {team.score.toLocaleString()}
+          </p>
           <p className="text-[11px] font-semibold text-slate-500">Tổng điểm</p>
         </div>
-        <div className="rounded-2xl bg-white/80 px-3 py-2 text-center">
-          <p className={`font-display text-2xl font-black ${color.text}`}>{members.length}</p>
+        <div className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-2xl bg-white/80 px-3 py-2 text-center">
+          <p className={cn('font-display text-2xl font-black tabular-nums', color.text)}>
+            {members.length}
+          </p>
           <p className="text-[11px] font-semibold text-slate-500">Thành viên</p>
         </div>
       </div>
 
       <div className="mb-3">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-white/80">
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={displayProgress}
+          aria-label={`Điểm tổ đạt ${displayProgress}% so với tổ dẫn đầu`}
+          className="h-2 w-full overflow-hidden rounded-full bg-white/80"
+        >
           <div
-            className={`h-full rounded-full ${color.bar} transition-all duration-500`}
+            className={cn('h-full rounded-full motion-safe:transition-all motion-safe:duration-500', color.bar)}
             style={{ width: progressPercent > 0 ? `${Math.max(progressPercent, 8)}%` : '0%' }}
           />
         </div>
-        <p className={`mt-2 text-[11px] font-bold ${color.text}`}>{message}</p>
+        <p className={cn('mt-2 min-h-4 text-[11px] font-bold', color.text)}>{message}</p>
       </div>
 
-      <div className="mb-4 flex min-h-8 items-center">
+      <div className="mb-4 flex min-h-9 items-center">
         {members.length === 0 ? (
           <span className="text-xs font-semibold text-slate-500">Chưa có thành viên</span>
         ) : (
-          <div className="flex items-center gap-1.5">
-            <div className="flex -space-x-2">
+          <button
+            type="button"
+            onClick={onViewMembers}
+            aria-label={`Xem thành viên ${team.name}`}
+            className="flex items-center gap-1.5 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          >
+            <div className="flex -space-x-1.5">
               {previewAvatars.map((s, i) => {
                 const leadershipRole = getTeamLeadershipRole(team, s.id)
+                const ringClass = leadershipRole === 'leader'
+                  ? 'ring-amber-300'
+                  : leadershipRole === 'vice'
+                    ? 'ring-sky-300'
+                    : 'ring-black/5'
+
                 return (
-                  <div key={s.id} className="relative" style={{ zIndex: 10 - i }}>
+                  <div key={s.id} className="relative" style={{ zIndex: 10 - i }} title={s.name}>
                     <StudentAvatar
                       student={s}
                       classroomId={classroomId}
                       alt={s.name}
-                      className={`size-8 rounded-full border-2 border-white shadow-sm ring-1 ${
-                        leadershipRole === 'leader'
-                          ? 'ring-amber-300'
-                          : leadershipRole === 'vice'
-                            ? 'ring-sky-300'
-                            : 'ring-black/5'
-                      }`}
+                      className={cn(
+                        'size-8 rounded-full border-2 border-white shadow-sm ring-1',
+                        ringClass,
+                      )}
                     />
                     {leadershipRole ? <TeamLeadershipAvatarOverlay role={leadershipRole} /> : null}
                   </div>
                 )
               })}
             </div>
-            {extra > 0 && (
-              <span className="flex h-6 items-center justify-center rounded-full bg-white px-2 text-[10px] font-bold text-slate-500">
+            {extra > 0 ? (
+              <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-2 text-[10px] font-bold text-slate-500 shadow-sm">
                 +{extra}
               </span>
-            )}
-          </div>
+            ) : null}
+          </button>
         )}
       </div>
 

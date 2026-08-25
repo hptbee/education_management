@@ -2,12 +2,12 @@ import type { Transition, Variants } from 'framer-motion'
 
 /** Duration tokens in milliseconds (for CSS). */
 export const MOTION_DURATION_MS = {
-  fast: 120,
-  normal: 180,
-  smooth: 250,
-  entrance: 320,
-  emphasis: 350,
-  page: 320,
+  fast: 200,
+  normal: 300,
+  smooth: 420,
+  entrance: 520,
+  emphasis: 580,
+  page: 520,
 } as const
 
 /** Duration tokens in seconds (for Framer Motion). */
@@ -38,7 +38,7 @@ export function canAnimate(animationsEnabled = true): boolean {
 }
 
 /** Stagger delay capped so large lists never queue long entrance animations. */
-export function staggerDelay(index: number, stepMs = 60, capMs = 160): number {
+export function staggerDelay(index: number, stepMs = 90, capMs = 260): number {
   return Math.min(index * stepMs, capMs)
 }
 
@@ -54,21 +54,21 @@ export function motionTransition(
 }
 
 export const fadeUpVariants: Variants = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 4 },
+  exit: { opacity: 0, y: 8 },
 }
 
 export const dialogVariants: Variants = {
-  initial: { opacity: 0, y: 6, scale: 0.97 },
+  initial: { opacity: 0, y: 14, scale: 0.92 },
   animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: 4, scale: 0.98 },
+  exit: { opacity: 0, y: 8, scale: 0.94 },
 }
 
 export const popoverVariants: Variants = {
-  initial: { opacity: 0, y: 6 },
+  initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 4 },
+  exit: { opacity: 0, y: 6 },
 }
 
 export const backdropVariants: Variants = {
@@ -79,6 +79,13 @@ export const backdropVariants: Variants = {
 
 export function reducedMotionTransition(): Transition {
   return { duration: 0 }
+}
+
+/** Hold after emphasis animation so point bursts finish visibly before removal. */
+export const POINT_BURST_HOLD_MS = MOTION_DURATION_MS.fast
+
+export function pointBurstLifetimeMs(): number {
+  return MOTION_DURATION_MS.emphasis + POINT_BURST_HOLD_MS
 }
 
 /** Keep point bursts scoped to the classroom active at spawn time. */
@@ -112,12 +119,12 @@ export const entranceFadeVariants: Variants = {
 }
 
 export const entranceFadeUpVariants: Variants = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 0, y: 18 },
   animate: { opacity: 1, y: 0 },
 }
 
 export const entranceFadeScaleVariants: Variants = {
-  initial: { opacity: 0, scale: 0.97 },
+  initial: { opacity: 0, scale: 0.9 },
   animate: { opacity: 1, scale: 1 },
 }
 
@@ -231,28 +238,28 @@ export function resolvePageTransition(
   return pickPageTransition(pathname, rng)
 }
 
-export const PAGE_DECOR_DURATION_S = 0.36
+export const PAGE_DECOR_DURATION_S = 0.58
 
 export function pageContentVariants(pick: PageTransitionPick): Variants {
   switch (pick.preset) {
     case 'bouncyPop':
       return {
-        initial: { opacity: 0, scale: 0.96 },
-        animate: { opacity: 1, scale: [0.96, 1.02, 1] },
+        initial: { opacity: 1, scale: 0.9 },
+        animate: { opacity: 1, scale: [0.9, 1.06, 1] },
       }
     case 'colorfulSlide':
       return {
-        initial: { opacity: 0, x: 20 * pick.slideDir },
+        initial: { opacity: 0, x: 36 * pick.slideDir },
         animate: { opacity: 1, x: 0 },
       }
     case 'bubbleReveal':
       return {
-        initial: { opacity: 0, scale: 0.98 },
+        initial: { opacity: 0, scale: 0.92 },
         animate: { opacity: 1, scale: 1 },
       }
     case 'sparkleReveal':
       return {
-        initial: { opacity: 0, y: 8 },
+        initial: { opacity: 0, y: 20 },
         animate: { opacity: 1, y: 0 },
       }
   }
@@ -262,7 +269,7 @@ export function pageContentTransition(preset: PageTransitionPreset): Transition 
   if (preset === 'bouncyPop') {
     return {
       duration: MOTION_DURATION_S.page,
-      times: [0, 0.62, 1],
+      times: [0, 0.55, 1],
       ease: MOTION_EASING.enter as Transition['ease'],
     }
   }

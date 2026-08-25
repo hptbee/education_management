@@ -776,7 +776,7 @@ Allow the teacher to update classroom identity after initial setup.
 
 **Display name vs database rename:** Changing **Tên lớp (hiển thị)** on **Hồ sơ** updates UI labels only. **Đổi tên database** on **Dữ liệu** changes the stored database identity (file/folder name and school year metadata).
 
-Use shared primitives: `PageHeader`, `ClassroomCard`, `ClassroomButton`, manage tabs. Max content width ~1100px.
+Use shared primitives: `PageHeader`, `ClassroomCard`, `ClassroomButton`, `ClassroomSelect`, manage tabs. Max content width ~1100px.
 
 ## Behavior
 
@@ -823,13 +823,19 @@ Allow teachers to maintain a complete local student list.
 The student page must provide:
 
 - Student card/grid view
-- Search by name
+- Search (name, hometown, phone, parent)
+- Sort (role → STT, name, points, team, newest)
+- Quick filters (gender, team, role, badge, points) behind a **Lọc** toggle on the same toolbar row as search
 - Add student
 - Edit student
 - Delete student
 - Navigate to student profile
 
 Do not use a dense spreadsheet-style table as the primary student UI.
+
+Cards in the **same grid row** stretch to that row’s tallest card so points and **Xem** line up. Different rows may have different heights. Do not reserve empty badge slots on every card.
+
+Toolbar dropdowns (sort and filters) use `ClassroomSelect` / `ClassroomMenuSelect` — never native `<select>` (Windows native popup overlaps the trigger).
 
 ## Add Student
 
@@ -1918,7 +1924,7 @@ Avoid deep nested navigation.
 
 ## Student Search
 
-Search by student name.
+Search by student name, hometown, phone, and parent name.
 
 Behavior:
 
@@ -1926,15 +1932,21 @@ Behavior:
 - Trim whitespace
 - Update results as the teacher types
 
-No advanced filtering is required for Version 1.
+## Student Filters and Sort
 
-## Optional Future Filters
+Implemented on `/students`:
 
-Do not implement unless useful:
+| Control | Behavior |
+|---|---|
+| Search | Same toolbar row as **Lọc**, sort, and **Xóa lọc** |
+| **Lọc** | Toggles the quick-filter panel; badge shows how many filters are active |
+| Sort | Vai trò → STT (default), name, points, team, newest |
+| Quick filters | Gender, team, role, badge, points — panel starts closed |
+| **Xóa lọc** | Visible only when search, sort, or a filter is not at default |
 
-- Team
-- Gender
-- Point range
+All of these dropdowns use `ClassroomSelect` (custom menu), not native `<select>`.
+
+History, ranking, points sort, Wall of Fame, seating board direction, tool team pickers, student gender, and team leader/deputy use the same control.
 
 ---
 
@@ -2397,8 +2409,13 @@ Reuse components from `src/components/classroom/`:
 - `ClassroomCard` — `rounded-3xl`, `border-slate-200/80`, white background
 - `PageHeader` — icon box + `font-display` title + subtitle
 - `EmptyState` — illustration or emoji, Vietnamese message, optional CTA
+- `ClassroomSelect` — custom dropdown wrapping `<option>` children (field / filter / inline variants). Do **not** use native `<select>`.
+- `ClassroomMenuSelect` — portal menu used by `ClassroomSelect`; `z-index` 130 so it sits above dialogs
+- `AnimatedEntrance` — list/card enter (`fade` / `fadeUp` / `fadeScale` / `random`)
+- `PageTransition` — route enter via `AppDataShell` (`bouncyPop`, `colorfulSlide`, `bubbleReveal`, `sparkleReveal`)
+- `IconTouchButton` — 44px icon-only actions with `aria-label`
 
-Do not create per-page one-off button or card styles when these primitives apply.
+Do not create per-page one-off button, card, or dropdown styles when these primitives apply.
 
 # 12.8b Teacher vs Student-Facing Balance
 
@@ -2413,7 +2430,7 @@ Student-facing / presentation pages (~40% structure / 60% playful):
 - Rewards, Recognition
 - Tools page (presentation layout)
 
-Teacher pages: minimal motion (hover lift only).
+Teacher pages: page transitions, card entrance (first 8 items), hover lift, and custom dropdown menus — not hover-only. Keep motion meaningful; do not add looping decoration on management screens.
 Student-facing pages: larger typography, celebration moments allowed (confetti on wheel result), respect `prefers-reduced-motion`.
 
 Chibi illustrations (`banner-boy.png`, `banner-girl.png`, `class-photo.png`): 1–2 per page maximum — dashboard greeting, empty states, coming-soon placeholders.
@@ -2448,18 +2465,43 @@ Body text must prioritize readability.
 
 # 13. Animation Requirements
 
-Use Framer Motion for meaningful motion.
+Use Framer Motion for meaningful motion. Tokens live in `src/utils/motion.ts` (`MOTION_DURATION_MS`) and `src/app/globals.css` (`--motion-*`). CSS hover/press uses the same values.
+
+Current durations (keep CSS and TS in sync):
+
+| Token | Duration | Typical use |
+|---|---|---|
+| `fast` | 200ms | Press, chevron, small UI |
+| `normal` | 300ms | Default transitions, empty state |
+| `smooth` | 420ms | Sidebar width, hover lift |
+| `entrance` | 520ms | List/card enter |
+| `emphasis` | 580ms | Point burst, stronger enter |
+| `page` | 520ms | Route transition (`PageTransition`) |
+
+Page-transition decor (`PAGE_DECOR_DURATION_S`, ~0.58s) must finish in the same window as page content. Do **not** fade page content from opacity 0 for ~1s+ after the flash — that leaves a blank `bg-page` gap (`bouncyPop` stays opacity 1 and only scales).
+
+Shared presets (`src/utils/motion.ts`):
+
+| Kind | Names |
+|---|---|
+| UI | `fadeUpVariants`, `dialogVariants`, `popoverVariants`, `backdropVariants` |
+| Card entrance | `fade`, `fadeUp`, `fadeScale` (`AnimatedEntrance`; stagger first 8 items) |
+| Page | `bouncyPop` (scale 0.9 → 1.06 → 1), `colorfulSlide`, `bubbleReveal`, `sparkleReveal` |
+
+CSS utilities: `.ui-press`, `.ui-card-lift` (hover lift ~4px), `.motion-safe-hover`.
+
+Gating: `useMotionEnabled()` = `appSettings.animationsEnabled` and not `prefers-reduced-motion`. Presentation mode skips `PageTransition` and `AnimatedEntrance`.
 
 Appropriate animations:
 
-- Card hover lift
-- Button press
-- Point increase/decrease
-- Lucky Wheel spin
+- Card hover lift and press
+- Page and list entrance
+- Point increase/decrease (`PointBurstProvider`)
+- Lucky Wheel / Points Wheel / Duck Race
 - Student selection
 - Ranking transitions
-- Recognition reveal
-- Page transitions where appropriate
+- Recognition reveal (`celebration-overlay`)
+- Custom dropdown open (`popoverVariants`)
 
 Use `canvas-confetti` for:
 
@@ -2505,6 +2547,7 @@ Basic accessibility requirements:
 - Destructive actions require confirmation
 - Forms should display validation errors clearly
 - CRUD/scoring dialogs trap focus (`useModalFocusTrap`) with `role="dialog"`, `aria-modal`, and a labelled heading. Stacked overlays use `modalTrapStack` so only the top dialog handles Escape/Tab. Lucky Wheel is excluded from this keyboard trap unless explicitly requested.
+- Custom dropdowns (`ClassroomMenuSelect`): keyboard open (ArrowDown), list navigation, Escape / outside click to close; menu portals to `document.body` above dialogs (`z-index` 130).
 - Full-screen celebration overlays (recognition ceremony) portal to `document.body` so they cover the sidebar and escape `main` overflow clipping.
 
 Do not over-engineer a full accessibility system for Version 1, but do not ignore basic usability.
@@ -2632,7 +2675,8 @@ The Version 1 product is considered functionally complete when the teacher can:
 - [ ] Add student
 - [ ] Edit student
 - [ ] Delete student with confirmation
-- [ ] Search students
+- [ ] Search students (name, hometown, phone, parent)
+- [ ] Filter and sort the student grid
 - [ ] View detailed student profile
 - [ ] Store private teacher notes
 - [ ] Assign classroom roles
@@ -3097,27 +3141,28 @@ Do NOT replace every UI icon with emoji.
 ANIMATION
 ==================================================
 
-Use subtle, meaningful animations.
+Use meaningful, readable animations (tokens in `src/utils/motion.ts`).
 
 Examples:
 
-- Gentle card hover
-- Small button feedback
-- Point gain animation
-- Reward celebration
-- Lucky Wheel animation
-- Recognition celebration
+- Page enter (`PageTransition` + short-lived decor)
+- Card/list enter (`AnimatedEntrance`)
+- Card hover lift (~4px) and button press
+- Point burst, reward celebration
+- Lucky Wheel / Duck Race / Points Wheel
+- Recognition celebration overlay
 
-Teacher management pages should use minimal motion.
+Teacher management pages still get page + card entrance; they must not loop decorative motion.
 
-Student-facing pages can be more playful.
+Student-facing pages can be more playful (confetti, wheel spin).
 
 Avoid:
 
 - Constant bouncing elements
 - Auto-playing distracting animations
 - Excessive confetti
-- Animation on every interaction
+- Native `<select>` popups (use `ClassroomSelect`)
+- Page fade-from-transparent that outlasts the flash decor (blank gap)
 
 Animations should enhance feedback,
 not distract from classroom activities.

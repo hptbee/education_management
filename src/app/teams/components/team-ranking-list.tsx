@@ -8,11 +8,18 @@ import { useAppData } from '@/src/store/AppDataContext'
 import { getStudentRosterOrder } from '@/src/utils/student'
 import { timeAgo } from '@/src/utils/teams'
 import { getTeamPastelStyle } from '@/src/utils/pastelPalette'
+import { cn } from '@/lib/utils'
 import {
   getTeamLeadershipRole,
   TeamLeadershipAvatarOverlay,
   TeamLeadershipBadge,
 } from './team-leadership-badge'
+
+const RANK_PILL: Record<number, string> = {
+  0: 'bg-pastel-yellow text-amber-800',
+  1: 'bg-slate-100 text-slate-600',
+  2: 'bg-pastel-peach text-orange-800',
+}
 
 type MemberSortColumn = 'stt' | 'name' | 'points' | 'achievement' | 'activity'
 type SortDirection = 'asc' | 'desc'
@@ -103,9 +110,11 @@ function SortableHeader({ label, column, activeColumn, direction, onSort, classN
       <button
         type="button"
         onClick={() => onSort(column)}
-        className={`inline-flex items-center gap-1 rounded-lg px-1 py-0.5 transition hover:bg-white/60 hover:text-slate-700 ${
-          isActive ? 'text-brand-dark' : ''
-        }`}
+        className={cn(
+          'inline-flex min-h-8 items-center gap-1 rounded-lg px-1 py-0.5 transition hover:bg-white/60 hover:text-slate-700',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
+          isActive ? 'text-brand-dark' : '',
+        )}
       >
         {label}
         <SortIcon className={`size-3.5 shrink-0 ${isActive ? 'text-brand' : 'text-slate-300'}`} />
@@ -117,11 +126,12 @@ function SortableHeader({ label, column, activeColumn, direction, onSort, classN
 interface TeamRankingListProps {
   teams: Team[]
   allTeams: Team[]
+  teamRankById: Map<string, number>
   roster: Student[]
   getMembers: (teamId: string) => Student[]
 }
 
-export function TeamRankingList({ teams, allTeams, roster, getMembers }: TeamRankingListProps) {
+export function TeamRankingList({ teams, allTeams, teamRankById, roster, getMembers }: TeamRankingListProps) {
   const { data } = useAppData()
   const classroomId = data?.metadata.id
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set([teams[0]?.id]))
@@ -152,8 +162,9 @@ export function TeamRankingList({ teams, allTeams, roster, getMembers }: TeamRan
 
   return (
     <section className="flex flex-col gap-3">
-      {teams.map((team, index) => {
+      {teams.map((team) => {
         const members = getMembers(team.id)
+        const rankIndex = (teamRankById.get(team.id) ?? 1) - 1
         const teamSort = sortByTeam[team.id] ?? DEFAULT_TEAM_SORT
         const displayedMembers =
           teamSort.column === null
@@ -166,41 +177,76 @@ export function TeamRankingList({ teams, allTeams, roster, getMembers }: TeamRan
         const { maxPoints, championsCount, pointRankById } = buildPointRanking(members)
 
         return (
-          <div key={team.id} className={`overflow-hidden rounded-2xl border border-sky-100 ${isExpanded ? 'bg-white shadow-sm' : color.bg}`}>
+          <div
+            key={team.id}
+            className={cn(
+              'overflow-hidden rounded-3xl border',
+              isExpanded ? 'border-sky-100 bg-white shadow-sm' : `border-white/80 ${color.bg}`,
+            )}
+          >
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-white/50"
+              className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-inset"
               onClick={() => toggleTeam(team.id)}
               aria-expanded={isExpanded}
+              aria-controls={`team-rank-${team.id}`}
+              id={`team-rank-toggle-${team.id}`}
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
-                  {index === 0 ? <Trophy className="size-5 fill-amber-400 text-amber-500" /> :
-                   index === 1 ? <Medal className="size-5 text-slate-400" /> :
-                   index === 2 ? <Medal className="size-5 text-orange-400" /> :
-                   <span className="text-sm font-extrabold text-slate-500">{index + 1}</span>}
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
+                  {rankIndex === 0 ? <Trophy className="size-5 fill-amber-400 text-amber-500" /> :
+                   rankIndex === 1 ? <Medal className="size-5 text-slate-400" /> :
+                   rankIndex === 2 ? <Medal className="size-5 text-orange-400" /> :
+                   <span className="text-sm font-extrabold text-slate-500">{rankIndex + 1}</span>}
                 </span>
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
                   {team.avatar || '🏆'}
                 </span>
                 <div className="min-w-0">
-                  <h3 className="truncate font-display text-lg font-extrabold text-slate-800">{team.name}</h3>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <h3 title={team.name} className="truncate font-display text-lg font-extrabold text-slate-800">
+                      {team.name}
+                    </h3>
+                    <span
+                      className={cn(
+                        'hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold sm:inline-flex',
+                        RANK_PILL[rankIndex] ?? 'bg-white/80 text-slate-500',
+                      )}
+                    >
+                      #{rankIndex + 1}
+                    </span>
+                  </div>
                   <p className="text-xs font-semibold text-slate-500">
                     {championsCount > 0 ? `${championsCount} quán quân · ` : ''}{members.length} thành viên
                   </p>
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-3">
-                <span className={`rounded-full bg-white/80 px-2.5 py-1 text-sm font-extrabold ${color.text}`}>
-                  {team.score.toLocaleString()} điểm
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <span className={cn(
+                  'rounded-2xl bg-white/90 px-2.5 py-1.5 text-sm font-extrabold tabular-nums sm:px-3',
+                  color.text,
+                )}>
+                  {team.score.toLocaleString()}
+                  <span className="ml-1 text-[11px] font-bold text-slate-500">điểm</span>
                 </span>
-                <ChevronDown className={`size-5 text-slate-400 transition ${isExpanded ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={cn(
+                    'size-5 text-slate-400 motion-safe:transition',
+                    isExpanded ? 'rotate-180' : '',
+                  )}
+                  aria-hidden
+                />
               </div>
             </button>
 
             {isExpanded && members.length > 0 && (
-              <div className="border-t border-sky-100 bg-white">
+              <div
+                id={`team-rank-${team.id}`}
+                role="region"
+                aria-labelledby={`team-rank-toggle-${team.id}`}
+                className="border-t border-sky-100 bg-white"
+              >
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-brand-soft/60 text-xs font-bold text-slate-500">
@@ -328,7 +374,12 @@ export function TeamRankingList({ teams, allTeams, roster, getMembers }: TeamRan
             )}
 
             {isExpanded && members.length === 0 && (
-              <div className="border-t border-sky-100 bg-white p-8 text-center text-sm font-semibold text-slate-400">
+              <div
+                id={`team-rank-${team.id}`}
+                role="region"
+                aria-labelledby={`team-rank-toggle-${team.id}`}
+                className="border-t border-sky-100 bg-white p-8 text-center text-sm font-semibold text-slate-400"
+              >
                 Chưa có học sinh nào trong tổ này
               </div>
             )}

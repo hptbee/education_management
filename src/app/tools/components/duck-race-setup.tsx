@@ -7,7 +7,7 @@ import {
   DUCK_RACE_DURATION_PRESETS_SEC,
   DUCK_RACE_MAX_RACERS,
 } from '@/src/utils/duckRaceSimulation'
-import { ClassroomButton } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomSelect } from '@/src/components/classroom'
 import { StudentAvatar } from '@/src/components/StudentAvatar'
 
 interface DuckRaceSetupProps {
@@ -85,19 +85,23 @@ export function DuckRaceSetup({
             Theo tổ
           </label>
           {scopeType === 'team' ? (
-            <select
-              value={teamId ?? ''}
-              disabled={isBusy}
-              onChange={(e) => onTeamChange(e.target.value)}
-              className="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-brand"
-            >
-              <option value="">Chọn tổ...</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <ClassroomSelect
+                variant="field"
+                value={teamId ?? ''}
+                disabled={isBusy}
+                onChange={(e) => onTeamChange(e.target.value)}
+                aria-label="Chọn tổ"
+                className="rounded-xl px-3 py-2 text-xs font-semibold"
+              >
+                <option value="">Chọn tổ...</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </ClassroomSelect>
+            </div>
           ) : null}
         </div>
 

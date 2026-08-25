@@ -43,6 +43,11 @@ Lucide for functional UI controls. Emoji allowed for playful classroom identity 
 ## Reuse before creating
 
 - `src/components/classroom/*`, `components/ui/*`, existing `src/app/` page patterns
+- Dropdowns: `ClassroomSelect` (`<option>` children) or `ClassroomMenuSelect` — never native `<select>`
+
+## Motion
+
+Tokens: `src/utils/motion.ts` + `globals.css` `--motion-*` (fast 200ms … page/entrance 520ms, emphasis 580ms). Route enter: `PageTransition` in `AppDataShell`. List enter: `AnimatedEntrance`. Gate with `useMotionEnabled()`. Do not fade page content from opacity 0 longer than the flash decor (blank `bg-page` gap). Details: [PROJECT_SCOPE.md](../../docs/PROJECT_SCOPE.md) §13.
 
 ## Security
 

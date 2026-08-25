@@ -14,10 +14,15 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useMotionEnabled } from '@/src/hooks/useMotionEnabled'
-import { motionTransition, reducedMotionTransition, filterBurstsForClassroom } from '@/src/utils/motion'
+import {
+  motionTransition,
+  pointBurstLifetimeMs,
+  reducedMotionTransition,
+  filterBurstsForClassroom,
+} from '@/src/utils/motion'
 
 const MAX_BURST = 8
-const BURST_DURATION_MS = 420
+const BURST_DURATION_MS = pointBurstLifetimeMs()
 
 export type PointBurstAnchor = {
   studentId: string
@@ -129,9 +134,9 @@ export function PointBurstProvider({ children }: { children: ReactNode }) {
                 {visibleBursts.map((burst) => (
                   <motion.span
                     key={burst.id}
-                    initial={{ opacity: 0, y: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, y: -16, scale: 1 }}
-                    exit={{ opacity: 0, y: -28, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 0, scale: 0.75 }}
+                    animate={{ opacity: 1, y: -24, scale: 1.12 }}
+                    exit={{ opacity: 0, y: -40, scale: 0.9 }}
                     transition={transition}
                     className={`absolute -translate-x-1/2 font-display text-lg font-black drop-shadow-sm ${
                       burst.delta > 0 ? 'text-emerald-600' : 'text-rose-600'

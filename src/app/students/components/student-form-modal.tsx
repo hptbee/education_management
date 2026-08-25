@@ -9,7 +9,7 @@ import { processImageFile } from '@/src/utils/images'
 import { classroomAssetService } from '@/src/database/assets/classroom-asset.service'
 import { studentAvatarAssetKey } from '@/src/database/assets/classroom-asset-paths'
 import { useAppData } from '@/src/store/AppDataContext'
-import { useClassroomDialog, ClassroomButton, IconTouchButton, ClassroomDialogFrame } from '@/src/components/classroom'
+import { useClassroomDialog, ClassroomButton, ClassroomSelect, IconTouchButton, ClassroomDialogFrame } from '@/src/components/classroom'
 
 interface StudentFormModalProps {
   isOpen: boolean
@@ -208,12 +208,18 @@ export function StudentFormModal({ isOpen, onClose, onSave, initialData }: Stude
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Giới tính</label>
-                  <select value={formData.gender || 'unknown'} onChange={e => setFormData({...formData, gender: e.target.value as any})} className="classroom-field px-4">
+                  <ClassroomSelect
+                    variant="field"
+                    value={formData.gender || 'unknown'}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as typeof formData.gender })}
+                    aria-label="Giới tính"
+                    className="px-4"
+                  >
                     <option value="unknown">Chưa rõ</option>
                     <option value="male">Nam</option>
                     <option value="female">Nữ</option>
                     <option value="other">Khác</option>
-                  </select>
+                  </ClassroomSelect>
                 </div>
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-sm font-bold text-slate-700">Quê quán</label>
