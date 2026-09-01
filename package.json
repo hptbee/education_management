@@ -9,8 +9,6 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
     "version:bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {

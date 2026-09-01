@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Required for Tauri: generate a fully static site
-  output: 'export',
+  // Tauri (disabled): static export → `out/` for desktop bundling
+  // output: 'export',
+  output: 'standalone',
   images: {
     unoptimized: true,
   },
