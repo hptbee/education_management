@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createEmptyDatabase, DATABASE_VERSION } from "./database.factory";
 
 describe("createEmptyDatabase", () => {
-  it("generates id from class and school year", () => {
+  it("generates stable uuid classroom id", () => {
     const db = createEmptyDatabase({
       className: "2/7",
       schoolYear: "2026-2027",
@@ -14,7 +14,8 @@ describe("createEmptyDatabase", () => {
       },
     });
     expect(db.metadata.version).toBe(DATABASE_VERSION);
-    expect(db.metadata.id).toContain("2-7");
+    expect(db.metadata.id).toMatch(/^classroom-/);
+    expect(db.metadata.id).toBe(db.classroomSettings.id);
     expect(db.classroomRoles.length).toBeGreaterThan(0);
     expect(db.badges.length).toBeGreaterThan(0);
     expect(db.recognitionTitles.length).toBeGreaterThan(0);

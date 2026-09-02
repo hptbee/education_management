@@ -6,7 +6,7 @@
  *   AppData/ClassroomManagement/
  *     index.json                     ← lightweight list of all classrooms
  *     classrooms/
- *       Lop-2-7_2026-2027.json       ← full ClassroomDatabase for each classroom
+ *       Lop-classroom-{uuid}.json   ← full ClassroomDatabase for each classroom
  *
  * All writes are safe: Rust backend uses a temp-file rename strategy.
  * A write queue prevents concurrent writes from racing each other.

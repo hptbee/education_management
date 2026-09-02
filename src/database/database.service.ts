@@ -2,7 +2,8 @@ import type { ClassroomDatabase, DatabaseSummary } from "./types";
 import type { ClassroomDatabaseStorage } from "./storage/storage.interface";
 import { IndexedDbClassroomStorage } from "./storage/indexed-db.storage";
 import { createEmptyDatabase, DATABASE_VERSION } from "./database.factory";
-import { assertSafeClassroomId, generateDatabaseId, generateExportFilename } from "./database.utils";
+import { assertSafeClassroomId, generateExportFilename } from "./database.utils";
+import { createId } from "../utils/id";
 import { normalizeClassroomDatabase } from "../utils/classroomRoles";
 import { migrateLegacyClassroomImages } from "../utils/classroom-images";
 import { classroomAssetService } from "./assets/classroom-asset.service";
@@ -151,6 +152,21 @@ async function persistActiveClassroomId(id: string | null): Promise<void> {
   if (storage.setActiveClassroomId) {
     await storage.setActiveClassroomId(id);
   }
+}
+
+async function findClassroomByDisplayName(
+  storage: ClassroomDatabaseStorage,
+  className: string,
+  schoolYear: string,
+  excludeId?: string,
+): Promise<DatabaseSummary | undefined> {
+  const list = await storage.list();
+  return list.find(
+    (item) =>
+      item.className === className &&
+      item.schoolYear === schoolYear &&
+      item.id !== excludeId,
+  );
 }
 
 export class DatabaseService {
@@ -325,8 +341,12 @@ export class DatabaseService {
     if (await isCloudBackupConfigured()) {
       db.appSettings.cloudBackupEnabled = true;
     }
-    const existing = await storage.load(db.metadata.id);
-    if (existing) {
+    const duplicate = await findClassroomByDisplayName(
+      storage,
+      settings.className,
+      settings.schoolYear,
+    );
+    if (duplicate) {
       throw new Error(
         `Lớp "${settings.className}" năm học "${settings.schoolYear}" đã tồn tại. Hãy chọn tên hoặc năm học khác.`,
       );
@@ -502,66 +522,36 @@ export class DatabaseService {
     const currentDb = await this.openDatabase(currentId);
     if (!currentDb) throw new Error("Database not found");
 
-    const newId = generateDatabaseId(newClassName, newSchoolYear);
-    if (newId === currentId) {
+    const className = newClassName.trim();
+    const schoolYear = newSchoolYear.trim();
+    if (
+      className === currentDb.classroomSettings.className &&
+      schoolYear === currentDb.classroomSettings.schoolYear
+    ) {
       return currentDb;
     }
 
-    const existingDb = await storage.load(newId);
-    if (existingDb) {
-      throw new Error(`A database for "${newClassName}" in "${newSchoolYear}" already exists.`);
+    const duplicate = await findClassroomByDisplayName(storage, className, schoolYear, currentId);
+    if (duplicate) {
+      throw new Error(`A database for "${className}" in "${schoolYear}" already exists.`);
     }
 
     const now = new Date().toISOString();
-    const updatedDb: ClassroomDatabase = {
+    const updatedDb = normalizeClassroomDatabase({
       ...currentDb,
       metadata: {
         ...currentDb.metadata,
-        id: newId,
         updatedAt: now,
       },
       classroomSettings: {
         ...currentDb.classroomSettings,
-        className: newClassName,
-        schoolYear: newSchoolYear,
+        className,
+        schoolYear,
         updatedAt: now,
       },
-    };
+    });
 
-    await classroomAssetService.copyClassroomAssets(currentId, newId, currentDb);
-    try {
-      await storage.save(updatedDb);
-    } catch (error) {
-      try {
-        await classroomAssetService.deleteClassroomAssets(newId);
-      } catch (cleanupError) {
-        console.warn("[renameClassroomDatabase] failed to clean copied assets", cleanupError);
-      }
-      throw error;
-    }
-
-    const verified = await storage.load(newId);
-    if (!verified || verified.metadata.id !== newId) {
-      throw new Error("Không thể xác minh lớp học sau khi đổi tên. Vui lòng thử lại.");
-    }
-
-    try {
-      await storage.delete(currentId);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Không thể xóa bản ghi lớp cũ.";
-      throw new Error(
-        `Lớp mới đã được lưu thành công nhưng không thể xóa bản ghi cũ (${message}). Hãy xóa thủ công lớp cũ trong Cài đặt.`,
-      );
-    }
-
-    try {
-      await classroomAssetService.deleteClassroomAssets(currentId);
-    } catch (error) {
-      console.warn("[renameClassroomDatabase] failed to remove old classroom assets", error);
-    }
-
-    await persistActiveClassroomId(newId);
+    await storage.save(updatedDb);
     return updatedDb;
   }
 
@@ -577,10 +567,11 @@ export class DatabaseService {
     if (!rawSource) throw new Error("Source database not found");
     const sourceDb = normalizeClassroomDatabase(rawSource);
 
-    const newId = generateDatabaseId(newClassName, newSchoolYear);
-    const existingDb = await storage.load(newId);
-    if (existingDb) {
-      throw new Error(`A database for "${newClassName}" in "${newSchoolYear}" already exists.`);
+    const className = newClassName.trim();
+    const schoolYear = newSchoolYear.trim();
+    const duplicate = await findClassroomByDisplayName(storage, className, schoolYear);
+    if (duplicate) {
+      throw new Error(`A database for "${className}" in "${schoolYear}" already exists.`);
     }
 
     const now = new Date().toISOString();
@@ -588,8 +579,8 @@ export class DatabaseService {
 
     if (mode === "settings-only") {
       newDb = createEmptyDatabase({
-        className: newClassName,
-        schoolYear: newSchoolYear,
+        className,
+        schoolYear,
         classAvatarAssetKey: sourceDb.classroomSettings.classAvatarAssetKey,
         bannerAssetKey: sourceDb.classroomSettings.bannerAssetKey,
         teacher: {
@@ -604,6 +595,7 @@ export class DatabaseService {
       newDb.recognitionTitles = sourceDb.recognitionTitles ?? newDb.recognitionTitles;
       newDb.appSettings = sourceDb.appSettings;
     } else {
+      const newId = createId("classroom");
       newDb = normalizeClassroomDatabase({
         ...sourceDb,
         metadata: {
@@ -615,13 +607,15 @@ export class DatabaseService {
         },
         classroomSettings: {
           ...sourceDb.classroomSettings,
-          className: newClassName,
-          schoolYear: newSchoolYear,
+          id: newId,
+          className,
+          schoolYear,
           updatedAt: now,
         },
       });
     }
 
+    const newId = newDb.metadata.id;
     await classroomAssetService.copyClassroomAssets(sourceId, newId, newDb);
     try {
       await storage.save(newDb);

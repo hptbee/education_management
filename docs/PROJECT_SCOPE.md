@@ -774,7 +774,7 @@ Allow the teacher to update classroom identity after initial setup.
 
 **Nguy hiểm** (delete classroom) is implemented but not shown by default (`SETTINGS_TABS.showDangerTab` in `settings-flags.ts` is `false`).
 
-**Display name vs database rename:** Changing **Tên lớp (hiển thị)** on **Hồ sơ** updates UI labels only. **Đổi tên database** on **Dữ liệu** changes the stored database identity (file/folder name and school year metadata).
+**Display name vs database rename:** Changing **Tên lớp (hiển thị)** on **Hồ sơ** updates UI labels only. **Đổi tên database** on **Dữ liệu** updates the stored class name and school year metadata; the stable `metadata.id` (and on-disk folder/file name) does not change.
 
 Use shared primitives: `PageHeader`, `ClassroomCard`, `ClassroomButton`, `ClassroomSelect`, manage tabs. Max content width ~1100px.
 

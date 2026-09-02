@@ -41,7 +41,7 @@ users/{userId}/
     database.json                 # legacy monolith — kept after migration, not deleted
 ```
 
-`classroomKey` equals `metadata.id` (e.g. `2-7_2026-2027`).
+`classroomKey` equals `metadata.id` (e.g. `classroom-{uuid}` for new classrooms; legacy slugs like `2-7_2026-2027` remain valid).
 
 ### History / activity
 

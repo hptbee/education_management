@@ -55,6 +55,7 @@ describe("DatabaseService", () => {
   it("creates and opens a classroom", async () => {
     const { service } = makeService();
     const db = await service.createDatabase(makeSettings());
+    expect(db.metadata.id).toMatch(/^classroom-/);
     const opened = await service.openDatabase(db.metadata.id);
     expect(opened?.metadata.id).toBe(db.metadata.id);
   });
@@ -196,14 +197,17 @@ describe("DatabaseService", () => {
     await service.saveDatabase(source);
     const copy = await service.duplicateDatabase(source.metadata.id, "2/8", "2025-2026", "full-copy");
     expect(copy.students.length).toBe(1);
+    expect(copy.metadata.id).toMatch(/^classroom-/);
+    expect(copy.metadata.id).not.toBe(source.metadata.id);
   });
 
-  it("renames classroom database", async () => {
+  it("renames classroom database in place", async () => {
     const { service } = makeService();
     const db = await service.createDatabase(makeSettings());
+    const originalId = db.metadata.id;
     const renamed = await service.renameClassroomDatabase(db.metadata.id, "2/8", "2026-2027");
     expect(renamed.classroomSettings.className).toBe("2/8");
-    expect(renamed.metadata.id).toContain("2-8");
+    expect(renamed.metadata.id).toBe(originalId);
   });
 
   it("deletes database", async () => {

@@ -1,6 +1,5 @@
 import { createId } from "../utils/id";
 import { defaultData } from "../store/defaultData";
-import { generateDatabaseId } from "./database.utils";
 import { createDefaultBadges } from "../utils/badges";
 import { createDefaultClassroomRoles } from "../utils/classroomRoles";
 import { createDefaultRecognitionTitles } from "../utils/recognitionTitles";
@@ -15,12 +14,11 @@ export function createEmptyDatabase(
   settings: Omit<ClassroomSettings, "id" | "createdAt" | "updatedAt">
 ): ClassroomDatabase {
   const now = new Date().toISOString();
-  
-  const id = generateDatabaseId(settings.className, settings.schoolYear);
-  
+  const id = createId("classroom");
+
   const classroom: ClassroomSettings = {
     ...settings,
-    id: createId("classroom"),
+    id,
     createdAt: now,
     updatedAt: now,
   };
