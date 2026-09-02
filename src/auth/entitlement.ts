@@ -1,4 +1,5 @@
 import * as jose from "jose";
+import { normalizeSpkiPem } from "./pem";
 import type { AccessState, EntitlementClaims } from "./types";
 
 const CLOCK_ROLLBACK_TOLERANCE_SECONDS = 5 * 60;
@@ -9,16 +10,23 @@ let cachedPublicKeyPem: string | null = null;
 
 function getPublicKeyPem(): string | null {
   const pem = process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY?.trim();
-  return pem || null;
+  if (!pem) return null;
+  return normalizeSpkiPem(pem);
 }
 
 async function importPublicKey(): Promise<CryptoKey | null> {
   const pem = getPublicKeyPem();
   if (!pem) return null;
   if (cachedPublicKey && cachedPublicKeyPem === pem) return cachedPublicKey;
-  cachedPublicKeyPem = pem;
-  cachedPublicKey = await jose.importSPKI(pem, "EdDSA");
-  return cachedPublicKey;
+  try {
+    cachedPublicKeyPem = pem;
+    cachedPublicKey = await jose.importSPKI(pem, "EdDSA");
+    return cachedPublicKey;
+  } catch {
+    cachedPublicKeyPem = null;
+    cachedPublicKey = null;
+    return null;
+  }
 }
 
 export async function verifyEntitlementToken(

@@ -222,4 +222,32 @@ describe("verifyEntitlementToken", () => {
     process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = await jose.exportSPKI(publicKey);
     expect(await verifyEntitlementToken("not-a-jwt")).toBeNull();
   });
+
+  it("accepts single-line quoted PEM from dashboard env vars", async () => {
+    const { privateKey, publicKey } = await jose.generateKeyPair("EdDSA", { extractable: true });
+    const exported = await jose.exportSPKI(publicKey);
+    const body = exported
+      .replace("-----BEGIN PUBLIC KEY-----", "")
+      .replace("-----END PUBLIC KEY-----", "")
+      .replace(/\s+/g, "");
+    process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = `"-----BEGIN PUBLIC KEY----- ${body} -----END PUBLIC KEY-----"`;
+
+    const now = Math.floor(Date.now() / 1000);
+    const token = await new jose.SignJWT({
+      userId: "usr_1",
+      role: "teacher",
+      plan: "trial",
+      status: "active",
+      permissions: { appAccess: true, cloudBackup: false },
+      licenseVersion: 1,
+      offlineValidUntil: now + 86400,
+    })
+      .setProtectedHeader({ alg: "EdDSA" })
+      .setIssuedAt(now)
+      .setExpirationTime(now + 3600)
+      .sign(privateKey);
+
+    const verified = await verifyEntitlementToken(token);
+    expect(verified?.claims.userId).toBe("usr_1");
+  });
 });
