@@ -2,27 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptyDatabase } from "../database.factory";
 import { uploadClassroomBackup } from "./cloud-backup.service";
 import { verifyEntitlementToken } from "@/src/auth/entitlement";
+import { loadAuthSession } from "@/src/auth/secure-storage";
 import { isCloudRestoreInProgress } from "./cloud-restore-gate";
+import { makeTestStoredAuthSession, makeTestVerifiedEntitlement } from "./test-fixtures/auth-session";
 
 vi.mock("@/src/auth/secure-storage", () => ({
-  loadAuthSession: vi.fn().mockResolvedValue({
-    entitlement: "test-entitlement-token",
-    user: { id: "usr_test" },
-    license: null,
-    lastVerifiedAt: new Date().toISOString(),
-    lastTrustedIat: Math.floor(Date.now() / 1000),
-  }),
+  loadAuthSession: vi.fn(),
 }));
 
 vi.mock("@/src/auth/entitlement", () => ({
-  verifyEntitlementToken: vi.fn().mockResolvedValue({
-    claims: {
-      userId: "usr_test",
-      permissions: { appAccess: true, cloudBackup: true },
-    },
-    issuedAt: Math.floor(Date.now() / 1000),
-    expiresAt: Math.floor(Date.now() / 1000) + 3600,
-  }),
+  verifyEntitlementToken: vi.fn(),
 }));
 
 vi.mock("./backup-metadata.service", () => ({
@@ -96,6 +85,8 @@ describe("uploadClassroomBackup", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
     process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAtest\n-----END PUBLIC KEY-----";
+    vi.mocked(loadAuthSession).mockResolvedValue(makeTestStoredAuthSession());
+    vi.mocked(verifyEntitlementToken).mockResolvedValue(makeTestVerifiedEntitlement());
   });
 
   afterEach(() => {
@@ -129,19 +120,12 @@ describe("uploadClassroomBackup", () => {
   });
 
   it("skips upload when entitlement lacks cloudBackup permission", async () => {
-    vi.mocked(verifyEntitlementToken).mockResolvedValueOnce({
-      claims: {
-        userId: "usr_test",
-        role: "teacher",
-        plan: "basic",
-        status: "active",
+    vi.mocked(verifyEntitlementToken).mockResolvedValueOnce(
+      makeTestVerifiedEntitlement({
         permissions: { appAccess: true, cloudBackup: false },
-        licenseVersion: 1,
-        offlineValidUntil: Math.floor(Date.now() / 1000) + 3600,
-      },
-      issuedAt: Math.floor(Date.now() / 1000),
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
-    });
+        plan: "basic",
+      }),
+    );
 
     const fetchMock = vi.fn();
     await uploadClassroomBackup(makeDb(true), fetchMock as unknown as typeof fetch);

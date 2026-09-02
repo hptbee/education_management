@@ -8,26 +8,17 @@ import { loadAuthSession } from "@/src/auth/secure-storage";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { isCloudRestoreInProgress } from "./cloud-restore-gate";
 import { resolveCurrentUserId, shouldIncludeInAccountBackup } from "./classroom-owner";
+import {
+  makeTestStoredAuthSession,
+  makeTestVerifiedEntitlement,
+} from "./test-fixtures/auth-session";
 
 vi.mock("@/src/auth/secure-storage", () => ({
-  loadAuthSession: vi.fn().mockResolvedValue({
-    entitlement: "test-entitlement-token",
-    user: { id: "usr_test" },
-    license: null,
-    lastVerifiedAt: new Date().toISOString(),
-    lastTrustedIat: Math.floor(Date.now() / 1000),
-  }),
+  loadAuthSession: vi.fn(),
 }));
 
 vi.mock("@/src/auth/entitlement", () => ({
-  verifyEntitlementToken: vi.fn().mockResolvedValue({
-    claims: {
-      userId: "usr_test",
-      permissions: { appAccess: true, cloudBackup: true },
-    },
-    issuedAt: Math.floor(Date.now() / 1000),
-    expiresAt: Math.floor(Date.now() / 1000) + 3600,
-  }),
+  verifyEntitlementToken: vi.fn(),
 }));
 
 vi.mock("./backup-metadata.service", () => ({
@@ -104,13 +95,7 @@ describe("CloudBackupScheduler queue", () => {
     }
   }
 
-  const sessionFixture = {
-    entitlement: "test-entitlement-token",
-    user: { id: "usr_test" },
-    license: null,
-    lastVerifiedAt: new Date().toISOString(),
-    lastTrustedIat: Math.floor(Date.now() / 1000),
-  };
+  const sessionFixture = makeTestStoredAuthSession();
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
@@ -118,14 +103,7 @@ describe("CloudBackupScheduler queue", () => {
     vi.mocked(loadAuthSession).mockResolvedValue(sessionFixture);
     vi.mocked(resolveCurrentUserId).mockResolvedValue("usr_test");
     vi.mocked(shouldIncludeInAccountBackup).mockReturnValue(true);
-    vi.mocked(verifyEntitlementToken).mockResolvedValue({
-      claims: {
-        userId: "usr_test",
-        permissions: { appAccess: true, cloudBackup: true },
-      },
-      issuedAt: Math.floor(Date.now() / 1000),
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
-    });
+    vi.mocked(verifyEntitlementToken).mockResolvedValue(makeTestVerifiedEntitlement());
   });
 
   afterEach(() => {
@@ -136,19 +114,12 @@ describe("CloudBackupScheduler queue", () => {
   });
 
   it("does not enter pending when entitlement lacks cloudBackup permission", async () => {
-    vi.mocked(verifyEntitlementToken).mockResolvedValueOnce({
-      claims: {
-        userId: "usr_test",
-        role: "teacher",
-        plan: "trial",
-        status: "active",
+    vi.mocked(verifyEntitlementToken).mockResolvedValueOnce(
+      makeTestVerifiedEntitlement({
         permissions: { appAccess: true, cloudBackup: false },
-        licenseVersion: 1,
-        offlineValidUntil: Math.floor(Date.now() / 1000) + 3600,
-      },
-      issuedAt: Math.floor(Date.now() / 1000),
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
-    });
+        plan: "trial",
+      }),
+    );
 
     const fetchMock = vi.fn();
     const scheduler = new CloudBackupScheduler(fetchMock as unknown as typeof fetch);

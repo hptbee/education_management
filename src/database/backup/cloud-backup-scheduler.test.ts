@@ -8,26 +8,14 @@ import { loadAuthSession } from "@/src/auth/secure-storage";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { isCloudRestoreInProgress } from "./cloud-restore-gate";
 import { resolveCurrentUserId, shouldIncludeInAccountBackup } from "./classroom-owner";
+import { makeTestStoredAuthSession, makeTestVerifiedEntitlement } from "./test-fixtures/auth-session";
 
 vi.mock("@/src/auth/secure-storage", () => ({
-  loadAuthSession: vi.fn().mockResolvedValue({
-    entitlement: "test-entitlement-token",
-    user: { id: "usr_test" },
-    license: null,
-    lastVerifiedAt: new Date().toISOString(),
-    lastTrustedIat: Math.floor(Date.now() / 1000),
-  }),
+  loadAuthSession: vi.fn(),
 }));
 
 vi.mock("@/src/auth/entitlement", () => ({
-  verifyEntitlementToken: vi.fn().mockResolvedValue({
-    claims: {
-      userId: "usr_test",
-      permissions: { appAccess: true, cloudBackup: true },
-    },
-    issuedAt: Math.floor(Date.now() / 1000),
-    expiresAt: Math.floor(Date.now() / 1000) + 3600,
-  }),
+  verifyEntitlementToken: vi.fn(),
 }));
 
 vi.mock("./backup-metadata.service", () => ({
@@ -104,13 +92,7 @@ describe("CloudBackupScheduler", () => {
     }
   }
 
-  const sessionFixture = {
-    entitlement: "test-entitlement-token",
-    user: { id: "usr_test" },
-    license: null,
-    lastVerifiedAt: new Date().toISOString(),
-    lastTrustedIat: Math.floor(Date.now() / 1000),
-  };
+  const sessionFixture = makeTestStoredAuthSession();
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -119,14 +101,7 @@ describe("CloudBackupScheduler", () => {
     vi.mocked(loadAuthSession).mockResolvedValue(sessionFixture);
     vi.mocked(resolveCurrentUserId).mockResolvedValue("usr_test");
     vi.mocked(shouldIncludeInAccountBackup).mockReturnValue(true);
-    vi.mocked(verifyEntitlementToken).mockResolvedValue({
-      claims: {
-        userId: "usr_test",
-        permissions: { appAccess: true, cloudBackup: true },
-      },
-      issuedAt: Math.floor(Date.now() / 1000),
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
-    });
+    vi.mocked(verifyEntitlementToken).mockResolvedValue(makeTestVerifiedEntitlement());
   });
 
   afterEach(() => {
