@@ -262,7 +262,7 @@ Base URL: `https://classroom-cloud-backup.phuontun-01.workers.dev`
 | `POST` | `/auth/google` | `{ idToken }` or `{ code, codeVerifier, redirectUri }` (JSON body ≤ 64 KB) |
 | `GET` | `/me` | `Authorization: Bearer <entitlement>` |
 | `POST` | `/auth/refresh` | `Authorization: Bearer <entitlement>` |
-| `POST` | `/auth/logout` | (no body; client clears local entitlement) |
+| `POST` | `/auth/logout` | Confirms the caller; client clears local entitlement. Does **not** bump `license_version` — other devices stay signed in. Admin disable and license edits still bump the version. |
 
 ### Backup (requires `permissions.cloudBackup`)
 

@@ -7,6 +7,12 @@ import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { uploadCloudSyncBatch } from "./cloud-sync.service";
 import { splitClassroomToCloudFiles } from "./cloud-serializer";
 import { fetchClassroomsRegistry } from "@/src/auth/api";
+import {
+  lastAuthUserService,
+  resolveCurrentUserId,
+  shouldIncludeInAccountBackup,
+} from "./classroom-owner";
+import { getLastMergedRegistry } from "./cloud-registry.service";
 import { isCloudRestoreInProgress } from "./cloud-restore-gate";
 import {
   buildBackupStorageKey,
@@ -132,6 +138,7 @@ export class CloudBackupScheduler {
   private classroomStates = new Map<string, ClassroomBackupState>();
   private listeners = new Set<BackupListener>();
   private hasPendingLocalSave: ((classroomId: string) => boolean) | null = null;
+  private stopped = false;
 
   constructor(private readonly fetchImpl: typeof fetch = fetch) {}
 
@@ -206,6 +213,23 @@ export class CloudBackupScheduler {
 
   private async canUpload(db: ClassroomDatabase): Promise<boolean> {
     if (!isCloudBackupEnabledForDatabase(db)) return false;
+    const userId = await resolveCurrentUserId();
+    if (!userId) return false;
+    const lastAuthUserId = await lastAuthUserService.readLastAuthUserId();
+    const registryKeys = new Set(
+      (getLastMergedRegistry()?.classrooms ?? []).map((entry) => entry.key),
+    );
+    if (
+      !shouldIncludeInAccountBackup(
+        db.metadata.ownerUserId,
+        db.metadata.id,
+        userId,
+        registryKeys,
+        lastAuthUserId,
+      )
+    ) {
+      return false;
+    }
     return await isCloudBackupConfigured();
   }
 
@@ -258,6 +282,7 @@ export class CloudBackupScheduler {
   }
 
   stop(): void {
+    this.stopped = true;
     for (const entry of this.pendingByClassroom.values()) {
       if (entry.debounceTimer) clearTimeout(entry.debounceTimer);
     }
@@ -293,8 +318,13 @@ export class CloudBackupScheduler {
     const classroomId = db.metadata.id;
 
     if (!(await this.canUpload(db))) {
+      if (this.stopped) return;
       this.clearPending(classroomId);
       this.setState("disabled", null, classroomId);
+      return;
+    }
+
+    if (this.stopped || isCloudRestoreInProgress(classroomId)) {
       return;
     }
 
@@ -390,8 +420,13 @@ export class CloudBackupScheduler {
 
     const db = entry.db;
     if (!(await this.canUpload(db))) {
+      if (this.stopped) return;
       this.clearPending(classroomId);
       this.setState("disabled", null, classroomId);
+      return;
+    }
+
+    if (this.stopped || isCloudRestoreInProgress(classroomId)) {
       return;
     }
 

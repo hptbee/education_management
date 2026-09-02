@@ -74,12 +74,14 @@ function restoreHistoryFromActivities(activities: WorkerActivityLog[]): {
   rewardHistory: unknown[];
   teamScoreHistory: unknown[];
   luckyWheelHistory: unknown[];
+  duckRaceHistory: unknown[];
   badgeAwardHistory: unknown[];
 } {
   const pointHistory: unknown[] = [];
   const rewardHistory: unknown[] = [];
   const teamScoreHistory: unknown[] = [];
   const luckyWheelHistory: unknown[] = [];
+  const duckRaceHistory: unknown[] = [];
   const badgeAwardHistory: unknown[] = [];
 
   for (const activity of activities) {
@@ -100,6 +102,9 @@ function restoreHistoryFromActivities(activities: WorkerActivityLog[]): {
       case "lucky-wheel":
         luckyWheelHistory.push(payload);
         break;
+      case "duck-race":
+        duckRaceHistory.push(payload);
+        break;
       case "badge":
         badgeAwardHistory.push(payload);
         break;
@@ -113,6 +118,7 @@ function restoreHistoryFromActivities(activities: WorkerActivityLog[]): {
     rewardHistory,
     teamScoreHistory,
     luckyWheelHistory,
+    duckRaceHistory,
     badgeAwardHistory,
   };
 }
@@ -199,7 +205,7 @@ export function mergeCloudFilesToClassroom(files: Record<string, string>): Worke
     recognitionTitles: catalogFile.recognitionTitles,
     recognitions: recognitionsFile.recognitions,
     luckyWheelHistory: history.luckyWheelHistory,
-    duckRaceHistory: [],
+    duckRaceHistory: history.duckRaceHistory,
     badgeAwardHistory: history.badgeAwardHistory,
     wheelStudentBag: catalogFile.wheelStudentBag,
     duckRaceStudentBag: catalogFile.duckRaceStudentBag ?? [],

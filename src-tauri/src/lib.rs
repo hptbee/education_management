@@ -378,6 +378,18 @@ async fn start_google_oauth(
   client_id: String,
   code_challenge: String,
 ) -> Result<GoogleOAuthCallback, String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    start_google_oauth_blocking(app, client_id, code_challenge)
+  })
+  .await
+  .map_err(|e| format!("Google sign-in task failed: {e}"))?
+}
+
+fn start_google_oauth_blocking(
+  app: AppHandle,
+  client_id: String,
+  code_challenge: String,
+) -> Result<GoogleOAuthCallback, String> {
   use std::io::Read;
   use std::net::TcpListener;
   use std::time::{Duration, Instant};

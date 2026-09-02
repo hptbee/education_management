@@ -77,6 +77,29 @@ describe("cloud-serializer", () => {
     expect(activities[0].metadata?.payload).toEqual(db.pointHistory[0]);
   });
 
+  it("merge round-trips duck-race history from activity payloads", () => {
+    const db = makeDb("2/7", "2026-2027");
+    db.duckRaceHistory = [
+      {
+        id: "duck-1",
+        winnerId: "s2",
+        winnerIds: ["s2"],
+        participantIds: ["s1", "s2"],
+        createdAt: "2026-03-16T09:00:00.000Z",
+      },
+    ];
+
+    const split = splitClassroomToCloudFiles(db);
+    const uploads = serializeCloudFilesForUpload(split.files, split.paths);
+    const fileMap: Record<string, string> = {};
+    for (const u of uploads) fileMap[u.path] = u.content;
+
+    const merged = mergeCloudFilesToClassroom(fileMap);
+    expect(merged.duckRaceHistory).toHaveLength(1);
+    expect(merged.duckRaceHistory[0].id).toBe("duck-1");
+    expect(merged.duckRaceHistory[0].winnerId).toBe("s2");
+  });
+
   it("merge round-trips split files to ClassroomDatabase", () => {
     const db = makeDb("3-1", "2026-2027");
     db.classroomSettings.className = "Class 3-1";

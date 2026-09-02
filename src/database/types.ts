@@ -28,6 +28,8 @@ export interface DatabaseMetadata {
   archived?: boolean;
   /** Local placeholder from cloud registry — full data not downloaded yet. */
   cloudStub?: boolean;
+  /** Google account `userId` that owns this classroom for cloud backup. */
+  ownerUserId?: string;
 }
 
 export interface ClassroomDatabase {
@@ -66,4 +68,5 @@ export interface DatabaseSummary {
   archived: boolean;
   /** False when only registry metadata exists locally (cloud stub). */
   hydrated?: boolean;
+  ownerUserId?: string;
 }

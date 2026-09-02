@@ -21,6 +21,11 @@ import { uploadRegistryMerge } from "./cloud-sync.service";
 import { beginCloudRestore, endCloudRestore } from "./cloud-restore-gate";
 import { recordCloudRestoreSyncBaseline } from "./cloud-restore-sync";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
+import {
+  lastAuthUserService,
+  resolveCurrentUserId,
+  shouldIncludeInAccountBackup,
+} from "./classroom-owner";
 import type { ClassroomDatabase } from "../types";
 import { logAppEvent, logCloudTrace } from "@/src/logging/app-log";
 
@@ -225,6 +230,7 @@ export type RegistrySummaryInput = {
   updatedAt: string;
   archived?: boolean;
   deletedAt?: string;
+  ownerUserId?: string;
 };
 
 export async function pushClassroomRegistryMerge(
@@ -239,8 +245,17 @@ export async function pushClassroomRegistryMerge(
     }
   }
 
+  const userId = await resolveCurrentUserId();
+  if (!userId) return;
+
+  const lastAuthUserId = await lastAuthUserService.readLastAuthUserId();
+  const registryKeys = new Set((lastMergedRegistry?.classrooms ?? []).map((entry) => entry.key));
+  const ownedSummaries = summaries.filter((s) =>
+    shouldIncludeInAccountBackup(s.ownerUserId, s.id, userId, registryKeys, lastAuthUserId),
+  );
+
   const now = new Date().toISOString();
-  let entries = summaries.map((s) => ({
+  let entries = ownedSummaries.map((s) => ({
     id: s.id,
     className: s.className,
     schoolYear: s.schoolYear,
@@ -251,16 +266,28 @@ export async function pushClassroomRegistryMerge(
   }));
 
   if (options?.markDeletedKey) {
-    entries = entries.filter((e) => e.id !== options.markDeletedKey);
-    entries.push({
-      id: options.markDeletedKey,
-      className: "",
-      schoolYear: "",
-      createdAt: now,
-      updatedAt: now,
-      archived: true,
-      deletedAt: now,
-    });
+    const deletedSummary = summaries.find((s) => s.id === options.markDeletedKey);
+    const canMarkDeleted =
+      !deletedSummary ||
+      shouldIncludeInAccountBackup(
+        deletedSummary.ownerUserId,
+        deletedSummary.id,
+        userId,
+        registryKeys,
+        lastAuthUserId,
+      );
+    if (canMarkDeleted) {
+      entries = entries.filter((e) => e.id !== options.markDeletedKey);
+      entries.push({
+        id: options.markDeletedKey,
+        className: "",
+        schoolYear: "",
+        createdAt: now,
+        updatedAt: now,
+        archived: true,
+        deletedAt: now,
+      });
+    }
   }
 
   const localRegistry = buildClassroomsRegistryFromSummaries(entries, now);
@@ -401,9 +428,12 @@ export async function hydrateClassroomFromCloud(
   }
 }
 
-export function resetRegistryPullStateForTests(): void {
+export function resetRegistryPullState(): void {
   registryPullCompleted = false;
   registryPullPromise = null;
   lastMergedRegistry = null;
   hydrateInFlight.clear();
 }
+
+/** @deprecated Use resetRegistryPullState */
+export const resetRegistryPullStateForTests = resetRegistryPullState;

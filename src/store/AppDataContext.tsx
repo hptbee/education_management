@@ -27,7 +27,6 @@ import {
 import type { ClassroomDatabase, DatabaseSummary } from "../database/types";
 import { databaseService } from "../database/database.service";
 import { buildRecognizeStudentsUpdate, ensureBadgeForTitle, type RecognizeStudentsInput } from "../utils/recognition";
-import { capHistory } from "../utils/historyLimits";
 import { removeStudentFromAllSeats } from "../utils/seatingChart";
 import { classroomAssetService } from "../database/assets/classroom-asset.service";
 import { normalizeGift, buildRedeemGiftUpdate } from "../utils/gifts";
@@ -49,7 +48,9 @@ import {
   pullAndMergeAccountRegistry,
   pushClassroomRegistryMerge,
   refreshCloudRegistrySummaries,
+  resetRegistryPullState,
 } from "../database/backup/cloud-registry.service";
+import { lastAuthUserService } from "../database/backup/classroom-owner";
 import {
   activityDatesFromHistoryChange,
   cloudDirtyTracker,
@@ -176,7 +177,7 @@ function pickClassroomIdToOpen(
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { permissions, entitlement, isBootstrapping } = useAuth();
+  const { permissions, entitlement, isBootstrapping, user } = useAuth();
   const [data, setDataState] = useState<ClassroomDatabase | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -190,6 +191,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const dataRef = useRef<ClassroomDatabase | null>(null);
   const switchGenerationRef = useRef(0);
   const initialLoadDoneRef = useRef(false);
+  const prevUserIdRef = useRef<string | null>(null);
 
   const {
     pendingSaveRef,
@@ -262,6 +264,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
           archived: s.archived,
+          ownerUserId: s.ownerUserId,
         })),
         { markDeletedKey: options?.markDeletedKey },
       );
@@ -350,6 +353,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     if (!result.ok) return result;
 
+    if (user?.id) {
+      await databaseService.reconcileClassroomOwners(user.id);
+      await lastAuthUserService.writeLastAuthUserId(user.id);
+    }
+
     await refreshCloudRegistrySummaries();
     setClassroomListEpoch((epoch) => epoch + 1);
 
@@ -404,7 +412,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
 
     return result;
-  }, [applyLoadedDatabase, openClassroomById]);
+  }, [applyLoadedDatabase, openClassroomById, user?.id]);
 
   const loadInitialDatabase = useCallback(async () => {
     const generation = switchGenerationRef.current;
@@ -453,6 +461,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [applyLoadedDatabase, openClassroomById]);
+
+  useEffect(() => {
+    if (isBootstrapping) return;
+    const nextId = user?.id ?? null;
+    if (prevUserIdRef.current && prevUserIdRef.current !== nextId) {
+      resetRegistryPullState();
+    }
+    prevUserIdRef.current = nextId;
+  }, [user?.id, isBootstrapping]);
+
+  useEffect(() => {
+    if (!initialLoadDone || isBootstrapping || !user?.id) return;
+    if (permissions?.cloudBackup) return;
+    void databaseService.reconcileClassroomOwners(user.id).then(() =>
+      lastAuthUserService.writeLastAuthUserId(user.id),
+    );
+  }, [initialLoadDone, isBootstrapping, user?.id, permissions?.cloudBackup]);
 
   useEffect(() => {
     if (!initialLoadDone || isBootstrapping || !permissions?.cloudBackup || !entitlement) return;
@@ -918,7 +943,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 ? { ...item, badgeIds: [...currentIds, badgeId], updatedAt: now }
                 : item,
             ),
-            badgeAwardHistory: capHistory([historyEntry, ...(current.badgeAwardHistory ?? [])]),
+            badgeAwardHistory: [historyEntry, ...(current.badgeAwardHistory ?? [])],
           };
         }),
       saveStudent: (student) => {
@@ -1150,7 +1175,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             teams: current.teams.map((team) =>
               team.id === teamId ? { ...team, score: team.score + delta, updatedAt: history.createdAt } : team,
             ),
-            teamScoreHistory: capHistory([history, ...current.teamScoreHistory]),
+            teamScoreHistory: [history, ...current.teamScoreHistory],
           };
         }),
       resetTeamScore: (teamId) =>
@@ -1167,7 +1192,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return {
             ...current,
             teams: current.teams.map((item) => (item.id === teamId ? { ...item, score: 0, updatedAt: now } : item)),
-            teamScoreHistory: capHistory([history, ...current.teamScoreHistory]),
+            teamScoreHistory: [history, ...current.teamScoreHistory],
           };
         }),
       savePointAction: (action) =>
@@ -1202,7 +1227,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 ? { ...student, points: student.points + action.points, updatedAt: now }
                 : student,
             ),
-            pointHistory: capHistory([history, ...current.pointHistory]),
+            pointHistory: [history, ...current.pointHistory],
           };
         }),
       saveGift: async (gift, options) => {
@@ -1321,9 +1346,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           created = result.created;
           return {
             ...result.next,
-            pointHistory: capHistory(result.next.pointHistory),
-            recognitions: capHistory(result.next.recognitions),
-            badgeAwardHistory: capHistory(result.next.badgeAwardHistory ?? []),
+            pointHistory: result.next.pointHistory,
+            recognitions: result.next.recognitions,
+            badgeAwardHistory: result.next.badgeAwardHistory ?? [],
           };
         });
         return created;
@@ -1370,7 +1395,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   ? { ...s, points: s.points - recognition.awardedPoints!, updatedAt: now }
                   : s,
               );
-              pointHistory = capHistory([reversal, ...pointHistory]);
+              pointHistory = [reversal, ...pointHistory];
             }
           }
 
@@ -1398,7 +1423,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const saved: Recognition = { ...recognition, id: createId("recognition"), createdAt: new Date().toISOString() };
         setData((current) => ({
           ...current,
-          recognitions: capHistory([saved, ...current.recognitions]),
+          recognitions: [saved, ...current.recognitions],
         }));
         return saved;
       },
@@ -1420,7 +1445,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           };
           return {
             ...current,
-            luckyWheelHistory: capHistory([entry, ...(current.luckyWheelHistory ?? [])]),
+            luckyWheelHistory: [entry, ...(current.luckyWheelHistory ?? [])],
           };
         });
       },
@@ -1439,7 +1464,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           };
           return {
             ...current,
-            duckRaceHistory: capHistory([entry, ...(current.duckRaceHistory ?? [])]),
+            duckRaceHistory: [entry, ...(current.duckRaceHistory ?? [])],
           };
         });
       },

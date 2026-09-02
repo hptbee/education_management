@@ -73,29 +73,17 @@ Students primarily see the application when it is displayed by the teacher on:
 
 ## 1.3 Classroom Scope
 
-Version 1 supports:
+The teacher can keep **multiple classrooms** on one device and switch them from the sidebar. Each classroom has one teacher profile and its own students, teams, rewards, and history.
 
-- One classroom
-- One teacher configuration
-- One local browser/device data store
-
-Multi-classroom and multi-teacher support are explicitly out of scope for Version 1.
+Classroom JSON and photos stay on this device (IndexedDB in the browser; files under the Tauri app data folder on desktop). Students do not have accounts.
 
 ## 1.4 Local-First Requirement
 
-The application runs entirely in the browser.
+Runtime reads and writes always use local persistence. Google sign-in is required to use the app. A Cloudflare Worker (`workers/cloud-backup`) handles identity, signed entitlements, licensing, and **optional** cloud backup (R2). It is not the classroom database.
 
-Version 1 must not require:
+Do not add extra REST/GraphQL classroom APIs, a cloud DB as source of truth, Redis, or queues unless explicitly requested.
 
-- Backend
-- Authentication
-- User accounts
-- REST API
-- GraphQL API
-- Cloud database
-- Cloud storage
-
-Structured data must persist locally.
+See [ACCOUNTS.md](./ACCOUNTS.md) and [DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md).
 
 ---
 

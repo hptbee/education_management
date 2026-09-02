@@ -55,7 +55,8 @@ Activity dates use **device local calendar** via `toLocalDateKey()` — not UTC 
 2. First structured sync for a classroom (`!migratedToStructured`) and manual retry (`triggerUploadNow`) upload **all** domain files and set `manifest.json` `migrationComplete`.
 3. Incremental batches use `CloudDirtyTracker` (JSON domains + `dirtyAssets` image keys) plus per-file hashes in local `backup-status.json` (skip unchanged content).
 4. Classroom switch (`switchDatabase`) awaits `persistNow()` then `flushPending()`; if the target is a cloud stub (`hydrated: false`), downloads via `GET /restore/{key}` before opening.
-5. UI never reads R2 directly; account discovery uses `GET /classrooms` / `GET /classrooms/registry` on login.
+5. Cloud upload and registry merge only include classrooms owned by the signed-in Google account (`metadata.ownerUserId`). Unowned local classes are claimed by the same account last used on this device, or when they already appear in that account’s registry.
+6. UI never reads R2 directly; account discovery uses `GET /classrooms` / `GET /classrooms/registry` on login.
 
 ### Account-level classroom registry
 
@@ -130,7 +131,7 @@ Not classroom data. Desktop writes `logs/app.log` under the app data directory (
 ### Scaling notes
 
 - Activity files grow with daily edits; large histories are partitioned by date.
-- Local `capHistory` (2000 rows) may still cap in-memory/history on write; cloud export includes all rows present in memory at sync time.
+- Local classroom JSON keeps full in-memory history on write (no 2000-row cap). Cloud export includes all rows present at sync time.
 - Processed WebP assets sync to R2 under `assets/**`; JSON domain files store asset keys only.
 
 ### Future seam

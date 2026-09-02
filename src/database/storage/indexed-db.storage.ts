@@ -92,6 +92,7 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
       updatedAt: dbItem.metadata.updatedAt,
       archived: dbItem.metadata.archived ?? false,
       hydrated: !dbItem.metadata.cloudStub,
+      ownerUserId: dbItem.metadata.ownerUserId,
     }));
 
     summaries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -107,6 +108,7 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
       createdAt: string;
       updatedAt: string;
       archived?: boolean;
+      ownerUserId?: string;
     }>,
   ): Promise<void> {
     const { nextQueue, result } = enqueueWrite(this.writeQueue, async () => {
@@ -116,6 +118,13 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
       for (const registryEntry of entries) {
         const existing = databases.find((item) => item.metadata.id === registryEntry.key);
         if (existing && !existing.metadata.cloudStub) {
+          if (
+            existing.metadata.ownerUserId &&
+            registryEntry.ownerUserId &&
+            existing.metadata.ownerUserId !== registryEntry.ownerUserId
+          ) {
+            continue;
+          }
           const remoteTime = new Date(registryEntry.updatedAt).getTime();
           const localTime = new Date(existing.metadata.updatedAt).getTime();
           if (remoteTime > localTime) {
@@ -125,6 +134,7 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
                 ...existing.metadata,
                 updatedAt: registryEntry.updatedAt,
                 archived: registryEntry.archived ?? existing.metadata.archived,
+                ownerUserId: existing.metadata.ownerUserId ?? registryEntry.ownerUserId,
               },
               classroomSettings: {
                 ...existing.classroomSettings,
@@ -134,6 +144,13 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
               },
             };
             await runTransaction(db, "readwrite", (store) => store.put(updated));
+          } else if (!existing.metadata.ownerUserId && registryEntry.ownerUserId) {
+            await runTransaction(db, "readwrite", (store) =>
+              store.put({
+                ...existing,
+                metadata: { ...existing.metadata, ownerUserId: registryEntry.ownerUserId },
+              }),
+            );
           }
           continue;
         }
@@ -155,6 +172,7 @@ export class IndexedDbClassroomStorage implements ClassroomDatabaseStorage {
           updatedAt: registryEntry.updatedAt,
           archived: registryEntry.archived ?? false,
           cloudStub: true,
+          ownerUserId: registryEntry.ownerUserId,
         };
         await runTransaction(db, "readwrite", (store) => store.put(stub));
       }

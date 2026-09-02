@@ -12,6 +12,11 @@ import { isTauri } from "./tauri-fs.service";
 import { assertImportFileSize } from "./importLimits";
 import { getLastClassroomId, setLastClassroomId, clearLastClassroomId } from "../utils/lastClassroom";
 import { isCloudBackupConfigured } from "./backup/cloud-backup-auth";
+import {
+  lastAuthUserService,
+  resolveCurrentUserId,
+  shouldIncludeInAccountBackup,
+} from "./backup/classroom-owner";
 import type { CloudClassroomRegistryEntry } from "./backup/cloud-types";
 import { restoreCloudAssetsLocally, applyAssetKeysFromRestoredPaths } from "./backup/cloud-asset-sync";
 import { logCloudTrace } from "../logging/app-log";
@@ -140,6 +145,19 @@ async function resolveStorage(): Promise<ClassroomDatabaseStorage> {
     return tauriStorageSingleton;
   }
   return new IndexedDbClassroomStorage();
+}
+
+async function assignCurrentOwner(db: ClassroomDatabase): Promise<ClassroomDatabase> {
+  const userId = await resolveCurrentUserId();
+  if (!userId) return db;
+  if (db.metadata.ownerUserId === userId) return db;
+  return {
+    ...db,
+    metadata: {
+      ...db.metadata,
+      ownerUserId: userId,
+    },
+  };
 }
 
 async function persistActiveClassroomId(id: string | null): Promise<void> {
@@ -283,8 +301,42 @@ export class DatabaseService {
 
   async mergeRegistryStubs(entries: CloudClassroomRegistryEntry[]): Promise<void> {
     const storage = await this.getStorage();
-    if (storage.mergeRegistryStubs) {
-      await storage.mergeRegistryStubs(entries);
+    if (!storage.mergeRegistryStubs) return;
+    const ownerUserId = (await resolveCurrentUserId()) ?? undefined;
+    await storage.mergeRegistryStubs(
+      ownerUserId ? entries.map((entry) => ({ ...entry, ownerUserId })) : entries,
+    );
+  }
+
+  async reconcileClassroomOwners(userId: string): Promise<void> {
+    const lastAuthUserId = await lastAuthUserService.readLastAuthUserId();
+    const { getLastMergedRegistry } = await import("./backup/cloud-registry.service");
+    const registryKeys = new Set(
+      (getLastMergedRegistry()?.classrooms ?? []).map((entry) => entry.key),
+    );
+    const storage = await this.getStorage();
+    const summaries = await storage.list();
+    for (const summary of summaries) {
+      if (
+        !shouldIncludeInAccountBackup(
+          summary.ownerUserId,
+          summary.id,
+          userId,
+          registryKeys,
+          lastAuthUserId,
+        )
+      ) {
+        continue;
+      }
+      if (summary.ownerUserId === userId) continue;
+      const loaded = await storage.load(summary.id);
+      if (!loaded) continue;
+      if (loaded.metadata.ownerUserId === userId) continue;
+      if (loaded.metadata.ownerUserId && loaded.metadata.ownerUserId !== userId) continue;
+      await storage.save({
+        ...loaded,
+        metadata: { ...loaded.metadata, ownerUserId: userId },
+      });
     }
   }
 
@@ -344,7 +396,7 @@ export class DatabaseService {
     }
 
     const { database: migrated } = await migrateLegacyClassroomImages(db);
-    db = migrated;
+    db = await assignCurrentOwner(migrated);
 
     const storage = await this.getStorage();
     await storage.save(db);
@@ -371,11 +423,12 @@ export class DatabaseService {
     if (await isCloudBackupConfigured()) {
       db.appSettings.cloudBackupEnabled = true;
     }
-    await storage.save(db);
+    const owned = await assignCurrentOwner(db);
+    await storage.save(owned);
     if (options?.activate !== false) {
-      await persistActiveClassroomId(db.metadata.id);
+      await persistActiveClassroomId(owned.metadata.id);
     }
-    return db;
+    return owned;
   }
 
   async openDatabase(id: string): Promise<ClassroomDatabase | null> {
@@ -635,6 +688,7 @@ export class DatabaseService {
       });
     }
 
+    newDb = await assignCurrentOwner(newDb);
     const newId = newDb.metadata.id;
     await classroomAssetService.copyClassroomAssets(sourceId, newId, newDb);
     try {
@@ -654,8 +708,9 @@ export class DatabaseService {
 
     if (await isCloudBackupConfigured()) {
       newDb.appSettings.cloudBackupEnabled = true;
-      await storage.save(newDb);
     }
+    newDb = await assignCurrentOwner(newDb);
+    await storage.save(newDb);
 
     return newDb;
   }
@@ -695,7 +750,7 @@ export class DatabaseService {
 
     assertImportShape(classroomData);
 
-    const db = normalizeClassroomDatabase(classroomData);
+    let db = normalizeClassroomDatabase(classroomData);
     const storage = await this.getStorage();
     const existing = await storage.load(db.metadata.id);
     if (existing && !existing.metadata.cloudStub) {
@@ -706,6 +761,7 @@ export class DatabaseService {
     if (db.metadata.cloudStub) {
       delete db.metadata.cloudStub;
     }
+    db = await assignCurrentOwner(db);
     if (await isCloudBackupConfigured()) {
       db.appSettings.cloudBackupEnabled = true;
     }

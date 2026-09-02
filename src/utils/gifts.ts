@@ -2,7 +2,6 @@ import type { Gift, PointHistory, RewardHistory } from "../types/models";
 import type { ClassroomDatabase } from "../database/types";
 import { classroomAssetService } from "../database/assets/classroom-asset.service";
 import { createId } from "./id";
-import { capHistory } from "./historyLimits";
 
 type LegacyReward = Gift & {
   image?: string;
@@ -131,7 +130,7 @@ export function buildRedeemGiftUpdate(
           : item,
       ),
       rewardHistory: [rewardHistory, ...current.rewardHistory],
-      pointHistory: capHistory([pointHistory, ...current.pointHistory]),
+      pointHistory: [pointHistory, ...current.pointHistory],
     },
   };
 }

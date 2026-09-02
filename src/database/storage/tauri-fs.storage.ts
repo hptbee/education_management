@@ -32,6 +32,7 @@ export interface ClassroomIndexEntry {
   archived?: boolean;
   /** False when only cloud registry metadata exists (no local JSON yet). */
   hydrated?: boolean;
+  ownerUserId?: string;
 }
 
 export interface IndexFile {
@@ -56,6 +57,7 @@ function entryFromDatabase(db: ClassroomDatabase, fileName: string): ClassroomIn
     updatedAt: db.metadata.updatedAt,
     archived: db.metadata.archived ?? false,
     hydrated: !db.metadata.cloudStub,
+    ownerUserId: db.metadata.ownerUserId,
   };
 }
 
@@ -66,6 +68,7 @@ function stubFromRegistryEntry(entry: {
   createdAt: string;
   updatedAt: string;
   archived?: boolean;
+  ownerUserId?: string;
 }): ClassroomIndexEntry {
   return {
     id: entry.key,
@@ -78,6 +81,7 @@ function stubFromRegistryEntry(entry: {
     updatedAt: entry.updatedAt,
     archived: entry.archived ?? false,
     hydrated: false,
+    ownerUserId: entry.ownerUserId,
   };
 }
 
@@ -244,6 +248,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
         updatedAt: entry.updatedAt,
         archived: entry.archived ?? false,
         hydrated: entry.hydrated !== false,
+        ownerUserId: entry.ownerUserId,
       }))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
@@ -372,6 +377,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
       createdAt: string;
       updatedAt: string;
       archived?: boolean;
+      ownerUserId?: string;
     }>,
   ): Promise<void> {
     await this.initialize();
@@ -384,6 +390,14 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
         const existingIdx = index.classrooms.findIndex((c) => c.id === registryEntry.key);
         if (existingIdx >= 0) {
           const existing = index.classrooms[existingIdx];
+          if (
+            existing.hydrated !== false &&
+            existing.ownerUserId &&
+            registryEntry.ownerUserId &&
+            existing.ownerUserId !== registryEntry.ownerUserId
+          ) {
+            continue;
+          }
           if (existing.hydrated !== false) {
             const remoteTime = new Date(registryEntry.updatedAt).getTime();
             const localTime = new Date(existing.updatedAt).getTime();
@@ -394,6 +408,13 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
                 schoolYear: registryEntry.schoolYear,
                 updatedAt: registryEntry.updatedAt,
                 archived: registryEntry.archived ?? false,
+                ownerUserId: existing.ownerUserId ?? registryEntry.ownerUserId,
+              };
+              changed = true;
+            } else if (!existing.ownerUserId && registryEntry.ownerUserId) {
+              index.classrooms[existingIdx] = {
+                ...existing,
+                ownerUserId: registryEntry.ownerUserId,
               };
               changed = true;
             }
@@ -410,6 +431,7 @@ export class TauriFsClassroomStorage implements ClassroomDatabaseStorage {
             createdAt: existing.createdAt ?? registryEntry.createdAt,
             updatedAt: winnerUpdatedAt,
             archived: registryEntry.archived ?? existing.archived,
+            ownerUserId: registryEntry.ownerUserId ?? existing.ownerUserId,
           });
           changed = true;
           continue;

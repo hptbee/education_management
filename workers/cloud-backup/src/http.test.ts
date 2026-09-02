@@ -109,13 +109,28 @@ describe("resolveCorsHeaders", () => {
     expect(resolveCorsHeaders(request, env)["Access-Control-Allow-Origin"]).toBeUndefined();
   });
 
-  it("allows wildcard suffix origins", () => {
+  it("allows an exact Vercel origin without a wildcard", () => {
     const request = new Request("https://example.com/me", {
       headers: { Origin: "https://education-management-u6xm.vercel.app" },
     });
-    const env = { CORS_ALLOWED_ORIGINS: "https://*.vercel.app" } as Env;
+    const env = {
+      CORS_ALLOWED_ORIGINS: "https://education-management-u6xm.vercel.app",
+    } as Env;
 
     const headers = resolveCorsHeaders(request, env);
-    expect(headers["Access-Control-Allow-Origin"]).toBe("https://education-management-u6xm.vercel.app");
+    expect(headers["Access-Control-Allow-Origin"]).toBe(
+      "https://education-management-u6xm.vercel.app",
+    );
+  });
+
+  it("does not allow an arbitrary Vercel preview origin", () => {
+    const request = new Request("https://example.com/me", {
+      headers: { Origin: "https://evil-preview.vercel.app" },
+    });
+    const env = {
+      CORS_ALLOWED_ORIGINS: "https://education-management-u6xm.vercel.app",
+    } as Env;
+
+    expect(resolveCorsHeaders(request, env)["Access-Control-Allow-Origin"]).toBeUndefined();
   });
 });

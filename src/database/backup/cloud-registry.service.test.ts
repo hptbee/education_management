@@ -60,6 +60,15 @@ vi.mock("./cloud-sync.service", () => ({
   uploadRegistryMerge: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("./classroom-owner", () => ({
+  lastAuthUserService: {
+    readLastAuthUserId: vi.fn().mockResolvedValue(null),
+    writeLastAuthUserId: vi.fn(),
+  },
+  resolveCurrentUserId: vi.fn().mockResolvedValue("usr_test"),
+  shouldIncludeInAccountBackup: vi.fn().mockReturnValue(true),
+}));
+
 import { fetchClassroomsRegistry, restoreCloudClassroom, restoreCloudClassroomAssets } from "@/src/auth/api";
 import { databaseService } from "../database.service";
 import { createEmptyDatabase } from "../database.factory";

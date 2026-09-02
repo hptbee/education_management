@@ -50,6 +50,7 @@ vi.mock("./backup-metadata.service", () => ({
 vi.mock("./cloud-registry.service", () => ({
   isRegistryPullCompleted: vi.fn().mockReturnValue(true),
   refreshCloudRegistrySummaries: vi.fn().mockResolvedValue(undefined),
+  getLastMergedRegistry: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock("./cloud-sync.service", () => ({
@@ -62,6 +63,15 @@ vi.mock("./cloud-restore-gate", () => ({
 
 vi.mock("@/src/auth/api", () => ({
   fetchClassroomsRegistry: vi.fn().mockResolvedValue({ registry: null, source: "missing" }),
+}));
+
+vi.mock("./classroom-owner", () => ({
+  lastAuthUserService: {
+    readLastAuthUserId: vi.fn().mockResolvedValue(null),
+    writeLastAuthUserId: vi.fn(),
+  },
+  resolveCurrentUserId: vi.fn().mockResolvedValue("usr_test"),
+  shouldIncludeInAccountBackup: vi.fn().mockReturnValue(true),
 }));
 
 function makeDb(cloudBackupEnabled = true, className = "2/7", schoolYear = "2026-2027") {
@@ -98,14 +108,15 @@ describe("uploadClassroomBackup", () => {
   it("uploads classroom JSON with entitlement bearer", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
-    await uploadClassroomBackup(makeDb(true), fetchMock as unknown as typeof fetch);
+    const db = makeDb(true);
+    await uploadClassroomBackup(db, fetchMock as unknown as typeof fetch);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://backup.example.workers.dev/backup");
     expect(init?.method).toBe("PUT");
     const body = JSON.parse(String(init?.body));
-    expect(body.classroomId).toBe("2-7_2026-2027");
+    expect(body.classroomId).toBe(db.metadata.id);
     expect((init?.headers as Record<string, string>).Authorization).toBe(
       "Bearer test-entitlement-token",
     );

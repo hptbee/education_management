@@ -24,6 +24,12 @@ async function requireAdmin(request: Request, env: Env) {
   return auth;
 }
 
+async function isLastActiveAdmin(env: Env, userId: string): Promise<boolean> {
+  const users = await listUsers(env.DB);
+  const activeAdmins = users.filter((u) => u.role === "admin" && u.status === "active");
+  return activeAdmins.length <= 1 && activeAdmins.some((u) => u.id === userId);
+}
+
 export async function handleAdminListUsers(request: Request, env: Env): Promise<Response> {
   const auth = await requireAdmin(request, env);
   if ("error" in auth) return auth.error;
@@ -61,6 +67,19 @@ export async function handleAdminPatchUser(
   let user = await findUserById(env.DB, userId);
   if (!user) {
     return errorResponse("NOT_FOUND", "User not found", 404);
+  }
+
+  if (body.role && body.role !== user.role && body.role !== "admin" && user.role === "admin") {
+    const lastAdmin = await isLastActiveAdmin(env, user.id);
+    if (lastAdmin) {
+      return errorResponse("FORBIDDEN", "Cannot demote the last active admin", 403);
+    }
+  }
+  if (body.status && body.status !== user.status && body.status !== "active" && user.role === "admin" && user.status === "active") {
+    const lastAdmin = await isLastActiveAdmin(env, user.id);
+    if (lastAdmin) {
+      return errorResponse("FORBIDDEN", "Cannot disable the last active admin", 403);
+    }
   }
 
   if (body.status) {

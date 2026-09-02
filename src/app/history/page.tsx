@@ -12,7 +12,6 @@ import {
   formatActivityDate,
   type ActivityFilter,
 } from '@/src/utils/activityHistory'
-import { MAX_HISTORY_ENTRIES } from '@/src/utils/historyLimits'
 import { PageHeader, ClassroomCard, EmptyState, ClassroomSelect } from '@/src/components/classroom'
 
 const FILTER_OPTIONS: { id: ActivityFilter; label: string }[] = [
@@ -69,10 +68,6 @@ export default function HistoryPage() {
           title="Lịch sử hoạt động"
           subtitle="Nhật ký tích điểm, đổi quà, tuyên dương, điểm tổ, vòng quay và huy hiệu"
         />
-
-        <p className="text-sm font-semibold text-slate-500">
-          Lưu tối đa {MAX_HISTORY_ENTRIES.toLocaleString('vi-VN')} mục gần nhất — các bản ghi cũ hơn được tự động gỡ bỏ.
-        </p>
 
         <ClassroomCard className="space-y-4">
           <div className="flex flex-wrap gap-2">

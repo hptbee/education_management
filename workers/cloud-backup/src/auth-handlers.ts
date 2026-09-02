@@ -1,4 +1,4 @@
-import { findActiveLicense, findOrCreateUserFromGoogle, findUserById, bumpLicenseVersion } from "./db";
+import { findActiveLicense, findOrCreateUserFromGoogle, findUserById } from "./db";
 import {
   accessErrorForLicense,
   accessErrorForUser,
@@ -156,7 +156,8 @@ export async function handleAuthRefresh(request: Request, env: Env): Promise<Res
 export async function handleAuthLogout(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if ("error" in auth) return auth.error;
-  await bumpLicenseVersion(env.DB, auth.user.id);
+  // Client clears the local entitlement. Do not bump license_version — that would
+  // revoke every device for this teacher (PC1 signed out when PC2 logs out).
   return new Response(null, { status: 204 });
 }
 

@@ -36,6 +36,7 @@ export interface ClassroomDatabaseStorage {
       createdAt: string;
       updatedAt: string;
       archived?: boolean;
+      ownerUserId?: string;
     }>,
   ): Promise<void>;
   isClassroomHydrated?(id: string): Promise<boolean>;

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyDatabase } from "@/src/database/database.factory";
-import { capHistory } from "@/src/utils/historyLimits";
 import { createId } from "@/src/utils/id";
 import type { ClassroomDatabase } from "@/src/database/types";
 import type { PointAction } from "@/src/types/models";
@@ -33,7 +32,7 @@ function applyPointsToDatabase(
         ? { ...student, points: student.points + action.points, updatedAt: now }
         : student,
     ),
-    pointHistory: capHistory([history, ...current.pointHistory]),
+    pointHistory: [history, ...current.pointHistory],
   };
 }
 

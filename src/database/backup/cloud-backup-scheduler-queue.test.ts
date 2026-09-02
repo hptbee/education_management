@@ -4,8 +4,10 @@ import { CloudBackupScheduler } from "./cloud-backup.service";
 import { uploadCloudSyncBatch } from "./cloud-sync.service";
 import { backupMetadataService } from "./backup-metadata.service";
 import { verifyEntitlementToken } from "@/src/auth/entitlement";
+import { loadAuthSession } from "@/src/auth/secure-storage";
 import { cloudDirtyTracker } from "./cloud-dirty-tracker";
 import { isCloudRestoreInProgress } from "./cloud-restore-gate";
+import { resolveCurrentUserId, shouldIncludeInAccountBackup } from "./classroom-owner";
 
 vi.mock("@/src/auth/secure-storage", () => ({
   loadAuthSession: vi.fn().mockResolvedValue({
@@ -53,6 +55,7 @@ vi.mock("./backup-metadata.service", () => ({
 vi.mock("./cloud-registry.service", () => ({
   isRegistryPullCompleted: vi.fn().mockReturnValue(true),
   refreshCloudRegistrySummaries: vi.fn().mockResolvedValue(undefined),
+  getLastMergedRegistry: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock("./cloud-sync.service", () => ({
@@ -65,6 +68,15 @@ vi.mock("./cloud-restore-gate", () => ({
 
 vi.mock("@/src/auth/api", () => ({
   fetchClassroomsRegistry: vi.fn().mockResolvedValue({ registry: null, source: "missing" }),
+}));
+
+vi.mock("./classroom-owner", () => ({
+  lastAuthUserService: {
+    readLastAuthUserId: vi.fn().mockResolvedValue(null),
+    writeLastAuthUserId: vi.fn(),
+  },
+  resolveCurrentUserId: vi.fn().mockResolvedValue("usr_test"),
+  shouldIncludeInAccountBackup: vi.fn().mockReturnValue(true),
 }));
 
 function makeDb(cloudBackupEnabled = true, className = "2/7", schoolYear = "2026-2027") {
@@ -87,14 +99,33 @@ describe("CloudBackupScheduler queue", () => {
   const originalPublicKey = process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY;
 
   async function flushSchedulerMicrotasks(): Promise<void> {
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+    }
   }
+
+  const sessionFixture = {
+    entitlement: "test-entitlement-token",
+    user: { id: "usr_test" },
+    license: null,
+    lastVerifiedAt: new Date().toISOString(),
+    lastTrustedIat: Math.floor(Date.now() / 1000),
+  };
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_CLOUD_BACKUP_URL = "https://backup.example.workers.dev";
     process.env.NEXT_PUBLIC_ENTITLEMENT_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAtest\n-----END PUBLIC KEY-----";
+    vi.mocked(loadAuthSession).mockResolvedValue(sessionFixture);
+    vi.mocked(resolveCurrentUserId).mockResolvedValue("usr_test");
+    vi.mocked(shouldIncludeInAccountBackup).mockReturnValue(true);
+    vi.mocked(verifyEntitlementToken).mockResolvedValue({
+      claims: {
+        userId: "usr_test",
+        permissions: { appAccess: true, cloudBackup: true },
+      },
+      issuedAt: Math.floor(Date.now() / 1000),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    });
   });
 
   afterEach(() => {
@@ -182,16 +213,17 @@ describe("CloudBackupScheduler queue", () => {
       releaseB = resolve;
     });
 
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+
     vi.mocked(uploadCloudSyncBatch).mockImplementation(async (db) => {
-      if (db.metadata.id === "3-1_2026-2027") {
+      if (db.metadata.id === classB.metadata.id) {
         await bGate;
       }
       return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
     });
 
     const scheduler = new CloudBackupScheduler();
-    const classA = makeDb(true, "2/7", "2026-2027");
-    const classB = makeDb(true, "3/1", "2026-2027");
 
     scheduler.scheduleAfterLocalSave(classB);
     await flushSchedulerMicrotasks();
@@ -249,17 +281,18 @@ describe("CloudBackupScheduler queue", () => {
       releaseA = resolve;
     });
 
+    const classA = makeDb(true, "2/7", "2026-2027");
+    const classB = makeDb(true, "3/1", "2026-2027");
+    const classC = makeDb(true, "4/2", "2026-2027");
+
     vi.mocked(uploadCloudSyncBatch).mockImplementation(async (db) => {
-      if (db.metadata.id === "2-7_2026-2027") {
+      if (db.metadata.id === classA.metadata.id) {
         await aGate;
       }
       return { uploadedPaths: ["classroom.json"], skippedPaths: [] };
     });
 
     const scheduler = new CloudBackupScheduler();
-    const classA = makeDb(true, "2/7", "2026-2027");
-    const classB = makeDb(true, "3/1", "2026-2027");
-    const classC = makeDb(true, "4/2", "2026-2027");
 
     scheduler.scheduleAfterLocalSave(classA);
     scheduler.scheduleAfterLocalSave(classB);

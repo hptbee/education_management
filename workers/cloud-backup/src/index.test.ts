@@ -94,7 +94,7 @@ describe("auth and entitlement", () => {
     expect(response.status).toBe(200);
   });
 
-  it("rejects refresh after logout bumps license version", async () => {
+  it("logout does not invalidate entitlements on other devices", async () => {
     const { privateKeyPem, publicKeyPem } = await generateTestKeys();
     const mockDb = new MockD1();
     const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
@@ -126,9 +126,7 @@ describe("auth and entitlement", () => {
       }),
       env,
     );
-    expect(refresh.status).toBe(401);
-    const body = (await refresh.json()) as { code: string };
-    expect(body.code).toBe("AUTH_REQUIRED");
+    expect(refresh.status).toBe(200);
   });
 
   it("rejects disabled user on refresh", async () => {
@@ -1132,6 +1130,38 @@ describe("admin patch handlers", () => {
     expect(response.status).toBe(200);
     const updated = await findUserById(mockDb as unknown as D1Database, target.id);
     expect(updated?.status).toBe("disabled");
+  });
+
+  it("refuses to demote the last active admin", async () => {
+    const { privateKeyPem, publicKeyPem } = await generateTestKeys();
+    const mockDb = new MockD1();
+    const env = makeTestEnv(mockDb, privateKeyPem, publicKeyPem);
+    const admin = await createUser(mockDb as unknown as D1Database, { sub: "solo-admin" }, "admin");
+    const adminLicense = await createLicense(
+      mockDb as unknown as D1Database,
+      admin.id,
+      "lifetime",
+      new Date().toISOString(),
+      null,
+    );
+    const adminFromDb = (await findUserById(mockDb as unknown as D1Database, admin.id))!;
+    const entitlement = await signEntitlement(env, adminFromDb, adminLicense);
+
+    const response = await worker.fetch(
+      new Request(`https://example.com/admin/users/${admin.id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${entitlement}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role: "teacher" }),
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(403);
+    const stillAdmin = await findUserById(mockDb as unknown as D1Database, admin.id);
+    expect(stillAdmin?.role).toBe("admin");
   });
 
   it("patches license plan as admin", async () => {

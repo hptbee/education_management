@@ -14,6 +14,10 @@ vi.mock("./assets/classroom-asset.service", () => ({
   },
 }));
 
+vi.mock("@/src/auth/secure-storage", () => ({
+  loadAuthSession: vi.fn().mockResolvedValue(null),
+}));
+
 function makeSettings(className = "2/7", schoolYear = "2026-2027") {
   return {
     className,

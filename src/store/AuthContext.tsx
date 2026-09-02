@@ -10,6 +10,7 @@ import {
   LoginCancelledError,
   requestLoginCancel,
 } from "@/src/auth/login-cancel";
+import { resetRegistryPullState } from "@/src/database/backup/cloud-registry.service";
 import { clearAuthSession, loadAuthSession, rememberAuthSession, saveAuthSession } from "@/src/auth/secure-storage";
 import {
   isRevokedAuthDenial,
@@ -273,6 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     await clearAuthSession();
+    resetRegistryPullState();
     setSession(null);
     setStorageError(null);
     setServerDenied(null);
