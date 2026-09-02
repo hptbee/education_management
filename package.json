@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "deploy:cloudflare": "opennextjs-cloudflare build && wrangler deploy",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
@@ -22,7 +24,7 @@
     "framer-motion": "^13.1.0",
     "jose": "^6.2.9",
     "lucide-react": "^1.16.0",
-    "next": "16.3.0",
+    "next": "16.3.4",
     "react": "^19",
     "react-dom": "^19",
     "shadcn": "^4.8.0",
@@ -35,6 +37,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.5",
     "@tailwindcss/postcss": "^4.3.3",
     "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^24",
@@ -42,10 +45,11 @@
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^3.0.5",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.3.0",
+    "eslint-config-next": "^16.3.4",
     "postcss": "^8.5",
     "tailwindcss": "^4.3.3",
     "typescript": "5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "wrangler": "^4.128.0"
   }
 }
