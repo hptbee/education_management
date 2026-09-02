@@ -210,6 +210,23 @@ describe("DatabaseService", () => {
     expect(renamed.metadata.id).toBe(originalId);
   });
 
+  it("rejects rename to an existing class name and year", async () => {
+    const { service } = makeService();
+    const first = await service.createDatabase(makeSettings("2/7", "2026-2027"));
+    await service.createDatabase(makeSettings("2/8", "2026-2027"), { activate: false });
+    await expect(
+      service.renameClassroomDatabase(first.metadata.id, "2/8", "2026-2027"),
+    ).rejects.toThrow(/đã tồn tại/);
+  });
+
+  it("rejects empty rename", async () => {
+    const { service } = makeService();
+    const db = await service.createDatabase(makeSettings());
+    await expect(service.renameClassroomDatabase(db.metadata.id, "  ", "2026-2027")).rejects.toThrow(
+      /không được để trống/,
+    );
+  });
+
   it("deletes database", async () => {
     const { service } = makeService();
     const db = await service.createDatabase(makeSettings());
@@ -242,6 +259,15 @@ describe("DatabaseService", () => {
     });
     expect(updated.metadata.id).toBe(db.metadata.id);
     expect(updated.classroomSettings.className).toBe("3A");
+  });
+
+  it("updateClassroomInfo rejects an existing class name and year", async () => {
+    const { service } = makeService();
+    const first = await service.createDatabase(makeSettings("2/7", "2026-2027"));
+    await service.createDatabase(makeSettings("2/8", "2026-2027"), { activate: false });
+    await expect(
+      service.updateClassroomInfo(first.metadata.id, { className: "2/8", schoolYear: "2026-2027" }),
+    ).rejects.toThrow(/đã tồn tại/);
   });
 
   it("archives and restores classroom", async () => {

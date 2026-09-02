@@ -169,6 +169,26 @@ async function findClassroomByDisplayName(
   );
 }
 
+function assertNonEmptyDisplayName(className: string, schoolYear: string): void {
+  if (!className || !schoolYear) {
+    throw new Error("Tên lớp và năm học không được để trống.");
+  }
+}
+
+async function assertUniqueDisplayName(
+  storage: ClassroomDatabaseStorage,
+  className: string,
+  schoolYear: string,
+  excludeId?: string,
+): Promise<void> {
+  const duplicate = await findClassroomByDisplayName(storage, className, schoolYear, excludeId);
+  if (duplicate) {
+    throw new Error(
+      `Lớp "${className}" năm học "${schoolYear}" đã tồn tại. Hãy chọn tên hoặc năm học khác.`,
+    );
+  }
+}
+
 export class DatabaseService {
   private storage: ClassroomDatabaseStorage | null = null;
   private storagePromise: Promise<ClassroomDatabaseStorage> | null = null;
@@ -337,19 +357,19 @@ export class DatabaseService {
     options?: { activate?: boolean },
   ): Promise<ClassroomDatabase> {
     const storage = await this.getStorage();
-    const db = normalizeClassroomDatabase(createEmptyDatabase(settings));
+    const className = settings.className.trim();
+    const schoolYear = settings.schoolYear.trim();
+    assertNonEmptyDisplayName(className, schoolYear);
+    await assertUniqueDisplayName(storage, className, schoolYear);
+    const db = normalizeClassroomDatabase(
+      createEmptyDatabase({
+        ...settings,
+        className,
+        schoolYear,
+      }),
+    );
     if (await isCloudBackupConfigured()) {
       db.appSettings.cloudBackupEnabled = true;
-    }
-    const duplicate = await findClassroomByDisplayName(
-      storage,
-      settings.className,
-      settings.schoolYear,
-    );
-    if (duplicate) {
-      throw new Error(
-        `Lớp "${settings.className}" năm học "${settings.schoolYear}" đã tồn tại. Hãy chọn tên hoặc năm học khác.`,
-      );
     }
     await storage.save(db);
     if (options?.activate !== false) {
@@ -427,9 +447,14 @@ export class DatabaseService {
 
     const className = info.className.trim();
     const schoolYear = info.schoolYear.trim();
-    if (!className || !schoolYear) {
-      throw new Error("Tên lớp và năm học không được để trống.");
+    assertNonEmptyDisplayName(className, schoolYear);
+    if (
+      className === current.classroomSettings.className &&
+      schoolYear === current.classroomSettings.schoolYear
+    ) {
+      return normalizeClassroomDatabase(current);
     }
+    await assertUniqueDisplayName(storage, className, schoolYear, id);
 
     const now = new Date().toISOString();
     const updated = normalizeClassroomDatabase({
@@ -524,17 +549,14 @@ export class DatabaseService {
 
     const className = newClassName.trim();
     const schoolYear = newSchoolYear.trim();
+    assertNonEmptyDisplayName(className, schoolYear);
     if (
       className === currentDb.classroomSettings.className &&
       schoolYear === currentDb.classroomSettings.schoolYear
     ) {
       return currentDb;
     }
-
-    const duplicate = await findClassroomByDisplayName(storage, className, schoolYear, currentId);
-    if (duplicate) {
-      throw new Error(`A database for "${className}" in "${schoolYear}" already exists.`);
-    }
+    await assertUniqueDisplayName(storage, className, schoolYear, currentId);
 
     const now = new Date().toISOString();
     const updatedDb = normalizeClassroomDatabase({
@@ -569,10 +591,8 @@ export class DatabaseService {
 
     const className = newClassName.trim();
     const schoolYear = newSchoolYear.trim();
-    const duplicate = await findClassroomByDisplayName(storage, className, schoolYear);
-    if (duplicate) {
-      throw new Error(`A database for "${className}" in "${schoolYear}" already exists.`);
-    }
+    assertNonEmptyDisplayName(className, schoolYear);
+    await assertUniqueDisplayName(storage, className, schoolYear);
 
     const now = new Date().toISOString();
     let newDb: ClassroomDatabase;

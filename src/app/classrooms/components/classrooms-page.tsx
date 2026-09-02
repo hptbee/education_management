@@ -28,6 +28,7 @@ import {
 import { useClassroomList } from '@/src/hooks/useClassroomList'
 import type { DatabaseSummary } from '@/src/database/types'
 import { useAppData } from '@/src/store/AppDataContext'
+import { duplicateDisplayNameIds } from '@/src/utils/classroom'
 import { formatRelativeUpdatedAt } from '@/src/utils/relativeTime'
 import { CloudRestoreCard } from '@/src/app/settings/components/cloud-restore-card'
 import { backupMetadataService } from '@/src/database/backup/backup-metadata.service'
@@ -196,6 +197,7 @@ function ClassroomManagementCard({
   isActive,
   busy,
   hydrateError,
+  duplicateDisplayName,
   hasCloudBackupPermission,
   onRetryHydrate,
   onSwitch,
@@ -209,6 +211,7 @@ function ClassroomManagementCard({
   isActive: boolean
   busy: boolean
   hydrateError?: string
+  duplicateDisplayName?: boolean
   hasCloudBackupPermission: boolean
   onRetryHydrate?: () => void
   onSwitch: () => void
@@ -266,6 +269,11 @@ function ClassroomManagementCard({
                 Chưa tải về
               </span>
             ) : null}
+            {duplicateDisplayName ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-800">
+                Trùng tên lớp
+              </span>
+            ) : null}
             {hydrateError ? (
               <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-rose-700">
                 Không tải được
@@ -280,6 +288,11 @@ function ClassroomManagementCard({
           <p className="mt-1 text-sm font-semibold text-slate-500">Năm học {classroom.schoolYear}</p>
           {hydrateError ? (
             <p className="mt-2 text-xs font-semibold text-rose-600">{hydrateError}</p>
+          ) : null}
+          {duplicateDisplayName && !hydrateError ? (
+            <p className="mt-2 text-xs font-semibold text-amber-700">
+              Có lớp khác cùng tên và năm học. Đổi tên hiển thị hoặc lưu trữ/xóa lớp trùng.
+            </p>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-slate-500">
             <span className="inline-flex items-center gap-1">
@@ -374,6 +387,7 @@ export function ClassroomsPage() {
   const activeId = data?.metadata.id ?? null
   const activeClassrooms = useMemo(() => classrooms.filter((item) => !item.archived), [classrooms])
   const archivedClassrooms = useMemo(() => classrooms.filter((item) => item.archived), [classrooms])
+  const duplicateIds = useMemo(() => duplicateDisplayNameIds(classrooms), [classrooms])
   const hasAnyClass = classrooms.length > 0
 
   const openCreateModal = () => {
@@ -583,6 +597,7 @@ export function ClassroomsPage() {
                       isActive={activeId === classroom.id}
                       busy={busy}
                       hydrateError={hydrateErrors[classroom.id]}
+                      duplicateDisplayName={duplicateIds.has(classroom.id)}
                       hasCloudBackupPermission={hasCloudBackupPermission}
                       onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
                       onSwitch={() => void handleSwitch(classroom.id)}
@@ -626,6 +641,7 @@ export function ClassroomsPage() {
                       isActive={activeId === classroom.id}
                       busy={busy}
                       hydrateError={hydrateErrors[classroom.id]}
+                      duplicateDisplayName={duplicateIds.has(classroom.id)}
                       hasCloudBackupPermission={hasCloudBackupPermission}
                       onRetryHydrate={() => void retryHydrateClassroom(classroom.id)}
                       onSwitch={() => void handleSwitch(classroom.id)}

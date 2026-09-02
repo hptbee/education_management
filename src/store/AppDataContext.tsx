@@ -598,6 +598,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [switchDatabase],
   );
 
+  const syncClassroomIdentityToCloud = useCallback(
+    async (db: ClassroomDatabase) => {
+      if (isCloudBackupEnabledForDatabase(db) && (await isCloudBackupConfigured())) {
+        cloudDirtyTracker.mark(db.metadata.id, {
+          classroom: true,
+          settings: true,
+          registry: true,
+        });
+        try {
+          await cloudBackupScheduler.triggerUploadNow(db);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          logAppEvent("error", "cloud-backup", "identity sync failed", {
+            classroomId: db.metadata.id,
+            message,
+          });
+        }
+      }
+      await syncRegistryAfterChange();
+    },
+    [syncRegistryAfterChange],
+  );
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       data,
@@ -691,7 +714,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             newSchoolYear,
           );
           applyLoadedDatabase(db);
-          await syncRegistryAfterChange();
+          await syncClassroomIdentityToCloud(db);
         } finally {
           setIsLoading(false);
         }
@@ -731,7 +754,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (dataRef.current?.metadata.id === id) {
           applyLoadedDatabase(updated);
         }
-        await syncRegistryAfterChange();
+        await syncClassroomIdentityToCloud(updated);
       },
       archiveClassroom: async (id) => {
         if (dataRef.current?.metadata.id === id) {
@@ -1434,7 +1457,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       retryHydrateClassroom,
     }),
-    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, cloudBackupError, classroomListEpoch, hydrateErrors, loadInitialDatabase, applyLoadedDatabase, openClassroomById, syncRegistryAfterChange, scheduleFirstCloudBackup, setData, commitData, retrySave, retryCloudBackup, persistNow, markDirtyAsset, switchDatabase, retryHydrateClassroom],
+    [data, isLoading, initError, saveError, localSaveStatus, cloudBackupState, cloudBackupError, classroomListEpoch, hydrateErrors, loadInitialDatabase, applyLoadedDatabase, openClassroomById, syncRegistryAfterChange, syncClassroomIdentityToCloud, scheduleFirstCloudBackup, setData, commitData, retrySave, retryCloudBackup, persistNow, markDirtyAsset, switchDatabase, retryHydrateClassroom],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
