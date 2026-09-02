@@ -19,6 +19,16 @@ function buildCorsHeaders(origin: string): Record<string, string> {
   };
 }
 
+function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
+  return allowedOrigins.some((entry) => {
+    if (!entry.includes("*")) {
+      return entry === origin;
+    }
+    const [prefix, suffix] = entry.split("*", 2);
+    return origin.startsWith(prefix) && origin.endsWith(suffix);
+  });
+}
+
 export function resolveCorsHeaders(request: Request, env: Env): Record<string, string> {
   const allowlist = env.CORS_ALLOWED_ORIGINS?.trim();
   if (!allowlist) {
@@ -35,7 +45,7 @@ export function resolveCorsHeaders(request: Request, env: Env): Record<string, s
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-  if (allowedOrigins.includes(origin)) {
+  if (isOriginAllowed(origin, allowedOrigins)) {
     return buildCorsHeaders(origin);
   }
 
