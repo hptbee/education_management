@@ -9,7 +9,7 @@ export const DUCK_RACE_TEACHER_MIN_DURATION_MS = 5_000;
 export const DUCK_RACE_TEACHER_MAX_DURATION_MS = 30_000;
 
 export type DuckRaceVisualTier = "large" | "medium" | "small" | "compact";
-export type DuckRaceLabelMode = "full" | "short" | "none";
+export type DuckRaceLabelMode = "full" | "short" | "compact";
 
 export interface DuckRaceRacerProfile {
   studentId: string;
@@ -94,7 +94,7 @@ export function duckRaceVisualTier(count: number): DuckRaceVisualTier {
 export function duckRaceLabelMode(count: number): DuckRaceLabelMode {
   if (count <= 12) return "full";
   if (count <= 30) return "short";
-  return "none";
+  return "compact";
 }
 
 export function shortDuckRaceLabel(name: string): string {
@@ -102,6 +102,24 @@ export function shortDuckRaceLabel(name: string): string {
   if (parts.length === 0) return "";
   if (parts.length <= 2) return parts.join(" ");
   return parts.slice(-2).join(" ");
+}
+
+/** Shortest readable label for crowded fields (31+ ducks). */
+export function compactDuckRaceLabel(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) {
+    const word = parts[0]!;
+    return word.length <= 10 ? word : word.slice(0, 9) + "…";
+  }
+  const last = parts[parts.length - 1]!;
+  if (last.length <= 10) return last;
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
+}
+
+export function duckRaceDisplayLabel(name: string, mode: DuckRaceLabelMode): string {
+  if (mode === "compact") return compactDuckRaceLabel(name);
+  return shortDuckRaceLabel(name);
 }
 
 /**

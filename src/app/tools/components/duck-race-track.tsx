@@ -4,9 +4,9 @@ import { forwardRef, type MutableRefObject, type Ref } from 'react'
 import { Crown, Flag, Play, Trophy } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import {
+  duckRaceDisplayLabel,
   duckRaceLabelMode,
   duckRaceVisualTier,
-  shortDuckRaceLabel,
   type DuckRaceVisualTier,
 } from '@/src/utils/duckRaceSimulation'
 
@@ -17,11 +17,12 @@ const DUCK_SIZE: Record<DuckRaceVisualTier, string> = {
   compact: 'h-4 w-5',
 }
 
+/** Minimum 10px — avoids WebKit failing to paint sub-10px text on composited layers. */
 const LABEL_TEXT: Record<DuckRaceVisualTier, string> = {
   large: 'text-xs',
   medium: 'text-[10px]',
-  small: 'text-[9px]',
-  compact: 'text-[8px]',
+  small: 'text-[10px]',
+  compact: 'text-[10px]',
 }
 
 const CROWN_SIZE: Record<DuckRaceVisualTier, string> = {
@@ -68,76 +69,85 @@ function DuckGlyph({
 interface DuckRaceSpriteProps {
   student: Student
   fieldY: number
-  label: string | null
+  label: string
   isWinner: boolean
+  isRacing: boolean
   tier: DuckRaceVisualTier
   colorIndex: number
 }
 
 const DuckRaceSprite = forwardRef<HTMLDivElement, DuckRaceSpriteProps>(function DuckRaceSprite(
-  { student, fieldY, label, isWinner, tier, colorIndex },
+  { student, fieldY, label, isWinner, isRacing, tier, colorIndex },
   ref,
 ) {
   const colors = duckColorsForIndex(colorIndex)
-  const winnerChip = shortDuckRaceLabel(student.name)
 
   return (
     <div
-      className="pointer-events-none absolute left-4"
-      style={{ top: `${4 + fieldY * 92}%` }}
+      className="pointer-events-none absolute left-4 -translate-y-1/2"
+      style={{ top: `${8 + fieldY * 84}%` }}
       title={student.name}
     >
-      {/*
-        Outer ref owns translate3d from the rAF loop.
-        Never put Tailwind transform utilities (e.g. scale-*) on this node.
-      */}
       <div
         ref={ref}
-        className={`will-change-transform ${isWinner ? 'z-40' : 'z-10'}`}
+        className={`flex flex-col items-center ${isWinner ? 'z-40' : 'z-10'}`}
+        data-duck-lane="true"
       >
-        {isWinner ? (
-          <div className="flex flex-col items-center">
-            <Crown
-              className={`${CROWN_SIZE[tier]} mb-0.5 text-amber-500 drop-shadow-sm motion-safe:animate-bounce`}
-              style={{ animationDuration: '1.8s' }}
-              aria-hidden
-            />
-            <span
-              className="mb-0.5 max-w-[9rem] truncate rounded-md bg-amber-50 px-1.5 py-0.5 text-center text-[10px] font-extrabold text-amber-900 ring-1 ring-amber-200/80 sm:text-xs"
-              title={student.name}
-            >
-              {winnerChip}
-            </span>
-            <span
-              className="relative shrink-0 rounded-full ring-2 ring-amber-300/90 ring-offset-1 ring-offset-white/80"
-              style={{
-                transform: 'scale(1.2)',
-                filter: 'drop-shadow(0 0 12px rgba(251, 191, 36, 0.65))',
-              }}
-            >
-              <DuckGlyph className={DUCK_SIZE[tier]} {...colors} />
-              <span className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-400 text-white shadow-sm">
-                <Trophy className="size-2.5" aria-hidden />
-              </span>
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center">
-            {label ? (
-              <span
-                className={`mr-0.5 max-w-[6.5rem] truncate rounded-md px-1.5 py-0.5 font-extrabold tracking-tight text-slate-600 ring-1 ring-white/80 ${LABEL_TEXT[tier]}`}
-                style={{
+        {/*
+          Lane ref gets translate3d(x, 0, 0) from rAF so label + duck move together.
+          Name chip is a sibling of the will-change duck body so WebKit paints text reliably.
+        */}
+        <span
+          className={`mb-0.5 max-w-[7rem] rounded-md px-1.5 py-0.5 text-center font-extrabold leading-tight ring-1 ring-white/80 ${LABEL_TEXT[tier]} ${
+            isWinner
+              ? 'bg-amber-50 text-amber-900 ring-amber-200/80'
+              : 'text-slate-600'
+          }`}
+          style={
+            isWinner
+              ? undefined
+              : {
                   backgroundColor: colors.chip,
                   color: '#475569',
                   boxShadow: `inset 3px 0 0 ${colors.body}`,
-                }}
-              >
-                {label}
-              </span>
-            ) : null}
-            <DuckGlyph className={DUCK_SIZE[tier]} {...colors} />
+                }
+          }
+        >
+          {label}
+        </span>
+
+        {isWinner ? (
+          <Crown
+            className={`${CROWN_SIZE[tier]} -mb-0.5 text-amber-500 drop-shadow-sm motion-safe:animate-bounce`}
+            style={{ animationDuration: '1.8s' }}
+            aria-hidden
+          />
+        ) : null}
+
+        <div className={isRacing ? 'will-change-transform' : undefined} data-duck-body="true">
+          <div data-duck-wobble="true">
+            <span
+              className={`relative inline-flex shrink-0 rounded-full ${
+                isWinner ? 'ring-2 ring-amber-300/90 ring-offset-1 ring-offset-white/80' : ''
+              }`}
+              style={
+                isWinner
+                  ? {
+                      transform: 'scale(1.2)',
+                      filter: 'drop-shadow(0 0 12px rgba(251, 191, 36, 0.65))',
+                    }
+                  : undefined
+              }
+            >
+              <DuckGlyph className={DUCK_SIZE[tier]} {...colors} />
+              {isWinner ? (
+                <span className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-400 text-white shadow-sm">
+                  <Trophy className="size-2.5" aria-hidden />
+                </span>
+              ) : null}
+            </span>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
@@ -150,6 +160,8 @@ interface DuckRaceTrackProps {
   fieldRef?: Ref<HTMLDivElement>
   countdownLabel: string | null
   winnerId?: string | null
+  isRacing?: boolean
+  reducedMotionNotice?: boolean
 }
 
 export function DuckRaceTrack({
@@ -159,6 +171,8 @@ export function DuckRaceTrack({
   fieldRef,
   countdownLabel,
   winnerId,
+  isRacing = false,
+  reducedMotionNotice = false,
 }: DuckRaceTrackProps) {
   const count = racers.length
   const tier = duckRaceVisualTier(count)
@@ -184,7 +198,7 @@ export function DuckRaceTrack({
 
       <div
         ref={fieldRef}
-        className="relative min-h-[240px] flex-1 overflow-visible rounded-2xl bg-[linear-gradient(180deg,#dbeafe_0%,#f0f9ff_35%,#fdf2f8_100%)] ring-1 ring-sky-100/80"
+        className="relative min-h-[240px] flex-1 overflow-visible rounded-2xl bg-[linear-gradient(180deg,#dbeafe_0%,#f0f9ff_35%,#fdf2f8_100%)] px-2 pt-10 pb-10 ring-1 ring-sky-100/80"
       >
         <div
           className="pointer-events-none absolute inset-0 z-0 opacity-40"
@@ -217,10 +231,7 @@ export function DuckRaceTrack({
 
         {racers.map((student, index) => {
           const isWinner = winnerId === student.id
-          let label: string | null = null
-          if (!isWinner && (labelMode === 'full' || labelMode === 'short')) {
-            label = shortDuckRaceLabel(student.name)
-          }
+          const label = duckRaceDisplayLabel(student.name, labelMode)
 
           return (
             <DuckRaceSprite
@@ -229,6 +240,7 @@ export function DuckRaceTrack({
               fieldY={fieldYs[student.id] ?? index / Math.max(count - 1, 1)}
               label={label}
               isWinner={isWinner}
+              isRacing={isRacing}
               tier={tier}
               colorIndex={index}
               ref={(node) => {
@@ -239,8 +251,14 @@ export function DuckRaceTrack({
         })}
       </div>
 
+      {reducedMotionNotice ? (
+        <div className="pointer-events-none absolute left-4 right-4 top-14 z-10 rounded-xl border border-sky-200/90 bg-white/95 px-3 py-2 text-center text-xs font-semibold text-slate-600 shadow-sm">
+          Hiệu ứng chuyển động đang tắt — kết quả hiển thị ngay.
+        </div>
+      ) : null}
+
       {countdownLabel ? (
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-slate-900/30 backdrop-blur-[2px]">
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-slate-900/40">
           <p className="font-display text-7xl font-extrabold text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.35)] md:text-8xl">
             {countdownLabel}
           </p>
