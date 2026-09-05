@@ -1,10 +1,12 @@
 import { defineConfig, globalIgnores } from 'eslint/config'
 import nextVitals from 'eslint-config-next/core-web-vitals'
+import reactHooks from 'eslint-plugin-react-hooks'
 
 export default defineConfig([
   ...nextVitals,
   globalIgnores([
     '.next/**',
+    '.open-next/**',
     'out/**',
     'node_modules/**',
     'coverage/**',
@@ -12,6 +14,9 @@ export default defineConfig([
     'workers/cloud-backup/.wrangler/**',
   ]),
   {
+    plugins: {
+      'react-hooks': reactHooks,
+    },
     rules: {
       // Tauri static export, blob/file gift images, student avatars — not next/image.
       '@next/next/no-img-element': 'off',
