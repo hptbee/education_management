@@ -4,8 +4,10 @@ import {
   clampDuckRaceParticipants,
   clampDuckRaceDurationMs,
   clampDuckRaceDurationSec,
+  compactDuckRaceLabel,
   DUCK_RACE_MAX_RACERS,
   DUCK_RACE_OTHERS_MAX_AT_FINISH,
+  duckRaceDisplayLabel,
   duckRaceLabelMode,
   duckRaceVisualTier,
   generateRacePlan,
@@ -160,13 +162,22 @@ describe("duckRaceSimulation", () => {
     expect(duckRaceLabelMode(12)).toBe("full");
     expect(duckRaceLabelMode(13)).toBe("short");
     expect(duckRaceLabelMode(30)).toBe("short");
-    expect(duckRaceLabelMode(31)).toBe("none");
+    expect(duckRaceLabelMode(31)).toBe("compact");
+    expect(duckRaceLabelMode(100)).toBe("compact");
   });
 
   it("shortens labels to the last two words", () => {
     expect(shortDuckRaceLabel("Minh")).toBe("Minh");
     expect(shortDuckRaceLabel("Nguyễn Văn A")).toBe("Văn A");
     expect(shortDuckRaceLabel("Trần Thị Thu Hà")).toBe("Thu Hà");
+  });
+
+  it("uses compact labels for crowded fields", () => {
+    expect(compactDuckRaceLabel("Minh")).toBe("Minh");
+    expect(compactDuckRaceLabel("Nguyễn Văn A")).toBe("A");
+    expect(compactDuckRaceLabel("Trần Thị Thu Hà")).toBe("Hà");
+    expect(duckRaceDisplayLabel("Trần Thị Thu Hà", "compact")).toBe("Hà");
+    expect(duckRaceDisplayLabel("Trần Thị Thu Hà", "short")).toBe("Thu Hà");
   });
 
   it.each([1, 12, 50, 100] as const)(

@@ -14,7 +14,7 @@ import {
   type PickerScope,
 } from '@/src/utils/pickerSession'
 import { canAnimate } from '@/src/utils/motion'
-import { playDuckRaceFinish, playDuckRaceStart, playSound, startDuckRaceQuacks } from '@/src/utils/sounds'
+import { playDuckRaceFinish, playDuckRaceStart, playSound, startDuckRaceQuacks, unlockSounds } from '@/src/utils/sounds'
 import { toastInfo } from '@/src/utils/toast'
 import {
   assignDuckRaceFieldYs,
@@ -54,6 +54,17 @@ function computeDuckMaxTravel(fieldWidthPx: number, tier: ReturnType<typeof duck
   const reserved =
     FINISH_START_INSET_PX + FINISH_END_INSET_PX + duckWidth + FINISH_CROWN_SLACK_PX
   return Math.max(fieldWidthPx - reserved, 48)
+}
+
+function getWobbleNode(motionNode: HTMLDivElement | null): HTMLDivElement | null {
+  return motionNode?.querySelector<HTMLDivElement>('[data-duck-wobble="true"]') ?? null
+}
+
+function resetMotionNode(motionNode: HTMLDivElement | null): void {
+  if (!motionNode) return
+  motionNode.style.transform = 'translate3d(0, 0, 0)'
+  const wobbleNode = getWobbleNode(motionNode)
+  if (wobbleNode) wobbleNode.style.transform = ''
 }
 
 function wobblePx(studentId: string, elapsedMs: number): number {
@@ -143,7 +154,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
     frozenProgressRef.current = null
     frozenRacersRef.current = []
     for (const node of duckRefs.current) {
-      if (node) node.style.transform = 'translate3d(0, -50%, 0)'
+      resetMotionNode(node)
     }
   }, [])
 
@@ -226,11 +237,18 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
       const tier = duckRaceVisualTier(racerList.length)
       const maxTravel = computeDuckMaxTravel(trackWidthRef.current, tier)
       racerList.forEach((student, index) => {
-        const node = duckRefs.current[index]
-        if (!node) return
+        const motionNode = duckRefs.current[index]
+        if (!motionNode) return
         const progress = progressById[student.id] ?? 0
-        const wobble = elapsedMs > 0 ? wobblePx(student.id, elapsedMs) : 0
-        node.style.transform = `translate3d(${progress * maxTravel}px, calc(-50% + ${wobble}px), 0)`
+        const xPx = progress * maxTravel
+        motionNode.style.transform = `translate3d(${xPx}px, 0, 0)`
+        const wobbleNode = getWobbleNode(motionNode)
+        if (!wobbleNode) return
+        if (elapsedMs > 0) {
+          wobbleNode.style.transform = `translateY(${wobblePx(student.id, elapsedMs)}px)`
+        } else {
+          wobbleNode.style.transform = ''
+        }
       })
     },
     [],
@@ -293,16 +311,23 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
     [allowMotion, applyFieldProgress, preventRepeat, recordDuckRaceResult, setDuckRaceStudentBag, soundEnabled, stopQuacks],
   )
 
-  // After winner highlight re-render, re-apply frozen transforms so the duck stays at the finish.
+  // After winner highlight re-render, re-apply frozen transforms (double rAF for WKWebView).
   useEffect(() => {
     if (phase !== 'result') return
     const progress = frozenProgressRef.current
     const list = frozenRacersRef.current
     if (!progress || list.length === 0) return
-    const id = requestAnimationFrame(() => {
-      applyFieldProgress(progress, list, 0)
+    let outerId = 0
+    let innerId = 0
+    outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        applyFieldProgress(progress, list, 0)
+      })
     })
-    return () => cancelAnimationFrame(id)
+    return () => {
+      cancelAnimationFrame(outerId)
+      cancelAnimationFrame(innerId)
+    }
   }, [phase, spotlightWinnerId, applyFieldProgress])
 
   const runRaceAnimation = useCallback(
@@ -418,6 +443,8 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
   const startRace = useCallback(() => {
     if (phase !== 'setup' && phase !== 'result') return
 
+    unlockSounds()
+
     const selected = scopedStudents.filter((s) => selectedIds.has(s.id))
     if (selected.length === 0) return
     if (selected.length > DUCK_RACE_MAX_RACERS) {
@@ -512,15 +539,17 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
   return (
     <GameDialogPortal open={isOpen}>
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
+        className="fixed inset-0 z-[60] flex items-center justify-center p-3"
         onClick={() => void requestClose()}
         role="presentation"
       >
+        <div className="pointer-events-none absolute inset-0 bg-black/50" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 backdrop-blur-sm" aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="duck-race-title"
-        className="flex h-[min(900px,94vh)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="relative z-10 flex h-[min(900px,94vh)] h-[min(900px,94dvh)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -553,7 +582,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           {phase === 'setup' ? (
             <aside className="shrink-0 border-b border-slate-100 lg:h-full lg:w-[320px] lg:border-b-0 lg:border-r">
-              <div className="flex h-full max-h-[50vh] flex-col overflow-hidden bg-slate-50/70 p-3 lg:max-h-none">
+              <div className="flex h-full max-h-[40%] flex-col overflow-hidden bg-slate-50/70 p-3 lg:max-h-none">
                 <DuckRaceSetup
                   teams={teams}
                   scopedStudents={scopedStudents}
@@ -600,6 +629,8 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
                   fieldRef={fieldElRef}
                   countdownLabel={countdownLabel}
                   winnerId={spotlightWinnerId}
+                  isRacing={phase === 'racing'}
+                  reducedMotionNotice={!allowMotion && (phase === 'ready' || phase === 'racing' || phase === 'result')}
                 />
                 {phase === 'result' && winner ? (
                   <DuckRaceResult
