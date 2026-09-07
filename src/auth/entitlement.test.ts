@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as jose from "jose";
 import {
   clearPersistedAccessDenial,
@@ -190,8 +190,24 @@ describe("mapRefreshDenial", () => {
 });
 
 describe("access lockout persistence", () => {
+  const memory = new Map<string, string>();
+
+  beforeEach(() => {
+    memory.clear();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value);
+      },
+      removeItem: (key: string) => {
+        memory.delete(key);
+      },
+      clear: () => memory.clear(),
+    });
+  });
+
   afterEach(() => {
-    sessionStorage.clear();
+    vi.unstubAllGlobals();
   });
 
   it("treats license and account denials as lockouts, not login failures", () => {
