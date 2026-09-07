@@ -21,6 +21,7 @@ import { LayoutGroup, motion } from 'framer-motion'
 import { SidebarClassContext } from './sidebar-class-context'
 import { SidebarPersistenceStatus } from './sidebar-persistence-status'
 import { IconTouchButton } from '@/src/components/classroom'
+import { SUPPORT_FACEBOOK_URL } from '@/src/auth/support-contact'
 import { useNavSidebar } from '@/src/store/NavSidebarContext'
 import { cn } from '@/lib/utils'
 
@@ -203,7 +204,7 @@ export function Sidebar({
           {!iconRail ? (
             <p className="mt-3 px-3 text-[11px] font-semibold text-slate-400">
               <a
-                href="https://www.facebook.com/10t03/"
+                href={SUPPORT_FACEBOOK_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"

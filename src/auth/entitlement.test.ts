@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as jose from "jose";
-import { mapApiCodeToAccessState, mapRefreshDenial, resolveAccessState, verifyEntitlementToken } from "./entitlement";
+import {
+  clearPersistedAccessDenial,
+  isAccessLockoutState,
+  mapApiCodeToAccessState,
+  mapRefreshDenial,
+  persistAccessDenial,
+  readPersistedAccessDenial,
+  resolveAccessState,
+  verifyEntitlementToken,
+} from "./entitlement";
 import type { EntitlementClaims } from "./types";
 
 const futureLicenseExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -177,6 +186,35 @@ describe("mapRefreshDenial", () => {
   it("maps account and license lockouts", () => {
     expect(mapRefreshDenial("LICENSE_EXPIRED")).toBe("LICENSE_EXPIRED");
     expect(mapRefreshDenial("ACCOUNT_DISABLED")).toBe("ACCOUNT_DISABLED");
+  });
+});
+
+describe("access lockout persistence", () => {
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("treats license and account denials as lockouts, not login failures", () => {
+    expect(isAccessLockoutState("LICENSE_EXPIRED")).toBe(true);
+    expect(isAccessLockoutState("ACCOUNT_DISABLED")).toBe(true);
+    expect(isAccessLockoutState("ACCOUNT_SUSPENDED")).toBe(true);
+    expect(isAccessLockoutState("AUTH_REQUIRED")).toBe(false);
+    expect(isAccessLockoutState("ONLINE_VERIFICATION_REQUIRED")).toBe(false);
+    expect(isAccessLockoutState(mapApiCodeToAccessState("LICENSE_EXPIRED")!)).toBe(true);
+    expect(isAccessLockoutState(mapApiCodeToAccessState("AUTH_REQUIRED")!)).toBe(false);
+  });
+
+  it("persists only lockout codes", () => {
+    persistAccessDenial("LICENSE_EXPIRED");
+    expect(readPersistedAccessDenial()).toBe("LICENSE_EXPIRED");
+    persistAccessDenial("AUTH_REQUIRED");
+    expect(readPersistedAccessDenial()).toBeNull();
+  });
+
+  it("clears persisted denial on logout", () => {
+    persistAccessDenial("ACCOUNT_DISABLED");
+    clearPersistedAccessDenial();
+    expect(readPersistedAccessDenial()).toBeNull();
   });
 });
 

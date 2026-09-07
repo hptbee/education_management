@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Sprout, WifiOff, type LucideIcon } from "lucide-react";
 import { AuthBootstrapProgress, AuthLoginProgress } from "@/src/components/auth-login-progress";
 import { ClassroomButton, ClassroomCard, useClassroomDialog } from "@/src/components/classroom";
+import { PlanBenefitsDialog } from "@/src/components/plan-benefits-dialog";
+import { SupportFacebookLink } from "@/src/components/support-facebook-link";
 import { LoginCancelledError } from "@/src/auth/login-cancel";
+import { isAccessLockoutState } from "@/src/auth/entitlement";
 import { useAuth } from "@/src/store/AuthContext";
 import { getGoogleClientId } from "@/src/auth/api";
-import type { AccessState } from "@/src/auth/types";
+import type { AccessState, AuthLicense } from "@/src/auth/types";
+import { formatExpiredPlanMessage } from "@/src/app/settings/components/account-plan-display";
 import { isTauri } from "@/src/database/tauri-fs.service";
 
 type GateMessage = {
@@ -34,19 +38,19 @@ const MESSAGES: Partial<Record<AccessState, GateMessage>> = {
     icon: AlertTriangle,
     iconWrap: "bg-amber-100 text-amber-600",
     title: "Gói sử dụng đã hết hạn",
-    body: "Gói sử dụng của cô đã hết hạn. Vui lòng liên hệ quản trị viên.",
+    body: "Gói sử dụng của cô đã hết hạn.",
   },
   ACCOUNT_DISABLED: {
     icon: AlertTriangle,
     iconWrap: "bg-red-100 text-red-500",
     title: "Tài khoản hiện không khả dụng",
-    body: "Tài khoản của cô hiện đã bị tạm ngưng. Vui lòng liên hệ quản trị viên.",
+    body: "Tài khoản của cô hiện đã bị tạm ngưng. Nhắn Facebook Tùng Huỳnh để được hỗ trợ.",
   },
   ACCOUNT_SUSPENDED: {
     icon: AlertTriangle,
     iconWrap: "bg-red-100 text-red-500",
     title: "Tài khoản hiện không khả dụng",
-    body: "Tài khoản của cô hiện đã bị tạm ngưng. Vui lòng liên hệ quản trị viên.",
+    body: "Tài khoản của cô hiện đã bị tạm ngưng. Nhắn Facebook Tùng Huỳnh để được hỗ trợ.",
   },
 };
 
@@ -66,9 +70,11 @@ function GoogleSignInButton({
 
     const scriptId = "google-gsi-script";
     const renderButton = () => {
-      const google = (window as unknown as {
-        google?: { accounts: { id: { initialize: Function; renderButton: Function } } };
-      }).google;
+      const google = (
+        window as unknown as {
+          google?: { accounts: { id: { initialize: Function; renderButton: Function } } };
+        }
+      ).google;
       if (!google?.accounts?.id || !buttonRef.current) return;
       google.accounts.id.initialize({
         client_id: clientId,
@@ -117,6 +123,47 @@ function formatLoginError(error: unknown): string {
   return message || "Đăng nhập thất bại. Vui lòng thử lại.";
 }
 
+function expiredPlanBody(license: AuthLicense | null): string {
+  return [
+    formatExpiredPlanMessage(license?.plan, license?.expiresAt),
+    "Dữ liệu lớp học vẫn được lưu trên máy này. Gia hạn gói để tiếp tục sử dụng.",
+  ].join(" ");
+}
+
+function AccessLockoutActions({
+  accessState,
+  license,
+  onLogout,
+}: {
+  accessState: AccessState;
+  license: AuthLicense | null;
+  onLogout: () => void;
+}) {
+  const [benefitsOpen, setBenefitsOpen] = useState(false);
+  const expired = accessState === "LICENSE_EXPIRED";
+
+  return (
+    <>
+      <SupportFacebookLink />
+      {expired ? (
+        <ClassroomButton variant="secondary" onClick={() => setBenefitsOpen(true)}>
+          Xem quyền lợi gói
+        </ClassroomButton>
+      ) : null}
+      <ClassroomButton variant="outline" onClick={onLogout}>
+        Đăng nhập lại
+      </ClassroomButton>
+      {expired ? (
+        <PlanBenefitsDialog
+          open={benefitsOpen}
+          currentPlan={license?.plan}
+          onClose={() => setBenefitsOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 export function AccessGate({ children }: { children: React.ReactNode }) {
   const {
     isBootstrapping,
@@ -124,6 +171,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     isLoggingIn,
     loginStep,
     accessState,
+    license,
     loginWithGoogle,
     cancelLogin,
     retrySessionRestore,
@@ -163,6 +211,9 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
   if (!message) return <>{children}</>;
 
   const Icon = message.icon;
+  const lockout = isAccessLockoutState(accessState);
+  const body =
+    accessState === "LICENSE_EXPIRED" ? expiredPlanBody(license) : message.body;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page p-6">
@@ -174,7 +225,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
         <p className="mt-2 text-sm font-semibold text-slate-500">
           {storageError
             ? "Không thể đọc phiên đăng nhập an toàn từ Windows Credential Manager."
-            : message.body}
+            : body}
         </p>
         {storageError ? (
           <p className="mt-2 break-words rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
@@ -201,11 +252,17 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
                 />
               )}
             </>
+          ) : lockout ? (
+            <AccessLockoutActions
+              accessState={accessState}
+              license={license}
+              onLogout={() => void logout()}
+            />
           ) : (
             <>
-              {(accessState === "ONLINE_VERIFICATION_REQUIRED" || accessState === "LICENSE_EXPIRED") && (
+              {accessState === "ONLINE_VERIFICATION_REQUIRED" ? (
                 <ClassroomButton onClick={() => void refreshSession()}>Thử lại</ClassroomButton>
-              )}
+              ) : null}
               <ClassroomButton variant="outline" onClick={() => void logout()}>
                 Đăng xuất
               </ClassroomButton>

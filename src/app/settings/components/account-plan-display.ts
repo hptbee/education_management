@@ -103,11 +103,25 @@ export function remainingDaysUntil(
 
 export function formatLicenseExpiryDate(expiresAt: string | null | undefined): string {
   if (!expiresAt) return '—'
-  return new Date(expiresAt).toLocaleDateString('vi-VN', {
+  const formatted = new Date(expiresAt).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   })
+  return Number.isNaN(new Date(expiresAt).getTime()) ? '—' : formatted
+}
+
+export function formatExpiredPlanMessage(
+  plan: LicensePlan | string | undefined,
+  expiresAt: string | null | undefined,
+): string {
+  const name = getPlanDisplayName(plan)
+  const date = formatLicenseExpiryDate(expiresAt)
+  const hasPlan = Boolean(plan) && name !== '—'
+  const hasDate = Boolean(expiresAt) && date !== '—'
+  if (hasPlan && hasDate) return `Gói ${name} của cô đã hết hạn vào ${date}.`
+  if (hasPlan) return `Gói ${name} của cô đã hết hạn.`
+  return 'Gói sử dụng của cô đã hết hạn.'
 }
 
 export function getRemainingUsageLabel(

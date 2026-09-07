@@ -11,20 +11,17 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { LicensePlan } from '@/src/auth/types'
 import { Avatar } from '@/src/components/Avatar'
-import { ClassroomButton, ClassroomCard, ClassroomDialogFrame, useClassroomDialog } from '@/src/components/classroom'
+import { ClassroomButton, ClassroomCard, useClassroomDialog } from '@/src/components/classroom'
+import { PlanBenefitsDialog } from '@/src/components/plan-benefits-dialog'
 import { databaseService } from '@/src/database/database.service'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useAuth } from '@/src/store/AuthContext'
-import { cn } from '@/lib/utils'
 import { AppLogSection } from './app-log-section'
 import {
   formatLicenseExpiryDate,
   getCloudBackupStatusText,
   getPlanDisplayName,
-  getPlanPresentation,
-  getPublicComparisonPlans,
   getRemainingUsageLabel,
   showsExpiryCountdown,
 } from './account-plan-display'
@@ -36,83 +33,6 @@ function formatDateFromUnix(seconds: number | null): string {
     month: '2-digit',
     year: 'numeric',
   })
-}
-
-function PlanBenefitsDialog({
-  open,
-  currentPlan,
-  onClose,
-}: {
-  open: boolean
-  currentPlan: LicensePlan | string | undefined
-  onClose: () => void
-}) {
-  const currentPresentation = getPlanPresentation(currentPlan)
-  const comparisonPlans = getPublicComparisonPlans()
-  const isLifetimeUser = currentPlan === 'lifetime'
-
-  return (
-    <ClassroomDialogFrame
-      open={open}
-      onClose={onClose}
-      ariaLabelledBy="plan-benefits-title"
-      panelClassName="max-w-md"
-      zIndexClassName="z-[100]"
-    >
-      <div className="w-full rounded-3xl bg-white p-6 shadow-2xl">
-        <h2 id="plan-benefits-title" className="font-display text-xl font-extrabold text-slate-800">
-          Quyền lợi theo gói
-        </h2>
-        <p className="mt-2 text-sm font-semibold text-slate-500">
-          Liên hệ quản trị viên để nâng cấp Premium 1 năm.
-        </p>
-
-        {isLifetimeUser && currentPresentation ? (
-          <div className="mt-4 rounded-2xl border border-brand/40 bg-brand-soft/40 px-4 py-3 text-sm font-semibold text-slate-800">
-            <p className="font-extrabold">{currentPresentation.displayName}</p>
-            <p className="mt-1 text-brand-dark">Gói hiện tại</p>
-            <ul className="mt-2 space-y-1">
-              {currentPresentation.featureBullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        <ul className="mt-4 space-y-2">
-          {comparisonPlans.map((row) => {
-            const isCurrent = !isLifetimeUser && row.id === currentPlan
-            return (
-              <li
-                key={row.id}
-                className={cn(
-                  'rounded-2xl border px-4 py-3 text-sm font-semibold',
-                  isCurrent
-                    ? 'border-brand/40 bg-brand-soft/40 text-slate-800'
-                    : 'border-sky-100 bg-surface-soft text-slate-600',
-                )}
-              >
-                <p className="font-extrabold text-slate-800">
-                  {row.displayName}
-                  {isCurrent ? ' — Gói hiện tại' : ''}
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {row.featureBullets.map((bullet) => (
-                    <li key={bullet}>{bullet}</li>
-                  ))}
-                </ul>
-              </li>
-            )
-          })}
-        </ul>
-        <div className="mt-6">
-          <ClassroomButton className="w-full" onClick={onClose}>
-            Đã hiểu
-          </ClassroomButton>
-        </div>
-      </div>
-    </ClassroomDialogFrame>
-  )
 }
 
 export function AccountSection() {

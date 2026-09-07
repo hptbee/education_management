@@ -12,6 +12,7 @@ import {
   PUBLIC_VISIBLE_PLANS,
   remainingDaysUntil,
   TRIAL_DURATION_DAYS,
+  formatExpiredPlanMessage,
 } from './account-plan-display'
 
 describe('account-plan-display', () => {
@@ -83,5 +84,13 @@ describe('account-plan-display', () => {
       /^Còn \d+ ngày sử dụng$/,
     )
     expect(getRemainingUsageLabel('lifetime', '2026-09-15T00:00:00.000Z', now)).toBeNull()
+  })
+
+  it('describes expired plans with name and date when known', () => {
+    expect(formatExpiredPlanMessage('premium', '2026-09-15T00:00:00.000Z')).toMatch(
+      /Gói Premium 1 năm của cô đã hết hạn vào 15\/09\/2026/,
+    )
+    expect(formatExpiredPlanMessage('trial', null)).toBe('Gói Dùng thử của cô đã hết hạn.')
+    expect(formatExpiredPlanMessage(undefined, null)).toBe('Gói sử dụng của cô đã hết hạn.')
   })
 })
