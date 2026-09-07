@@ -143,7 +143,7 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
     frozenProgressRef.current = null
     frozenRacersRef.current = []
     for (const node of duckRefs.current) {
-      if (node) node.style.transform = 'translate3d(0, -50%, 0)'
+      if (node) node.style.transform = 'translate3d(0px, 0px, 0)'
     }
   }, [])
 
@@ -230,7 +230,8 @@ export function DuckRaceDialog({ isOpen, onClose, students, teams }: DuckRaceDia
         if (!node) return
         const progress = progressById[student.id] ?? 0
         const wobble = elapsedMs > 0 ? wobblePx(student.id, elapsedMs) : 0
-        node.style.transform = `translate3d(${progress * maxTravel}px, calc(-50% + ${wobble}px), 0)`
+        // Pixel-only translate3d: WebKit/Safari can drop the whole transform when Y uses calc().
+        node.style.transform = `translate3d(${progress * maxTravel}px, ${wobble}px, 0)`
       })
     },
     [],

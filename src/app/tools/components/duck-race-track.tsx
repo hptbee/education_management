@@ -4,8 +4,10 @@ import { forwardRef, type MutableRefObject, type Ref } from 'react'
 import { Crown, Flag, Play, Trophy } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import {
-  duckRaceLabelMode,
+  DUCK_RACE_LABEL_BOLD_CHAR_EM,
+  duckRaceLabelFontPx,
   duckRaceVisualTier,
+  fitDuckRaceChipText,
   shortDuckRaceLabel,
   type DuckRaceVisualTier,
 } from '@/src/utils/duckRaceSimulation'
@@ -17,18 +19,18 @@ const DUCK_SIZE: Record<DuckRaceVisualTier, string> = {
   compact: 'h-4 w-5',
 }
 
-const LABEL_TEXT: Record<DuckRaceVisualTier, string> = {
-  large: 'text-xs',
-  medium: 'text-[10px]',
-  small: 'text-[9px]',
-  compact: 'text-[8px]',
-}
-
 const CROWN_SIZE: Record<DuckRaceVisualTier, string> = {
   large: 'size-5',
   medium: 'size-4',
   small: 'size-3.5',
   compact: 'size-3',
+}
+
+const LABEL_MAX_WIDTH: Record<DuckRaceVisualTier, number> = {
+  large: 104,
+  medium: 96,
+  small: 88,
+  compact: 80,
 }
 
 /** Soft pastel body colors — distinct per index, classroom-friendly (not neon). */
@@ -65,10 +67,77 @@ function DuckGlyph({
   )
 }
 
+/**
+ * Name chip as SVG text (same approach as Lucky Wheel).
+ * Safari/WKWebView inflates HTML font-size below the user min, then `overflow:hidden`
+ * on a truncated span clips the glyphs so the chip looks empty.
+ */
+function DuckNameChip({
+  name,
+  fill,
+  accent,
+  fontPx,
+  maxWidthPx,
+  textFill = '#334155',
+}: {
+  name: string
+  fill: string
+  accent: string
+  fontPx: number
+  maxWidthPx: number
+  textFill?: string
+}) {
+  const paddingX = 8
+  const label = fitDuckRaceChipText(name, fontPx, maxWidthPx, paddingX)
+  if (!label) return null
+
+  const charW = fontPx * DUCK_RACE_LABEL_BOLD_CHAR_EM
+  const width = Math.min(
+    maxWidthPx,
+    Math.max(fontPx * 2.5, Math.ceil(label.length * charW) + paddingX * 2),
+  )
+  const height = fontPx + 8
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      overflow="visible"
+      className="mr-0.5 shrink-0"
+      aria-hidden
+    >
+      <rect
+        x="0.5"
+        y="0.5"
+        width={width - 1}
+        height={height - 1}
+        rx={4}
+        fill={fill}
+        stroke="rgba(255,255,255,0.9)"
+        strokeWidth={1}
+      />
+      <rect x="0" y="1" width="3" height={height - 2} rx={1.5} fill={accent} />
+      <text
+        x={paddingX}
+        y={height / 2 + 0.5}
+        fill={textFill}
+        fontSize={fontPx}
+        fontWeight={800}
+        textAnchor="start"
+        dominantBaseline="middle"
+        fontFamily="var(--font-nunito), ui-sans-serif, system-ui, sans-serif"
+      >
+        {label}
+      </text>
+    </svg>
+  )
+}
+
 interface DuckRaceSpriteProps {
   student: Student
   fieldY: number
-  label: string | null
+  label: string
   isWinner: boolean
   tier: DuckRaceVisualTier
   colorIndex: number
@@ -79,17 +148,19 @@ const DuckRaceSprite = forwardRef<HTMLDivElement, DuckRaceSpriteProps>(function 
   ref,
 ) {
   const colors = duckColorsForIndex(colorIndex)
+  const fontPx = duckRaceLabelFontPx(tier)
   const winnerChip = shortDuckRaceLabel(student.name)
 
   return (
     <div
-      className="pointer-events-none absolute left-4"
+      className="pointer-events-none absolute left-4 -translate-y-1/2"
       style={{ top: `${4 + fieldY * 92}%` }}
       title={student.name}
     >
       {/*
-        Outer ref owns translate3d from the rAF loop.
-        Never put Tailwind transform utilities (e.g. scale-*) on this node.
+        Outer ref owns pixel translate3d from the rAF loop.
+        Never put Tailwind transform utilities (e.g. scale-*) or calc() on this node —
+        Safari/WKWebView can drop the entire transform.
       */}
       <div
         ref={ref}
@@ -102,14 +173,16 @@ const DuckRaceSprite = forwardRef<HTMLDivElement, DuckRaceSpriteProps>(function 
               style={{ animationDuration: '1.8s' }}
               aria-hidden
             />
+            <DuckNameChip
+              name={winnerChip}
+              fill="#fffbeb"
+              accent="#f59e0b"
+              fontPx={Math.max(fontPx, 12)}
+              maxWidthPx={144}
+              textFill="#78350f"
+            />
             <span
-              className="mb-0.5 max-w-[9rem] truncate rounded-md bg-amber-50 px-1.5 py-0.5 text-center text-[10px] font-extrabold text-amber-900 ring-1 ring-amber-200/80 sm:text-xs"
-              title={student.name}
-            >
-              {winnerChip}
-            </span>
-            <span
-              className="relative shrink-0 rounded-full ring-2 ring-amber-300/90 ring-offset-1 ring-offset-white/80"
+              className="relative mt-0.5 shrink-0 rounded-full ring-2 ring-amber-300/90 ring-offset-1 ring-offset-white/80"
               style={{
                 transform: 'scale(1.2)',
                 filter: 'drop-shadow(0 0 12px rgba(251, 191, 36, 0.65))',
@@ -123,18 +196,13 @@ const DuckRaceSprite = forwardRef<HTMLDivElement, DuckRaceSpriteProps>(function 
           </div>
         ) : (
           <div className="flex items-center">
-            {label ? (
-              <span
-                className={`mr-0.5 max-w-[6.5rem] truncate rounded-md px-1.5 py-0.5 font-extrabold tracking-tight text-slate-600 ring-1 ring-white/80 ${LABEL_TEXT[tier]}`}
-                style={{
-                  backgroundColor: colors.chip,
-                  color: '#475569',
-                  boxShadow: `inset 3px 0 0 ${colors.body}`,
-                }}
-              >
-                {label}
-              </span>
-            ) : null}
+            <DuckNameChip
+              name={label}
+              fill={colors.chip}
+              accent={colors.body}
+              fontPx={fontPx}
+              maxWidthPx={LABEL_MAX_WIDTH[tier]}
+            />
             <DuckGlyph className={DUCK_SIZE[tier]} {...colors} />
           </div>
         )}
@@ -162,7 +230,6 @@ export function DuckRaceTrack({
 }: DuckRaceTrackProps) {
   const count = racers.length
   const tier = duckRaceVisualTier(count)
-  const labelMode = duckRaceLabelMode(count)
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-sky-100/80 bg-gradient-to-b from-[#e8f4fc] via-white to-[#fce8f0] p-4 shadow-inner">
@@ -217,17 +284,12 @@ export function DuckRaceTrack({
 
         {racers.map((student, index) => {
           const isWinner = winnerId === student.id
-          let label: string | null = null
-          if (!isWinner && (labelMode === 'full' || labelMode === 'short')) {
-            label = shortDuckRaceLabel(student.name)
-          }
-
           return (
             <DuckRaceSprite
               key={student.id}
               student={student}
               fieldY={fieldYs[student.id] ?? index / Math.max(count - 1, 1)}
-              label={label}
+              label={shortDuckRaceLabel(student.name)}
               isWinner={isWinner}
               tier={tier}
               colorIndex={index}
