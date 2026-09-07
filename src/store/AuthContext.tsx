@@ -2,7 +2,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { postAuthGoogle, postAuthLogout } from "@/src/auth/api";
-import { mapApiCodeToAccessState, resolveAccessState, verifyEntitlementToken } from "@/src/auth/entitlement";
+import {
+  clearPersistedAccessDenial,
+  isAccessLockoutState,
+  mapApiCodeToAccessState,
+  persistAccessDenial,
+  readPersistedAccessDenial,
+  resolveAccessState,
+  verifyEntitlementToken,
+} from "@/src/auth/entitlement";
 import { loginWithGoogleDesktop, loginWithGoogleWeb } from "@/src/auth/google-login";
 import {
   clearLoginCancel,
@@ -74,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!nextSession) {
         setOfflineValidUntil(null);
         setPermissions(null);
-        setAccessState("AUTH_REQUIRED");
+        setAccessState(denied && isAccessLockoutState(denied) ? denied : "AUTH_REQUIRED");
         return;
       }
 
@@ -100,8 +108,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const stored = await loadAuthSession();
       cacheAndSetSession(stored);
-      setServerDenied(null);
-      await recomputeAccess(stored, null);
+      if (stored) {
+        clearPersistedAccessDenial();
+        setServerDenied(null);
+        await recomputeAccess(stored, null);
+      } else {
+        const persisted = readPersistedAccessDenial();
+        setServerDenied(persisted);
+        await recomputeAccess(null, persisted);
+      }
 
       if (stored && isOnline()) {
         try {
@@ -113,11 +128,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await recomputeAccess(result.session, null);
           } else if (result.kind === "denied") {
             if (isRevokedAuthDenial(result.access)) {
+              clearPersistedAccessDenial();
               await clearAuthSession();
               cacheAndSetSession(null);
               setServerDenied("AUTH_REQUIRED");
               await recomputeAccess(null, "AUTH_REQUIRED");
             } else {
+              persistAccessDenial(result.access);
               setServerDenied(result.access);
               await recomputeAccess(stored, result.access);
             }
@@ -184,6 +201,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!result.ok) {
           const denied = mapApiCodeToAccessState(result.code) ?? "AUTH_REQUIRED";
+          if (isAccessLockoutState(denied)) {
+            persistAccessDenial(denied);
+            setServerDenied(denied);
+            cacheAndSetSession(null);
+            await recomputeAccess(null, denied);
+            return;
+          }
           setServerDenied(denied);
           setAccessState(denied);
           throw new Error(
@@ -207,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await saveAuthSession(next);
         cacheAndSetSession(next);
         setStorageError(null);
+        clearPersistedAccessDenial();
         setServerDenied(null);
         await recomputeAccess(next, null);
       } catch (error) {
@@ -239,6 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await saveAuthSession(result.session);
         cacheAndSetSession(result.session);
+        clearPersistedAccessDenial();
         setServerDenied(null);
         await recomputeAccess(result.session, null);
       } catch (error) {
@@ -250,11 +276,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (result.kind === "denied") {
       if (isRevokedAuthDenial(result.access)) {
+        clearPersistedAccessDenial();
         await clearAuthSession();
         cacheAndSetSession(null);
         setServerDenied("AUTH_REQUIRED");
         await recomputeAccess(null, "AUTH_REQUIRED");
       } else {
+        persistAccessDenial(result.access);
         setServerDenied(result.access);
         await recomputeAccess(session, result.access);
       }
@@ -275,6 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await clearAuthSession();
     resetRegistryPullState();
+    clearPersistedAccessDenial();
     setSession(null);
     setStorageError(null);
     setServerDenied(null);

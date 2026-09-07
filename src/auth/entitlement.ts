@@ -118,3 +118,37 @@ export function mapRefreshDenial(code: string | undefined): AccessState | null {
   const denied = mapApiCodeToAccessState(code);
   return denied === "AUTH_REQUIRED" ? null : denied;
 }
+
+/** Account/plan lockouts after Google succeeded — not login failures. */
+export function isAccessLockoutState(state: AccessState): boolean {
+  return (
+    state === "LICENSE_EXPIRED" ||
+    state === "ACCOUNT_DISABLED" ||
+    state === "ACCOUNT_SUSPENDED"
+  );
+}
+
+const ACCESS_DENIAL_STORAGE_KEY = "education.accessDenied";
+
+export function persistAccessDenial(state: AccessState): void {
+  if (typeof sessionStorage === "undefined") return;
+  if (isAccessLockoutState(state)) {
+    sessionStorage.setItem(ACCESS_DENIAL_STORAGE_KEY, state);
+    return;
+  }
+  sessionStorage.removeItem(ACCESS_DENIAL_STORAGE_KEY);
+}
+
+export function readPersistedAccessDenial(): AccessState | null {
+  if (typeof sessionStorage === "undefined") return null;
+  const value = sessionStorage.getItem(ACCESS_DENIAL_STORAGE_KEY);
+  if (value === "LICENSE_EXPIRED" || value === "ACCOUNT_DISABLED" || value === "ACCOUNT_SUSPENDED") {
+    return value;
+  }
+  return null;
+}
+
+export function clearPersistedAccessDenial(): void {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.removeItem(ACCESS_DENIAL_STORAGE_KEY);
+}
