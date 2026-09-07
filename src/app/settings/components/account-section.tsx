@@ -17,11 +17,13 @@ import { PlanBenefitsDialog } from '@/src/components/plan-benefits-dialog'
 import { databaseService } from '@/src/database/database.service'
 import { useAppData } from '@/src/store/AppDataContext'
 import { useAuth } from '@/src/store/AuthContext'
+import { cn } from '@/lib/utils'
 import { AppLogSection } from './app-log-section'
 import {
   formatLicenseExpiryDate,
   getCloudBackupStatusText,
   getPlanDisplayName,
+  getPlanPresentation,
   getRemainingUsageLabel,
   showsExpiryCountdown,
 } from './account-plan-display'
