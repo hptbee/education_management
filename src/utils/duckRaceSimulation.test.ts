@@ -5,11 +5,14 @@ import {
   clampDuckRaceDurationMs,
   clampDuckRaceDurationSec,
   compactDuckRaceLabel,
+  DUCK_RACE_LABEL_MIN_FONT_PX,
   DUCK_RACE_MAX_RACERS,
   DUCK_RACE_OTHERS_MAX_AT_FINISH,
   duckRaceDisplayLabel,
+  duckRaceLabelFontPx,
   duckRaceLabelMode,
   duckRaceVisualTier,
+  fitDuckRaceChipText,
   generateRacePlan,
   hasWinnerReachedFinish,
   sampleRaceFinishFrame,
@@ -164,12 +167,22 @@ describe("duckRaceSimulation", () => {
     expect(duckRaceLabelMode(30)).toBe("short");
     expect(duckRaceLabelMode(31)).toBe("compact");
     expect(duckRaceLabelMode(100)).toBe("compact");
+    expect(duckRaceLabelFontPx("large")).toBe(12);
+    expect(duckRaceLabelFontPx("compact")).toBe(DUCK_RACE_LABEL_MIN_FONT_PX);
   });
 
   it("shortens labels to the last two words", () => {
     expect(shortDuckRaceLabel("Minh")).toBe("Minh");
     expect(shortDuckRaceLabel("Nguyễn Văn A")).toBe("Văn A");
     expect(shortDuckRaceLabel("Trần Thị Thu Hà")).toBe("Thu Hà");
+  });
+
+  it("fits chip text within a max width without emptying the label", () => {
+    expect(fitDuckRaceChipText("Thu Hà", 11, 96)).toBe("Thu Hà");
+    expect(fitDuckRaceChipText("", 11, 96)).toBe("");
+    const long = fitDuckRaceChipText("Nguyễn Thị Minh Khai", 11, 80);
+    expect(long.length).toBeGreaterThan(0);
+    expect(long.endsWith("…")).toBe(true);
   });
 
   it("uses compact labels for crowded fields", () => {

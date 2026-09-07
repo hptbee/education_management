@@ -4,9 +4,12 @@ import { forwardRef, type MutableRefObject, type Ref } from 'react'
 import { Crown, Flag, Play, Trophy } from 'lucide-react'
 import type { Student } from '@/src/types/models'
 import {
+  DUCK_RACE_LABEL_BOLD_CHAR_EM,
   duckRaceDisplayLabel,
+  duckRaceLabelFontPx,
   duckRaceLabelMode,
   duckRaceVisualTier,
+  fitDuckRaceChipText,
   type DuckRaceVisualTier,
 } from '@/src/utils/duckRaceSimulation'
 
@@ -17,12 +20,11 @@ const DUCK_SIZE: Record<DuckRaceVisualTier, string> = {
   compact: 'h-4 w-5',
 }
 
-/** Minimum 10px — avoids WebKit failing to paint sub-10px text on composited layers. */
-const LABEL_TEXT: Record<DuckRaceVisualTier, string> = {
-  large: 'text-xs',
-  medium: 'text-[10px]',
-  small: 'text-[10px]',
-  compact: 'text-[10px]',
+const LABEL_MAX_WIDTH: Record<DuckRaceVisualTier, number> = {
+  large: 104,
+  medium: 96,
+  small: 88,
+  compact: 80,
 }
 
 const CROWN_SIZE: Record<DuckRaceVisualTier, string> = {
@@ -41,6 +43,73 @@ function duckColorsForIndex(index: number): { body: string; beak: string; wing: 
     wing: `hsl(${((hue + 345) % 360).toFixed(1)} 48% 58%)`,
     chip: `hsl(${hue.toFixed(1)} 45% 94%)`,
   }
+}
+
+/**
+ * Name chip as SVG text (same approach as Lucky Wheel).
+ * Safari/WKWebView inflates HTML font-size below the user min, then overflow:hidden
+ * on a truncated span clips the glyphs so the chip looks empty.
+ */
+function DuckNameChip({
+  name,
+  fill,
+  accent,
+  fontPx,
+  maxWidthPx,
+  textFill = '#334155',
+}: {
+  name: string
+  fill: string
+  accent: string
+  fontPx: number
+  maxWidthPx: number
+  textFill?: string
+}) {
+  const paddingX = 8
+  const label = fitDuckRaceChipText(name, fontPx, maxWidthPx, paddingX)
+  if (!label) return null
+
+  const charW = fontPx * DUCK_RACE_LABEL_BOLD_CHAR_EM
+  const width = Math.min(
+    maxWidthPx,
+    Math.max(fontPx * 2.5, Math.ceil(label.length * charW) + paddingX * 2),
+  )
+  const height = fontPx + 8
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      overflow="visible"
+      className="mb-0.5 shrink-0"
+      aria-hidden
+    >
+      <rect
+        x="0.5"
+        y="0.5"
+        width={width - 1}
+        height={height - 1}
+        rx={4}
+        fill={fill}
+        stroke="rgba(255,255,255,0.9)"
+        strokeWidth={1}
+      />
+      <rect x="0" y="1" width="3" height={height - 2} rx={1.5} fill={accent} />
+      <text
+        x={paddingX}
+        y={height / 2 + 0.5}
+        fill={textFill}
+        fontSize={fontPx}
+        fontWeight={800}
+        textAnchor="start"
+        dominantBaseline="middle"
+        fontFamily="var(--font-nunito), ui-sans-serif, system-ui, sans-serif"
+      >
+        {label}
+      </text>
+    </svg>
+  )
 }
 
 function DuckGlyph({
@@ -81,6 +150,7 @@ const DuckRaceSprite = forwardRef<HTMLDivElement, DuckRaceSpriteProps>(function 
   ref,
 ) {
   const colors = duckColorsForIndex(colorIndex)
+  const fontPx = duckRaceLabelFontPx(tier)
 
   return (
     <div
@@ -95,26 +165,16 @@ const DuckRaceSprite = forwardRef<HTMLDivElement, DuckRaceSpriteProps>(function 
       >
         {/*
           Lane ref gets translate3d(x, 0, 0) from rAF so label + duck move together.
-          Name chip is a sibling of the will-change duck body so WebKit paints text reliably.
+          SVG name chip is a sibling of the will-change duck body so Safari paints it.
         */}
-        <span
-          className={`mb-0.5 max-w-[7rem] rounded-md px-1.5 py-0.5 text-center font-extrabold leading-tight ring-1 ring-white/80 ${LABEL_TEXT[tier]} ${
-            isWinner
-              ? 'bg-amber-50 text-amber-900 ring-amber-200/80'
-              : 'text-slate-600'
-          }`}
-          style={
-            isWinner
-              ? undefined
-              : {
-                  backgroundColor: colors.chip,
-                  color: '#475569',
-                  boxShadow: `inset 3px 0 0 ${colors.body}`,
-                }
-          }
-        >
-          {label}
-        </span>
+        <DuckNameChip
+          name={label}
+          fill={isWinner ? '#fffbeb' : colors.chip}
+          accent={isWinner ? '#f59e0b' : colors.body}
+          fontPx={isWinner ? Math.max(fontPx, 12) : fontPx}
+          maxWidthPx={isWinner ? 144 : LABEL_MAX_WIDTH[tier]}
+          textFill={isWinner ? '#78350f' : '#334155'}
+        />
 
         {isWinner ? (
           <Crown

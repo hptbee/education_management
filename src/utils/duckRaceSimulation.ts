@@ -11,6 +11,10 @@ export const DUCK_RACE_TEACHER_MAX_DURATION_MS = 30_000;
 export type DuckRaceVisualTier = "large" | "medium" | "small" | "compact";
 export type DuckRaceLabelMode = "full" | "short" | "compact";
 
+/** SVG label size — keep at or above Safari's typical HTML min font size. */
+export const DUCK_RACE_LABEL_MIN_FONT_PX = 11;
+export const DUCK_RACE_LABEL_BOLD_CHAR_EM = 0.62;
+
 export interface DuckRaceRacerProfile {
   studentId: string;
   /** Time (ms) when this racer reaches the finish line. */
@@ -97,11 +101,33 @@ export function duckRaceLabelMode(count: number): DuckRaceLabelMode {
   return "compact";
 }
 
+export function duckRaceLabelFontPx(tier: DuckRaceVisualTier): number {
+  if (tier === "large") return 12;
+  return DUCK_RACE_LABEL_MIN_FONT_PX;
+}
+
 export function shortDuckRaceLabel(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "";
   if (parts.length <= 2) return parts.join(" ");
   return parts.slice(-2).join(" ");
+}
+
+/** Truncate a chip string so SVG text fits maxWidth (Safari ignores HTML overflow on inflated fonts). */
+export function fitDuckRaceChipText(
+  name: string,
+  fontPx: number,
+  maxWidthPx: number,
+  paddingXPx = 8,
+): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "";
+  const budget = Math.max(fontPx, maxWidthPx - paddingXPx * 2);
+  const charW = fontPx * DUCK_RACE_LABEL_BOLD_CHAR_EM;
+  const maxChars = Math.max(1, Math.floor(budget / charW));
+  if (trimmed.length <= maxChars) return trimmed;
+  if (maxChars === 1) return "…";
+  return `${trimmed.slice(0, maxChars - 1)}…`;
 }
 
 /** Shortest readable label for crowded fields (31+ ducks). */
