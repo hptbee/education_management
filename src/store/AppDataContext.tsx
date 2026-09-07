@@ -412,7 +412,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
 
     return result;
-  }, [applyLoadedDatabase, openClassroomById, user?.id]);
+  }, [applyLoadedDatabase, openClassroomById, user]);
 
   const loadInitialDatabase = useCallback(async () => {
     const generation = switchGenerationRef.current;

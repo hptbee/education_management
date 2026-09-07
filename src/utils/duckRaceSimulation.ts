@@ -9,7 +9,7 @@ export const DUCK_RACE_TEACHER_MIN_DURATION_MS = 5_000;
 export const DUCK_RACE_TEACHER_MAX_DURATION_MS = 30_000;
 
 export type DuckRaceVisualTier = "large" | "medium" | "small" | "compact";
-export type DuckRaceLabelMode = "full" | "short";
+export type DuckRaceLabelMode = "full" | "short" | "compact";
 
 /** SVG label size — keep at or above Safari's typical HTML min font size. */
 export const DUCK_RACE_LABEL_MIN_FONT_PX = 11;
@@ -97,7 +97,8 @@ export function duckRaceVisualTier(count: number): DuckRaceVisualTier {
 
 export function duckRaceLabelMode(count: number): DuckRaceLabelMode {
   if (count <= 12) return "full";
-  return "short";
+  if (count <= 30) return "short";
+  return "compact";
 }
 
 export function duckRaceLabelFontPx(tier: DuckRaceVisualTier): number {
@@ -127,6 +128,24 @@ export function fitDuckRaceChipText(
   if (trimmed.length <= maxChars) return trimmed;
   if (maxChars === 1) return "…";
   return `${trimmed.slice(0, maxChars - 1)}…`;
+}
+
+/** Shortest readable label for crowded fields (31+ ducks). */
+export function compactDuckRaceLabel(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) {
+    const word = parts[0]!;
+    return word.length <= 10 ? word : word.slice(0, 9) + "…";
+  }
+  const last = parts[parts.length - 1]!;
+  if (last.length <= 10) return last;
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
+}
+
+export function duckRaceDisplayLabel(name: string, mode: DuckRaceLabelMode): string {
+  if (mode === "compact") return compactDuckRaceLabel(name);
+  return shortDuckRaceLabel(name);
 }
 
 /**
